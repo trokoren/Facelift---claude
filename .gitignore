@@ -1,0 +1,18 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+
+# Swift Package Manager (Package.resolved stays committed so builds are reproducible)
+.build/
+.swiftpm/
+
+# Secrets: API keys never go in the repo
+*.xcconfig.local
+Secrets.xcconfig
+.env
+
+# macOS
+.DS_Store

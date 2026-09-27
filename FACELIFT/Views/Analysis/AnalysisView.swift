@@ -1,0 +1,141 @@
+import SwiftUI
+
+/// Full skin analysis: category cards + "What your skin needs." recommendations.
+/// Fresh results show a sticky "Next" button; history shows "Back to My Skin".
+struct AnalysisView: View {
+    let scanID: UUID
+    let isFresh: Bool
+
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @State private var insight: InsightContent?
+    @State private var shopCount: Int = 0
+
+    var body: some View {
+        Group {
+            if let scan = store.scan(with: scanID) {
+                content(for: scan)
+            } else {
+                Palette.canvas.ignoresSafeArea()
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(item: $insight) { item in
+            InsightSheet(content: item)
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: shopCount)
+    }
+
+    private func content(for scan: Scan) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                BrandHeader(subtitle: "Your Skin Analysis.")
+
+                if !isFresh {
+                    backRow
+                }
+
+                SectionLabel("YOUR ANALYSIS")
+                    .padding(.top, isFresh ? 22 : 18)
+                    .padding(.horizontal, 24)
+
+                VStack(spacing: 12) {
+                    ForEach(scan.categories) { category in
+                        AnalysisCardView(category: category) {
+                            insight = InsightContent(category: category)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+
+                needsBanner
+                    .padding(.top, 20)
+
+                VStack(alignment: .leading, spacing: 26) {
+                    ForEach(scan.recommendations) { recommendation in
+                        RecommendationSectionView(recommendation: recommendation) { product in
+                            shop(product, scanID: scan.id)
+                        }
+                    }
+                }
+                .padding(.top, 32)
+
+                if isFresh {
+                    nextButton
+                        .padding(.top, 36)
+                }
+            }
+            .padding(.bottom, 20)
+        }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+        .background(Palette.canvas.ignoresSafeArea())
+    }
+
+    private var backRow: some View {
+        VStack(spacing: 0) {
+            Button {
+                dismiss()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 12, weight: .light))
+                    Text("Back to My Skin")
+                        .font(FLFont.sans(13.5))
+                }
+                .foregroundStyle(Palette.rose)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: 36)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.98))
+
+            Rectangle()
+                .fill(Palette.hairline)
+                .frame(height: 1)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private var needsBanner: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Palette.divider).frame(height: 1)
+            Text("What your skin needs.")
+                .font(FLFont.serif(20.5))
+                .foregroundStyle(Palette.ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+            Rectangle().fill(Palette.divider).frame(height: 1)
+        }
+    }
+
+    private var nextButton: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.35)) {
+                store.finishResults()
+            }
+        } label: {
+            Text("Next")
+                .font(FLFont.sans(16.5, .medium))
+                .tracking(0.6)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Palette.rose, in: Capsule())
+                .shadow(color: Palette.rose.opacity(0.3), radius: 12, x: 0, y: 6)
+        }
+        .buttonStyle(PressableStyle())
+        .padding(.horizontal, 24)
+        .sensoryFeedback(.impact(weight: .medium), trigger: store.mySkinPath.isEmpty)
+    }
+
+    private func shop(_ product: Recommendation.Product, scanID: UUID) {
+        shopCount += 1
+        store.recordShop(product, scanID: scanID)
+        if let url = ShopLink.url(for: product.name) {
+            openURL(url)
+        }
+    }
+}
