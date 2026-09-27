@@ -6,6 +6,7 @@ struct ProgressScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var insight: InsightContent?
     @State private var isEditing: Bool = false
+    @State private var isAddingProduct: Bool = false
 
     var body: some View {
         ScrollView {
@@ -28,6 +29,13 @@ struct ProgressScreen: View {
         .background(Palette.canvas.ignoresSafeArea())
         .sheet(item: $insight) { item in
             InsightSheet(content: item)
+        }
+        .sheet(isPresented: $isAddingProduct) {
+            AddProductSheet { brand, name, price in
+                withAnimation(.snappy) { store.addUsed(brand: brand, name: name, price: price) }
+            }
+            .presentationDetents([.medium])
+            .presentationCornerRadius(28)
         }
         .sensoryFeedback(.selection, trigger: isEditing)
     }
@@ -89,19 +97,11 @@ struct ProgressScreen: View {
                 Button {
                     withAnimation(.snappy) { isEditing.toggle() }
                 } label: {
-                    Group {
-                        if isEditing {
-                            Text("Done")
-                                .font(FLFont.sans(11.5, .medium))
-                                .foregroundStyle(Palette.rose)
-                        } else {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 14, weight: .light))
-                                .foregroundStyle(Palette.stone)
-                        }
-                    }
-                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
-                    .contentShape(Rectangle())
+                    Text(isEditing ? "Done" : "Edit")
+                        .font(FLFont.sans(13, .semibold))
+                        .foregroundStyle(Palette.rose)
+                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle(scale: 0.9))
                 .accessibilityLabel(isEditing ? "Done editing" : "Edit products")
@@ -120,6 +120,26 @@ struct ProgressScreen: View {
                     Rectangle().fill(Palette.rowDivider).frame(height: 1)
                 }
                 usedRow(product)
+            }
+
+            if isEditing || store.usedProducts.isEmpty {
+                Rectangle().fill(Palette.rowDivider).frame(height: 1)
+                Button {
+                    isAddingProduct = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 17, weight: .light))
+                        Text("Add a product I use")
+                            .font(FLFont.sans(13.5, .medium))
+                        Spacer()
+                    }
+                    .foregroundStyle(Palette.rose)
+                    .frame(height: 50)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle(scale: 0.98))
+                .transition(.opacity)
             }
         }
         .padding(.horizontal, 20)
@@ -175,5 +195,64 @@ struct ProgressScreen: View {
             }
         }
         .padding(.vertical, 12)
+    }
+}
+
+/// Quick form to add something she already uses to her routine.
+private struct AddProductSheet: View {
+    let onAdd: (String, String, Int) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var brand: String = ""
+    @State private var name: String = ""
+    @State private var price: String = ""
+    @FocusState private var focused: Field?
+
+    private enum Field { case brand, name, price }
+
+    private var canSave: Bool {
+        !brand.trimmingCharacters(in: .whitespaces).isEmpty && !name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Add a product")
+                .font(FLFont.serif(28))
+                .foregroundStyle(Palette.ink)
+            Text("Track what's already in your routine.")
+                .font(FLFont.sans(14))
+                .foregroundStyle(Palette.stone)
+                .padding(.top, 4)
+
+            VStack(spacing: 10) {
+                field("Brand (e.g. Laneige)", text: $brand, field: .brand)
+                field("Product (e.g. Water Bank Serum)", text: $name, field: .name)
+                field("Price (optional)", text: $price, field: .price)
+                    .keyboardType(.numberPad)
+            }
+            .padding(.top, 20)
+
+            Spacer(minLength: 16)
+
+            OnboardingCTA(title: "Add to my routine", isEnabled: canSave) {
+                let cleanPrice = Int(price.filter(\.isNumber)) ?? 0
+                onAdd(brand.trimmingCharacters(in: .whitespaces), name.trimmingCharacters(in: .whitespaces), cleanPrice)
+                dismiss()
+            }
+        }
+        .padding(24)
+        .background(Palette.canvas.ignoresSafeArea())
+        .onAppear { focused = .brand }
+    }
+
+    private func field(_ placeholder: String, text: Binding<String>, field: Field) -> some View {
+        TextField(placeholder, text: text)
+            .font(FLFont.sans(16))
+            .foregroundStyle(Palette.ink)
+            .focused($focused, equals: field)
+            .padding(.horizontal, 18)
+            .frame(height: 52)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Palette.divider, lineWidth: 1))
     }
 }

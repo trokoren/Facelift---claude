@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// Dimmed portrait with the "Scan Instructions" sheet.
+/// Dimmed portrait with a compact "Before you scan" card.
 struct ScanInstructionsStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @State private var pulse: Bool = false
 
     var body: some View {
         GeometryReader { geo in
-            let photoHeight = geo.size.height * 0.26 + geo.safeAreaInsets.top
+            let photoHeight = geo.size.height * 0.46 + geo.safeAreaInsets.top
 
             VStack(spacing: 0) {
                 ZStack(alignment: .top) {
@@ -48,16 +48,16 @@ struct ScanInstructionsStepView: View {
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Scan Instructions")
-                    .font(FLFont.serif(30))
+                Text("Before you scan")
+                    .font(FLFont.serif(28))
                     .foregroundStyle(Palette.ink)
                 Spacer()
                 Button {
                     flow.back()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 20, weight: .light))
-                        .foregroundStyle(Palette.mist)
+                        .font(.system(size: 17, weight: .light))
+                        .foregroundStyle(Palette.stone)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -65,18 +65,22 @@ struct ScanInstructionsStepView: View {
                 .padding(.trailing, -12)
                 .accessibilityLabel("Close")
             }
-            .padding(.top, 26)
+            .padding(.top, 22)
 
-            VStack(spacing: 16) {
-                InstructionRow(number: 1, image: "onb_step1", title: "Take glasses off", detail: "And find a well-lit area")
-                InstructionRow(number: 2, image: "onb_step2", title: "Keep head straight", detail: "Then press the Start button")
-                InstructionRow(number: 3, image: "onb_step3", title: "Make a full circle", detail: "Slowly rotating and closing all the segments")
+            VStack(spacing: 12) {
+                InstructionRow(number: 1, image: "onb_step1", title: "Glasses off, face bare", detail: "Soft, even light works best")
+                InstructionRow(number: 2, image: "onb_step2", title: "Face the camera", detail: "Keep your face inside the oval")
+                InstructionRow(number: 3, image: "onb_step3", title: "Hold still", detail: "It only takes a few seconds")
             }
-            .padding(.top, 24)
+            .padding(.top, 16)
+
+            PrivacyNote(tint: Palette.stone)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 18)
 
             Spacer(minLength: 12)
 
-            OnboardingCTA(title: "Continue") { flow.next() }
+            OnboardingCTA(title: "I'm ready") { flow.next() }
                 .padding(.bottom, 10)
         }
         .padding(.horizontal, 24)
@@ -94,30 +98,30 @@ private struct InstructionRow: View {
             Text("\(number)")
                 .font(FLFont.sans(15, .medium))
                 .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
+                .frame(width: 30, height: 30)
                 .background(Palette.rose, in: Circle())
 
             Color(hex: 0xEAE7E4)
-                .frame(width: 104, height: 104)
+                .frame(width: 58, height: 58)
                 .overlay {
                     Image(image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .allowsHitTesting(false)
                 }
-                .clipShape(.rect(cornerRadius: 20, style: .continuous))
-                .padding(.leading, 20)
+                .clipShape(.rect(cornerRadius: 14, style: .continuous))
+                .padding(.leading, 14)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(FLFont.sans(17.5, .medium))
+                    .font(FLFont.sans(16, .medium))
                     .foregroundStyle(Palette.ink)
                 Text(detail)
                     .font(FLFont.sans(14.5))
                     .foregroundStyle(Palette.mist)
                     .lineSpacing(2)
             }
-            .padding(.leading, 20)
+            .padding(.leading, 14)
 
             Spacer(minLength: 0)
         }

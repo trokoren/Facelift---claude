@@ -14,9 +14,9 @@ struct PaywallStepView: View {
     }
 
     private let plans: [Plan] = [
-        Plan(name: "Free Trial", price: "Only $3.99"),
+        Plan(name: "Free Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year"),
         Plan(name: "Weekly", price: "$8.99/week"),
-        Plan(name: "Annual", price: "$49.99/year", perMonth: "$4.16/month", badge: "SAVE 90%")
+        Plan(name: "Annual", price: "$4.16/month", perMonth: "$49.99 billed yearly", badge: "SAVE 90%")
     ]
 
     var body: some View {
@@ -35,7 +35,7 @@ struct PaywallStepView: View {
                         .multilineTextAlignment(.center)
                         .lineSpacing(-2)
                         .padding(.top, 18)
-                    Text("Get 40% off FACELIFT AI")
+                    Text("Get 40% off FACELIFT")
                         .font(FLFont.sans(15.5))
                         .foregroundStyle(Palette.body)
                         .padding(.top, 8)
@@ -105,21 +105,20 @@ struct PaywallStepView: View {
                                 .background(Palette.rose, in: Capsule())
                         }
                     }
-                    HStack(spacing: 8) {
-                        Text(plan.price)
-                            .font(FLFont.sans(15))
+                    Text(plan.price)
+                        .font(FLFont.sans(15, .medium))
+                        .foregroundStyle(Palette.body)
+                    if let perMonth = plan.perMonth {
+                        Text(perMonth)
+                            .font(FLFont.sans(13.5))
                             .foregroundStyle(Palette.stone)
-                        if let perMonth = plan.perMonth {
-                            Text(perMonth)
-                                .font(FLFont.sans(13.5))
-                                .foregroundStyle(Palette.mist)
-                        }
                     }
                 }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 20)
-            .frame(height: 76)
+            .padding(.vertical, 14)
+            .frame(minHeight: 76)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(isSelected ? Color(hex: 0xFBF1EF) : Color.white)

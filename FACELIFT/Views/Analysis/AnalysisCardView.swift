@@ -73,7 +73,7 @@ struct AnalysisCardView: View {
         .padding(.trailing, 16)
         .padding(.top, 17)
         .padding(.bottom, 15)
-        .background(AccentEdgeBackground(accent: category.accent))
+        .background(GlassCardBackground(accent: category.accent))
         .onAppear {
             withAnimation(.easeOut(duration: 1.0).delay(0.15)) {
                 isRevealed = true

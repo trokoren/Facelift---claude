@@ -1,6 +1,8 @@
 import SwiftUI
+import AppTrackingTransparency
 
-/// "Your skin, finally understood." with Next + sign-in link.
+/// First screen: "Your skin, finally understood." The tracking prompt appears over this
+/// hero, and the headline + buttons fade in once it is answered.
 struct HeroStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
@@ -68,8 +70,15 @@ struct HeroStepView: View {
             }
             .padding(.horizontal, 28)
         }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.9)) { hasAppeared = true }
+        .task { await requestTrackingThenReveal() }
+    }
+
+    private func requestTrackingThenReveal() async {
+        // Let the photo land for a beat before the system prompt covers it.
+        try? await Task.sleep(for: .milliseconds(700))
+        if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
+            _ = await ATTrackingManager.requestTrackingAuthorization()
         }
+        withAnimation(.easeOut(duration: 0.9)) { hasAppeared = true }
     }
 }

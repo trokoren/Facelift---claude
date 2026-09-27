@@ -118,11 +118,13 @@ struct OnboardingOption<Leading: View>: View {
                     Text(title)
                         .font(FLFont.sans(17.5))
                         .foregroundStyle(Palette.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(alignment == .leading ? .leading : .center)
+                        .lineLimit(alignment == .leading ? 2 : 1)
+                        .minimumScaleFactor(0.85)
                     if alignment == .leading { Spacer(minLength: 0) }
                 }
                 .padding(.leading, alignment == .leading ? leadingInset : 0)
+                .padding(.trailing, alignment == .leading ? 16 : 0)
             }
             .frame(maxWidth: .infinity)
             .frame(height: height)
@@ -226,5 +228,21 @@ struct GoldStars: View {
             }
         }
         .accessibilityLabel("Five stars")
+    }
+}
+
+/// Lock + "Your photos are never stored." Shown anywhere the camera is on or about to be.
+struct PrivacyNote: View {
+    var tint: Color = Color(hex: 0xB3ABA9)
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 12, weight: .regular))
+            Text("Your photos are never stored.")
+                .font(FLFont.sans(14, .medium))
+        }
+        .foregroundStyle(tint)
+        .accessibilityElement(children: .combine)
     }
 }

@@ -13,7 +13,8 @@ extension Color {
     }
 }
 
-/// Colors sampled directly from the FACELIFT design files.
+/// Colors sampled from the FACELIFT design files. Greys were darkened for legibility on the
+/// cream canvas (secondary text went from about 2:1 to 3.7-5:1 contrast).
 enum Palette {
     static let canvas = Color(hex: 0xFAF8F5)
     static let sheet = Color(hex: 0xFAF8F7)
@@ -28,14 +29,14 @@ enum Palette {
     static let ember = Color(hex: 0xC4583B)
     static let sky = Color(hex: 0x3B8FC4)
     static let ink = Color(hex: 0x1C1210)
-    static let body = Color(hex: 0x5A5452)
-    static let stone = Color(hex: 0x8D8887)
-    static let pebble = Color(hex: 0x999493)
-    static let taupe = Color(hex: 0x9D9795)
-    static let label = Color(hex: 0xA6A19E)
-    static let quiet = Color(hex: 0xA9A5A4)
-    static let mist = Color(hex: 0xABABAB)
-    static let faint = Color(hex: 0xBFBDBC)
+    static let body = Color(hex: 0x4A4442)
+    static let stone = Color(hex: 0x6F6967)
+    static let pebble = Color(hex: 0x767170)
+    static let taupe = Color(hex: 0x7C7674)
+    static let label = Color(hex: 0x837D7B)
+    static let quiet = Color(hex: 0x8C8786)
+    static let mist = Color(hex: 0x858080)
+    static let faint = Color(hex: 0x9E9998)
     static let whisper = Color(hex: 0xC9C5C3)
     static let tabIdle = Color(hex: 0xB5B2B1)
     static let hairline = Color(hex: 0xF2E6E4)
@@ -66,7 +67,18 @@ enum FLFont {
     }
 
     static func sans(_ size: CGFloat, _ weight: Weight = .regular) -> Font {
-        .custom(weight.postScriptName, size: size)
+        .custom(weight.postScriptName, size: readable(size))
+    }
+
+    /// Nudges the tiniest UI text up so nothing in the app reads below ~11.5pt.
+    /// Sizes 15pt and above are untouched.
+    private static func readable(_ size: CGFloat) -> CGFloat {
+        switch size {
+        case ..<11: size + 2
+        case ..<13: size + 1.5
+        case ..<15: size + 0.5
+        default: size
+        }
     }
 
     static func serif(_ size: CGFloat) -> Font {

@@ -6,36 +6,38 @@ struct PaywallPreviewStepView: View {
     @State private var isRevealed: Bool = false
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Palette.canvas.ignoresSafeArea()
-
-            blurredAnalysis
-                .blur(radius: 3.5)
-                .allowsHitTesting(false)
-
+        ScrollView {
             VStack(spacing: 0) {
-                Text("scroll")
-                    .font(FLFont.sans(14))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .frame(height: 36)
-                    .background(Color(hex: 0x6E6866), in: Capsule())
-                    .padding(.top, 40)
-
                 resultsCard
-                    .padding(.top, 18)
+                    .padding(.top, 20)
                     .padding(.horizontal, 24)
-
-                Spacer()
 
                 testimonial
+                    .padding(.top, 16)
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 16)
 
-                OnboardingCTA(title: "Unlock My Results") { flow.next() }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 10)
+                // A peek at the locked report underneath, so scrolling shows there's more.
+                blurredAnalysis
+                    .blur(radius: 5)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .mask(
+                        LinearGradient(colors: [.black, .black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    )
             }
+            .padding(.bottom, 12)
+        }
+        .scrollIndicators(.hidden)
+        .background(Palette.canvas.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            OnboardingCTA(title: "Unlock My Results") { flow.next() }
+                .padding(.horizontal, 24)
+                .padding(.top, 14)
+                .padding(.bottom, 10)
+                .background(
+                    LinearGradient(colors: [Palette.canvas.opacity(0), Palette.canvas, Palette.canvas], startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea()
+                )
         }
         .onAppear {
             withAnimation(.easeOut(duration: 1.0).delay(0.2)) { isRevealed = true }
@@ -134,11 +136,7 @@ struct PaywallPreviewStepView: View {
                 .font(FLFont.sans(13))
                 .tracking(3)
                 .foregroundStyle(Palette.rose.opacity(0.5))
-                .padding(.top, 92)
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
-                .frame(height: 330)
-                .padding(.top, 60)
+                .padding(.top, 28)
             VStack(alignment: .leading, spacing: 14) {
                 Text("TONE & CLARITY")
                     .font(FLFont.sans(12, .semibold))
@@ -169,7 +167,10 @@ struct PaywallPreviewStepView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AccentEdgeBackground(accent: Palette.rose, radius: 24))
             .padding(.top, 20)
-            Spacer()
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white)
+                .frame(height: 260)
+                .padding(.top, 14)
         }
         .padding(.horizontal, 24)
     }

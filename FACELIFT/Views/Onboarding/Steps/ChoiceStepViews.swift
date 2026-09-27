@@ -48,24 +48,25 @@ struct SkinTypeStepView: View {
 
 struct PainPointsStepView: View {
     @Environment(OnboardingStore.self) private var flow
-    private let options: [(String, String, Color)] = [
-        ("Dehydration", "drop", Palette.sky),
-        ("Fine Lines", "water.waves", Palette.gold),
-        ("Texture", "circle.grid.3x3", Palette.ember),
-        ("Dullness", "sun.max", Color(hex: 0xE39A3B)),
-        ("Redness", "face.smiling", Color(hex: 0xD8636B)),
-        ("Firmness", "arrow.up.to.line", Color(hex: 0x8F7BD8)),
-        ("Dark Spots", "circle.hexagongrid", Color(hex: 0xA88B5A)),
-        ("Breakouts", "circle.circle", Palette.sage),
-        ("Large Pores", "circle.dotted.circle", Palette.sky)
+    /// (concern key used by the analysis, what she sees, icon, color).
+    private let options: [(String, String, String, Color)] = [
+        ("Fine Lines", "Lines I didn't have before", "water.waves", Palette.gold),
+        ("Dullness", "I look tired, even when I'm not", "sun.max", Color(hex: 0xE39A3B)),
+        ("Dehydration", "Tight, thirsty skin", "drop", Palette.sky),
+        ("Dark Spots", "Dark spots & uneven tone", "circle.hexagongrid", Color(hex: 0xA88B5A)),
+        ("Firmness", "Skin losing its bounce", "arrow.up.to.line", Color(hex: 0x8F7BD8)),
+        ("Texture", "Rough, bumpy texture", "circle.grid.3x3", Palette.ember),
+        ("Redness", "Redness that won't calm down", "flame", Color(hex: 0xD8636B)),
+        ("Breakouts", "Breakouts I thought I'd outgrown", "circle.circle", Palette.sage),
+        ("Large Pores", "Pores I can see in the mirror", "circle.dotted.circle", Palette.sky)
     ]
 
     var body: some View {
-        OnboardingPage(title: "What worries you most\nabout your skin?", titleSize: 33, titleTop: 4) {
+        OnboardingPage(title: "What worries you most\nabout your skin?", subtitle: "Pick all that feel true.", titleSize: 33, titleTop: 4) {
             VStack(spacing: 10) {
-                ForEach(options, id: \.0) { option, symbol, color in
-                    OnboardingOption(title: option, isSelected: flow.answers.concerns.contains(option), alignment: .leading, height: 58) {
-                        flow.toggle(option, in: \.concerns)
+                ForEach(options, id: \.0) { key, label, symbol, color in
+                    OnboardingOption(title: label, isSelected: flow.answers.concerns.contains(key), alignment: .leading, height: 58) {
+                        flow.toggle(key, in: \.concerns)
                     } leading: {
                         Image(systemName: symbol)
                             .font(.system(size: 18, weight: .light))
@@ -280,17 +281,10 @@ struct LocationStepView: View {
     @State private var query: String = ""
     @FocusState private var isFocused: Bool
 
-    private let cities: [String] = [
-        "New York, US", "Los Angeles, US", "London, UK", "Paris, FR", "Berlin, DE", "Madrid, ES",
-        "Rome, IT", "Amsterdam, NL", "Dubai, AE", "Singapore, SG", "Sydney, AU", "Toronto, CA",
-        "Miami, US", "Chicago, US", "San Francisco, US", "Tokyo, JP", "Seoul, KR", "Mumbai, IN",
-        "São Paulo, BR", "Mexico City, MX", "Stockholm, SE", "Lisbon, PT", "Vienna, AT", "Zurich, CH"
-    ]
+    @State private var search = CitySearch()
 
     private var matches: [String] {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return [] }
-        return cities.filter { $0.localizedStandardContains(trimmed) }
+        query.trimmingCharacters(in: .whitespaces).isEmpty ? [] : search.results
     }
 
     var body: some View {
@@ -357,6 +351,10 @@ struct LocationStepView: View {
                 .buttonStyle(PressableStyle())
                 .padding(.bottom, 10)
             }
+        }
+        .onChange(of: query) { _, newValue in
+            // Don't re-search after a city has been picked from the list.
+            if newValue != flow.answers.city { search.update(newValue) }
         }
         .task {
             try? await Task.sleep(for: .milliseconds(500))

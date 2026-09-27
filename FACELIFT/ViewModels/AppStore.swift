@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import UserNotifications
 
 /// Shared app state: navigation, scans, products and profile preferences.
 @Observable
@@ -15,7 +16,6 @@ final class AppStore {
     var scans: [Scan] = SampleData.scans
     var usedProducts: [UsedProduct] = SampleData.usedProducts
     var chartPoints: [ChartPoint] = SampleData.chartPoints
-    let progressUpdate: String = SampleData.progressUpdate
 
     var name: String = "Sophia Chen"
     var email: String = "sophia@email.com"
@@ -24,6 +24,47 @@ final class AppStore {
     var remindersOn: Bool = true
 
     var latestScan: Scan? { scans.first }
+
+    /// Plain-language "what changed" summary. Every scan is kept (nothing resets): this compares
+    /// the newest scan with the one right before it, while the chart shows the full history.
+    var progressUpdate: String {
+        guard let latest = scans.first else {
+            return "Scan your skin to start tracking how it changes."
+        }
+        guard scans.count > 1 else {
+            return "This first scan is your baseline. Scan again in about 10 days and we'll show you exactly what changed."
+        }
+        let previous = scans[1]
+        var parts: [String] = []
+
+        let now = latest.overallScore
+        let before = previous.overallScore
+        let delta = now - before
+        if delta > 0 {
+            parts.append("Your overall skin score is up \(delta) \(delta == 1 ? "point" : "points") since your last scan (\(before) to \(now)).")
+        } else if delta < 0 {
+            parts.append("Your overall skin score dipped \(-delta) \(delta == -1 ? "point" : "points") since your last scan (\(before) to \(now)). Small swings are normal with sleep, stress and your cycle.")
+        } else {
+            parts.append("Your overall skin score held steady at \(now) since your last scan.")
+        }
+
+        let changes: [(category: AnalysisCategory, change: Int)] = latest.categories.compactMap { category in
+            guard let old = previous.categories.first(where: { $0.kind == category.kind }) else { return nil }
+            return (category, category.score - old.score)
+        }
+        let best = changes.max { $0.change < $1.change }
+        let worst = changes.min { $0.change < $1.change }
+
+        if let best, best.change > 0 {
+            parts.append("\(best.category.title) improved the most, up \(best.change).")
+        }
+        if let worst, worst.change < 0, worst.category.kind != best?.category.kind {
+            parts.append("\(worst.category.title) slipped \(-worst.change), so that's the area to focus on next.")
+        } else if let weakest = latest.categories.min(by: { $0.score < $1.score }) {
+            parts.append("\(weakest.title) is your lowest area at \(weakest.score), so it's the best place to focus next.")
+        }
+        return parts.joined(separator: " ")
+    }
 
     var initial: String {
         String(name.prefix(1)).uppercased()
@@ -43,6 +84,13 @@ final class AppStore {
 
     func scan(with id: UUID) -> Scan? {
         scans.first { $0.id == id }
+    }
+
+    /// Keeps the "Scan Reminders" switch honest: it's only on if iOS actually allows notifications.
+    func refreshReminderPermission() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        let allowed = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+        if !allowed { remindersOn = false }
     }
 
     func startScan() {
@@ -93,6 +141,12 @@ final class AppStore {
         let name = words.dropFirst(brandWordCount).joined(separator: " ")
         let tint = UsedProduct.Tint.allCases[usedProducts.count % UsedProduct.Tint.allCases.count]
         usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: product.price, tint: tint), at: 0)
+    }
+
+    /// Adds a product she already uses (not bought through FACELIFT) to "What I'm using".
+    func addUsed(brand: String, name: String, price: Int) {
+        let tint = UsedProduct.Tint.allCases[usedProducts.count % UsedProduct.Tint.allCases.count]
+        usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: price, tint: tint), at: 0)
     }
 
     func removeUsed(_ product: UsedProduct) {

@@ -20,7 +20,6 @@ struct ContentView: View {
                     .transition(.opacity)
             }
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
         .environment(store)
         .fullScreenCover(isPresented: $store.isScanning) {
             ScanCameraView()
@@ -48,6 +47,10 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.light)
+        .task { await store.refreshReminderPermission() }
+        // Keeps the tab bar from riding up with the keyboard. Onboarding is left alone
+        // so buttons under text fields (like the city search) stay reachable.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
 

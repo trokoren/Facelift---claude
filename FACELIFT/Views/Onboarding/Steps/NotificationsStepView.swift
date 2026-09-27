@@ -136,8 +136,8 @@ struct NotificationsStepView: View {
     private func request() async {
         isRequesting = true
         let center = UNUserNotificationCenter.current()
-        _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
-        flow.answers.notificationsRequested = true
+        let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        flow.answers.notificationsRequested = granted
         isRequesting = false
         flow.next()
     }

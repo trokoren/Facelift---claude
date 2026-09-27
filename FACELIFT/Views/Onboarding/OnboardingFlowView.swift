@@ -32,8 +32,6 @@ struct OnboardingFlowView: View {
     @ViewBuilder
     private var stepView: some View {
         switch flow.step {
-        case .splash: SplashStepView()
-        case .tracking: TrackingStepView()
         case .hero: HeroStepView()
         case .age: AgeStepView()
         case .skinType: SkinTypeStepView()

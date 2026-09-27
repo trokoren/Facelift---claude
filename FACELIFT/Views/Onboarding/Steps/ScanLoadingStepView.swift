@@ -32,14 +32,8 @@ struct ScanLoadingStepView: View {
                 }
                 .padding(.top, 6)
 
-                HStack(spacing: 6) {
-                    Image(systemName: "lock")
-                        .font(.system(size: 14, weight: .light))
-                    Text("Photos aren't stored")
-                        .font(FLFont.sans(15.5))
-                }
-                .foregroundStyle(Color(hex: 0x8F8785))
-                .padding(.top, 14)
+                PrivacyNote(tint: Color(hex: 0xB3ABA9))
+                    .padding(.top, 14)
 
                 oval
                     .padding(.top, 96)
@@ -95,7 +89,7 @@ struct ScanLoadingStepView: View {
                 CameraPreviewView(session: camera.session)
                     .frame(width: ovalSize.width, height: ovalSize.height)
                     .clipShape(Ellipse())
-                    .opacity(0.55)
+                    .opacity(0.9)
                     .transition(.opacity)
             }
             Ellipse()

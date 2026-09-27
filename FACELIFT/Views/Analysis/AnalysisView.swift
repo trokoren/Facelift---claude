@@ -61,17 +61,24 @@ struct AnalysisView: View {
                     }
                 }
                 .padding(.top, 32)
-
-                if isFresh {
-                    nextButton
-                        .padding(.top, 36)
-                }
             }
             .padding(.bottom, 20)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
-        .background(Palette.canvas.ignoresSafeArea())
+        .background { GlassBackdrop() }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Pinned so the next step is always visible, not buried under the recommendations.
+            if isFresh {
+                nextButton
+                    .padding(.top, 14)
+                    .padding(.bottom, 8)
+                    .background(
+                        LinearGradient(colors: [Palette.canvas.opacity(0), Palette.canvas, Palette.canvas], startPoint: .top, endPoint: .bottom)
+                            .ignoresSafeArea()
+                    )
+            }
+        }
     }
 
     private var backRow: some View {
@@ -117,7 +124,7 @@ struct AnalysisView: View {
                 store.finishResults()
             }
         } label: {
-            Text("Next")
+            Text("Continue to My Skin")
                 .font(FLFont.sans(16.5, .medium))
                 .tracking(0.6)
                 .foregroundStyle(.white)

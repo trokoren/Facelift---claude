@@ -7,7 +7,7 @@ struct ScienceStepView: View {
 
     var body: some View {
         OnboardingPage(title: "Built on real\nskin science.", titleSize: 34, titleTop: 4) {
-            Text("Our AI draws from 14,000+ anonymised skin profiles and decades of peer-reviewed dermatology research.")
+            Text("Our analysis draws from 14,000+ anonymized skin profiles and decades of peer-reviewed dermatology research.")
                 .font(FLFont.sans(14))
                 .foregroundStyle(Palette.stone)
                 .multilineTextAlignment(.center)
@@ -237,7 +237,7 @@ struct ScienceStepView: View {
 
             compatibilityRow(title: "Generic routine", value: 0.31, label: "31%", emphasized: false)
                 .padding(.top, 14)
-            compatibilityRow(title: "FACELIFT AI", value: 0.94, label: "94%", emphasized: true)
+            compatibilityRow(title: "FACELIFT", value: 0.94, label: "94%", emphasized: true)
                 .padding(.top, 12)
         }
         .padding(16)

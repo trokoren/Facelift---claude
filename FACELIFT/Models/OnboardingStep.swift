@@ -2,8 +2,6 @@ import Foundation
 
 /// Every screen of the first-run flow, in order.
 enum OnboardingStep: Int, CaseIterable, Hashable {
-    case splash
-    case tracking
     case hero
     case age
     case skinType
@@ -30,7 +28,7 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
     /// Steps that draw the thin rose progress bar along the top edge.
     var showsProgress: Bool {
         switch self {
-        case .splash, .tracking, .readyToScan, .cameraPermission, .scanLoading, .paywallPreview, .paywall:
+        case .readyToScan, .cameraPermission, .scanLoading, .paywallPreview, .paywall:
             false
         default:
             true
@@ -40,7 +38,7 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
     /// Steps with a back chevron in the top-left corner.
     var showsBack: Bool {
         switch self {
-        case .splash, .tracking, .hero, .readyToScan, .scanInstructions, .scanLoading, .paywallPreview, .paywall:
+        case .hero, .readyToScan, .scanInstructions, .scanLoading, .paywallPreview, .paywall:
             false
         default:
             true
@@ -50,7 +48,7 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
     /// Steps rendered on the dark palette (status bar becomes light).
     var isDark: Bool {
         switch self {
-        case .splash, .tracking, .hero, .notAlone, .reviewAsk, .cameraPermission, .scanLoading:
+        case .hero, .notAlone, .reviewAsk, .cameraPermission, .scanLoading:
             true
         default:
             false

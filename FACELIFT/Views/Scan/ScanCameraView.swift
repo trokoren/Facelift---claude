@@ -21,8 +21,11 @@ struct ScanCameraView: View {
                 statusLabel
                     .padding(.top, 6)
 
+                PrivacyNote(tint: Color(hex: 0xB3ABA9))
+                    .padding(.top, 12)
+
                 oval
-                    .padding(.top, 170)
+                    .padding(.top, 130)
 
                 Group {
                     switch camera.status {
@@ -90,7 +93,7 @@ struct ScanCameraView: View {
                 CameraPreviewView(session: camera.session)
                     .frame(width: ovalSize.width, height: ovalSize.height)
                     .clipShape(Ellipse())
-                    .opacity(0.55)
+                    .opacity(0.9)
                     .transition(.opacity)
             }
 

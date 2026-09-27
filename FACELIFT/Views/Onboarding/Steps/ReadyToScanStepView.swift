@@ -3,7 +3,6 @@ import SwiftUI
 /// Annotated portrait + "Let's analyze your skin." sheet with the Scan My Skin CTA.
 struct ReadyToScanStepView: View {
     @Environment(OnboardingStore.self) private var flow
-    @Environment(AppStore.self) private var store
     @State private var isRevealed: Bool = false
 
     var body: some View {
@@ -23,22 +22,9 @@ struct ReadyToScanStepView: View {
                 .frame(width: geo.size.width, height: photoHeight)
 
                 VStack(spacing: 0) {
-                    HStack {
-                        Spacer()
-                        Button {
-                            store.completeOnboarding(with: flow.answers, signIn: false)
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 17, weight: .regular))
-                                .foregroundStyle(Palette.ink)
-                                .frame(width: 48, height: 48)
-                                .background(Color(hex: 0xEDE9E5), in: Circle())
-                        }
-                        .buttonStyle(PressableStyle(scale: 0.92))
-                        .accessibilityLabel("Skip scan")
-                    }
-                    .padding(.trailing, 24)
-                    .padding(.top, 20)
+                    // No skip button here: the scan is the core of onboarding, and skipping
+                    // used to drop people straight into the app past the paywall.
+                    Color.clear.frame(height: 36)
 
                     Text("Let's analyze your skin.")
                         .font(FLFont.serif(34))
