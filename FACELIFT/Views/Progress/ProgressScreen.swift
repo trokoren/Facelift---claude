@@ -290,7 +290,7 @@ private struct ProductDraftCard: View {
                 .font(FLFont.sans(17))
                 .foregroundStyle(Palette.ink)
                 .keyboardType(keyboard)
-                .textInputAutocapitalization(keyboard == .URL ? .never : .words)
+                .textInputAutocapitalization(keyboard == .URL ? TextInputAutocapitalization.never : TextInputAutocapitalization.words)
                 .autocorrectionDisabled(keyboard == .URL)
             Rectangle()
                 .fill(Palette.divider)

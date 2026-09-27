@@ -8,16 +8,26 @@ on:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Use newest installed Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
       - name: Build for iOS Simulator
         run: |
+          set -o pipefail
           xcodebuild build \
             -project FACELIFT.xcodeproj \
             -scheme FACELIFT \
             -destination 'generic/platform=iOS Simulator' \
-            -quiet \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          exit ${PIPESTATUS[0]}
+      - name: Report compiler errors
+        if: failure()
+        run: |
+          grep -E "error:" build.log | sort -u | head -40 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
