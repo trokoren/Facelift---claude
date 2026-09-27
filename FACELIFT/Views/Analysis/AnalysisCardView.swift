@@ -16,7 +16,7 @@ struct AnalysisCardView: View {
                     .foregroundStyle(category.accent)
                 Spacer(minLength: 8)
                 FaceLineIcon(sparkle: category.showsSparkle)
-                    .stroke(Palette.rose, style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round))
+                    .stroke(category.iconTint, style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round))
                     .frame(width: 19, height: 26)
                     .padding(.top, -5)
                     .accessibilityHidden(true)

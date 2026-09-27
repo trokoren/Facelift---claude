@@ -7,7 +7,7 @@ struct ScanInstructionsStepView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let photoHeight = geo.size.height * 0.46 + geo.safeAreaInsets.top
+            let photoHeight = geo.size.height * 0.34 + geo.safeAreaInsets.top
 
             VStack(spacing: 0) {
                 ZStack(alignment: .top) {
@@ -102,14 +102,14 @@ private struct InstructionRow: View {
                 .background(Palette.rose, in: Circle())
 
             Color(hex: 0xEAE7E4)
-                .frame(width: 58, height: 58)
+                .frame(width: 88, height: 88)
                 .overlay {
                     Image(image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .allowsHitTesting(false)
                 }
-                .clipShape(.rect(cornerRadius: 14, style: .continuous))
+                .clipShape(.rect(cornerRadius: 18, style: .continuous))
                 .padding(.leading, 14)
 
             VStack(alignment: .leading, spacing: 4) {
