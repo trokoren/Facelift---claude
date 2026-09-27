@@ -404,14 +404,14 @@ struct LocationStepView: View {
         } else if isLoading {
             HStack(spacing: 10) {
                 ProgressView()
-                Text("Checking today's conditions…")
+                Text("Looking up your local climate…")
                     .font(FLFont.sans(14))
                     .foregroundStyle(Palette.stone)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 28)
         } else {
-            Text("We couldn't load today's conditions, but we saved your city.")
+            Text("We couldn't load your local climate, but we saved your city.")
                 .font(FLFont.sans(14))
                 .foregroundStyle(Palette.stone)
                 .multilineTextAlignment(.center)
@@ -509,7 +509,7 @@ private struct UVCard: View {
         ConditionCard {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 0) {
-                    CardTitle(text: "UV Index")
+                    CardTitle(text: "Avg. UV Index")
                     Text("\(conditions.uvIndex)")
                         .font(FLFont.serif(44))
                         .foregroundStyle(uvColor)
