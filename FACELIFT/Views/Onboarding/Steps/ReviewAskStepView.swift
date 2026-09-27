@@ -5,6 +5,7 @@ import StoreKit
 struct ReviewAskStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(\.requestReview) private var requestReview
+    @State private var didAsk: Bool = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -65,9 +66,15 @@ struct ReviewAskStepView: View {
                     .foregroundStyle(Color(hex: 0x8F8A87))
                     .padding(.top, 24)
 
-                OnboardingCTA(title: "Next") {
-                    requestReview()
-                    flow.next()
+                // First tap shows Apple's rating popup over this screen; once it's answered,
+                // the button reads "Continue" and moves on.
+                OnboardingCTA(title: didAsk ? "Continue" : "Next") {
+                    if didAsk {
+                        flow.next()
+                    } else {
+                        requestReview()
+                        withAnimation(.easeOut(duration: 0.2).delay(0.6)) { didAsk = true }
+                    }
                 }
                 .padding(.top, 34)
                 .padding(.bottom, 10)
