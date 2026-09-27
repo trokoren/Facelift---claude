@@ -165,6 +165,16 @@ struct ProgressScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 12)
+        // Long-press a product to get a Remove option.
+        .background(Color.white)
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contextMenu {
+            Button(role: .destructive) {
+                withAnimation(.snappy) { store.removeUsed(product) }
+            } label: {
+                Label("Remove from my routine", systemImage: "trash")
+            }
+        }
     }
 }
 
