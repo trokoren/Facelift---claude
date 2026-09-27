@@ -108,9 +108,9 @@ enum SampleData {
     ]
 
     static let usedProducts: [UsedProduct] = [
-        UsedProduct(id: UUID(), brand: "Laneige", name: "Water Bank Serum", price: 38, tint: .sky),
-        UsedProduct(id: UUID(), brand: "Sunday Riley", name: "Good Genes Treatment", price: 85, tint: .sage),
-        UsedProduct(id: UUID(), brand: "CeraVe", name: "Eye Repair Cream", price: 16, tint: .rose)
+        UsedProduct(id: UUID(), brand: "Laneige", name: "Water Bank Serum", price: 38, tint: .sky, url: URL(string: "https://laneige.com")),
+        UsedProduct(id: UUID(), brand: "Sunday Riley", name: "Good Genes Treatment", price: 85, tint: .sage, url: URL(string: "https://sundayriley.com")),
+        UsedProduct(id: UUID(), brand: "CeraVe", name: "Eye Repair Cream", price: 16, tint: .rose, url: URL(string: "https://cerave.com"))
     ]
 
     static let progressUpdate = "Your hydration has improved the most since your last scan - the Laneige serum is doing its job. Your cheek zone dehydration is down noticeably and your skin barrier feels stronger, which is already softening the look of texture around your nose. Keep your routine consistent for the next few weeks, and let the under-eye area be your next focus - that's where a gentle retinol will make the biggest difference."

@@ -20,6 +20,12 @@ struct ReadyToScanStepView: View {
                     callouts(width: geo.size.width, height: photoHeight)
                 }
                 .frame(width: geo.size.width, height: photoHeight)
+                .overlay(alignment: .topLeading) {
+                    OnboardingBackButton(tint: .white) { flow.back() }
+                        .background(Color.black.opacity(0.18), in: Circle())
+                        .padding(.leading, 14)
+                        .padding(.top, geo.safeAreaInsets.top + 4)
+                }
 
                 VStack(spacing: 0) {
                     // No skip button here: the scan is the core of onboarding, and skipping

@@ -20,8 +20,10 @@ struct UsedProduct: Identifiable, Hashable {
     let name: String
     let price: Int
     let tint: Tint
+    /// Where "Shop Again" goes. Falls back to a shopping search when empty.
+    var url: URL? = nil
 
     var shopURL: URL? {
-        ShopLink.url(for: "\(brand) \(name)")
+        url ?? ShopLink.url(for: "\(brand) \(name)")
     }
 }

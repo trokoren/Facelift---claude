@@ -79,24 +79,25 @@ struct ConcernChip: View {
     }
 }
 
-/// Soft, blurred color fields behind the analysis so glass cards have something to refract.
+/// A faint wash of color behind the analysis so glass cards have something to refract,
+/// while the page still reads as the light cream canvas.
 /// Stays fixed while the cards scroll over it.
 struct GlassBackdrop: View {
     var body: some View {
         ZStack {
             Palette.canvas
             Circle()
-                .fill(Palette.rose.opacity(0.38))
+                .fill(Palette.rose.opacity(0.14))
                 .frame(width: 360, height: 360)
                 .blur(radius: 90)
                 .offset(x: -150, y: -250)
             Circle()
-                .fill(Palette.gold.opacity(0.20))
+                .fill(Palette.gold.opacity(0.07))
                 .frame(width: 320, height: 320)
                 .blur(radius: 100)
                 .offset(x: 170, y: 60)
             Circle()
-                .fill(Palette.sage.opacity(0.18))
+                .fill(Palette.sage.opacity(0.06))
                 .frame(width: 340, height: 340)
                 .blur(radius: 100)
                 .offset(x: -120, y: 380)

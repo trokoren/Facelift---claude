@@ -4,7 +4,17 @@ import Observation
 /// Live city autocomplete backed by Apple Maps, so any city works (not just a fixed list).
 @Observable
 final class CitySearch: NSObject, MKLocalSearchCompleterDelegate {
-    private(set) var results: [String] = []
+    struct Suggestion: Identifiable, Hashable {
+        let id = UUID()
+        let title: String
+        let subtitle: String
+        let completion: MKLocalSearchCompletion
+
+        /// "Denver, CO, United States"
+        var fullName: String { subtitle.isEmpty ? title : "\(title), \(subtitle)" }
+    }
+
+    private(set) var results: [Suggestion] = []
 
     @ObservationIgnored private let completer = MKLocalSearchCompleter()
 
@@ -25,12 +35,20 @@ final class CitySearch: NSObject, MKLocalSearchCompleterDelegate {
         completer.queryFragment = trimmed
     }
 
+    /// Latitude/longitude for a picked suggestion.
+    func coordinate(for suggestion: Suggestion) async -> CLLocationCoordinate2D? {
+        let request = MKLocalSearch.Request(completion: suggestion.completion)
+        request.resultTypes = .address
+        guard let response = try? await MKLocalSearch(request: request).start(),
+              let item = response.mapItems.first else { return nil }
+        return item.placemark.coordinate
+    }
+
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         MainActor.assumeIsolated {
-            let names = completer.results.map { result in
-                result.subtitle.isEmpty ? result.title : "\(result.title), \(result.subtitle)"
+            self.results = completer.results.prefix(6).map {
+                Suggestion(title: $0.title, subtitle: $0.subtitle, completion: $0)
             }
-            self.results = Array(names.prefix(6))
         }
     }
 

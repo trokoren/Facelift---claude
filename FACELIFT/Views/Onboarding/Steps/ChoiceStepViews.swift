@@ -279,82 +279,41 @@ struct RoutineStepView: View {
 struct LocationStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @State private var query: String = ""
+    @State private var search = CitySearch()
+    @State private var selectedTitle: String?
+    @State private var conditions: SkinConditions?
+    @State private var isLoading: Bool = false
     @FocusState private var isFocused: Bool
 
-    @State private var search = CitySearch()
-
-    private var matches: [String] {
-        query.trimmingCharacters(in: .whitespaces).isEmpty ? [] : search.results
-    }
+    private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
+    private var showsSuggestions: Bool { selectedTitle == nil && !trimmed.isEmpty && !search.results.isEmpty }
 
     var body: some View {
         OnboardingPage(title: "Where do you live?", subtitle: "Your local UV index, humidity, and pollution\naffect your skin daily.", titleSize: 34, titleTop: 4) {
-            HStack(spacing: 14) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 19, weight: .light))
-                    .foregroundStyle(Palette.mist)
-                TextField("Search city…", text: $query)
-                    .font(FLFont.sans(17.5))
-                    .foregroundStyle(Palette.ink)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .submitLabel(.done)
-                    .focused($isFocused)
-                    .onSubmit(commitTyped)
-            }
-            .padding(.horizontal, 22)
-            .frame(height: 80)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(hex: 0xEFEBE7), lineWidth: 1))
-            .padding(.top, 30)
+            searchField
+                .padding(.top, 30)
 
-            if !matches.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(matches.prefix(6), id: \.self) { city in
-                        Button {
-                            select(city)
-                        } label: {
-                            HStack {
-                                Text(city)
-                                    .font(FLFont.sans(17))
-                                    .foregroundStyle(Palette.ink)
-                                Spacer()
-                                Image(systemName: "arrow.up.left")
-                                    .font(.system(size: 13, weight: .light))
-                                    .foregroundStyle(Palette.faint)
-                            }
-                            .padding(.horizontal, 24)
-                            .frame(height: 58)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(CardPressStyle())
-                        if city != matches.prefix(6).last { RowDivider() }
-                    }
-                }
-                .cardSurface(radius: 22)
-                .padding(.top, 12)
+            if showsSuggestions {
+                suggestions
+                    .padding(.top, 12)
+            }
+
+            if selectedTitle != nil {
+                conditionsSection
+                    .padding(.top, 14)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         } footer: {
-            if matches.isEmpty && !query.trimmingCharacters(in: .whitespaces).isEmpty {
-                OnboardingCTA(title: "Use \"\(query.trimmingCharacters(in: .whitespaces))\"") { commitTyped() }
-                    .padding(.top, 8)
-                    .padding(.bottom, 10)
-            } else {
-                Button { flow.next() } label: {
-                    Text("Skip for now")
-                        .font(FLFont.sans(15))
-                        .foregroundStyle(Palette.stone)
-                        .frame(height: 44)
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .padding(.bottom, 10)
-            }
+            footer
         }
+        .animation(.easeOut(duration: 0.35), value: conditions)
+        .animation(.easeOut(duration: 0.25), value: selectedTitle)
         .onChange(of: query) { _, newValue in
-            // Don't re-search after a city has been picked from the list.
-            if newValue != flow.answers.city { search.update(newValue) }
+            // Typing again after a pick starts a fresh search.
+            guard newValue != selectedTitle else { return }
+            selectedTitle = nil
+            conditions = nil
+            search.update(newValue)
         }
         .task {
             try? await Task.sleep(for: .milliseconds(500))
@@ -362,19 +321,318 @@ struct LocationStepView: View {
         }
     }
 
-    private func select(_ city: String) {
+    // MARK: Search
+
+    private var searchField: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 19, weight: .light))
+                .foregroundStyle(Palette.mist)
+            TextField("Search city…", text: $query)
+                .font(FLFont.sans(17.5))
+                .foregroundStyle(Palette.ink)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .focused($isFocused)
+                .onSubmit(commitTyped)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                    isFocused = true
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .light))
+                        .foregroundStyle(Palette.stone)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle(scale: 0.9))
+                .accessibilityLabel("Clear")
+            }
+        }
+        .padding(.leading, 22)
+        .padding(.trailing, 12)
+        .frame(height: 72)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(hex: 0xEFEBE7), lineWidth: 1))
+    }
+
+    private var suggestions: some View {
+        VStack(spacing: 0) {
+            ForEach(search.results) { suggestion in
+                Button {
+                    select(suggestion)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(suggestion.title)
+                                .font(FLFont.sans(17))
+                                .foregroundStyle(Palette.ink)
+                            if !suggestion.subtitle.isEmpty {
+                                Text(suggestion.subtitle)
+                                    .font(FLFont.sans(13))
+                                    .foregroundStyle(Palette.stone)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.up.left")
+                            .font(.system(size: 13, weight: .light))
+                            .foregroundStyle(Palette.faint)
+                    }
+                    .padding(.horizontal, 24)
+                    .frame(minHeight: 60)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(CardPressStyle())
+                if suggestion.id != search.results.last?.id { RowDivider() }
+            }
+        }
+        .cardSurface(radius: 22)
+    }
+
+    // MARK: Conditions
+
+    @ViewBuilder
+    private var conditionsSection: some View {
+        if let conditions {
+            VStack(spacing: 14) {
+                UVCard(conditions: conditions)
+                HumidityCard(conditions: conditions)
+                PollutionCard(conditions: conditions)
+            }
+        } else if isLoading {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Checking today's conditions…")
+                    .font(FLFont.sans(14))
+                    .foregroundStyle(Palette.stone)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
+        } else {
+            Text("We couldn't load today's conditions, but we saved your city.")
+                .font(FLFont.sans(14))
+                .foregroundStyle(Palette.stone)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+        }
+    }
+
+    // MARK: Footer
+
+    @ViewBuilder
+    private var footer: some View {
+        if selectedTitle != nil {
+            OnboardingCTA(title: "Continue") { flow.next() }
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+        } else if !trimmed.isEmpty && search.results.isEmpty {
+            OnboardingCTA(title: "Use \"\(trimmed)\"") { commitTyped() }
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+        } else {
+            Button { flow.next() } label: {
+                Text("Skip for now")
+                    .font(FLFont.sans(15))
+                    .foregroundStyle(Palette.stone)
+                    .frame(height: 44)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .padding(.bottom, 10)
+        }
+    }
+
+    // MARK: Actions
+
+    private func select(_ suggestion: CitySearch.Suggestion) {
         isFocused = false
-        flow.answers.city = city
-        query = city
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(200))
-            flow.next()
+        selectedTitle = suggestion.title
+        query = suggestion.title
+        flow.answers.city = suggestion.fullName
+        conditions = nil
+        isLoading = true
+        Task {
+            if let coordinate = await search.coordinate(for: suggestion) {
+                conditions = await SkinConditionsService.fetch(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            }
+            isLoading = false
         }
     }
 
     private func commitTyped() {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        select(matches.first ?? trimmed)
+        if let first = search.results.first {
+            select(first)
+        } else if !trimmed.isEmpty {
+            flow.answers.city = trimmed
+            isFocused = false
+            flow.next()
+        }
+    }
+}
+
+// MARK: - Condition cards
+
+private let uvColor = Color(hex: 0xDD8A55)
+
+private struct ConditionCard<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color(hex: 0xEFEBE7), lineWidth: 1))
+    }
+}
+
+private struct CardTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(FLFont.serifItalic(22))
+            .foregroundStyle(Palette.stone)
+    }
+}
+
+private struct UVCard: View {
+    let conditions: SkinConditions
+
+    var body: some View {
+        ConditionCard {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 0) {
+                    CardTitle(text: "UV Index")
+                    Text("\(conditions.uvIndex)")
+                        .font(FLFont.serif(44))
+                        .foregroundStyle(uvColor)
+                        .padding(.top, 6)
+                    Text(conditions.uvLevel)
+                        .font(FLFont.sans(16, .semibold))
+                        .foregroundStyle(uvColor)
+                    Text(conditions.uvAdvice)
+                        .font(FLFont.sans(14))
+                        .foregroundStyle(Palette.stone)
+                        .padding(.top, 6)
+                }
+                Spacer()
+                ZStack {
+                    Circle().fill(uvColor.opacity(0.12)).frame(width: 64, height: 64)
+                    Image(systemName: "sun.max")
+                        .font(.system(size: 44, weight: .ultraLight))
+                        .foregroundStyle(uvColor)
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+}
+
+private struct HumidityCard: View {
+    let conditions: SkinConditions
+
+    var body: some View {
+        ConditionCard {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 0) {
+                    CardTitle(text: "Avg. Humidity")
+                    Text("\(conditions.humidity)%")
+                        .font(FLFont.serif(44))
+                        .foregroundStyle(Palette.sky)
+                        .padding(.top, 6)
+                    Text(conditions.humidityLevel)
+                        .font(FLFont.sans(16, .semibold))
+                        .foregroundStyle(Palette.sky)
+                }
+                Spacer()
+                Text(conditions.humidityNote)
+                    .font(FLFont.sans(14))
+                    .foregroundStyle(Palette.stone)
+                    .multilineTextAlignment(.trailing)
+                    .padding(.top, 20)
+            }
+
+            GeometryReader { geo in
+                let width = geo.size.width
+                let value = CGFloat(min(max(conditions.humidity, 0), 100)) / 100
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Palette.track)
+                    Capsule()
+                        .fill(Palette.sky.opacity(0.22))
+                        .frame(width: width * 0.2)
+                        .offset(x: width * 0.4)
+                    Circle()
+                        .fill(Palette.sky)
+                        .frame(width: 18, height: 18)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 3))
+                        .shadow(color: Palette.sky.opacity(0.3), radius: 4)
+                        .offset(x: width * value - 9)
+                }
+            }
+            .frame(height: 18)
+            .padding(.top, 18)
+
+            HStack {
+                Text("0%")
+                Spacer()
+                Text("Optimal").foregroundStyle(Palette.sky)
+                Spacer()
+                Text("100%")
+            }
+            .font(FLFont.sans(12))
+            .foregroundStyle(Palette.mist)
+            .padding(.top, 6)
+        }
+    }
+}
+
+private struct PollutionCard: View {
+    let conditions: SkinConditions
+
+    var body: some View {
+        ConditionCard {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 0) {
+                    CardTitle(text: "Air Pollution")
+                    Text(conditions.pollutionLevel)
+                        .font(FLFont.serif(44))
+                        .foregroundStyle(Palette.sage)
+                        .padding(.top, 6)
+                    Text("AQI Classification")
+                        .font(FLFont.sans(16, .semibold))
+                        .foregroundStyle(Palette.sage)
+                }
+                Spacer()
+                Text(conditions.pollutionNote)
+                    .font(FLFont.sans(14))
+                    .foregroundStyle(Palette.stone)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 130, alignment: .trailing)
+                    .padding(.top, 20)
+            }
+
+            HStack(spacing: 8) {
+                ForEach(Array(SkinConditions.pollutionLevels.enumerated()), id: \.offset) { index, level in
+                    VStack(spacing: 8) {
+                        Capsule()
+                            .fill(index == conditions.pollutionIndex ? Palette.sage : Palette.track)
+                            .frame(height: 10)
+                        Text(level)
+                            .font(FLFont.sans(12, index == conditions.pollutionIndex ? .semibold : .regular))
+                            .foregroundStyle(index == conditions.pollutionIndex ? Palette.sage : Palette.mist)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
+            }
+            .padding(.top, 18)
+        }
     }
 }

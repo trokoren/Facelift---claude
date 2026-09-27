@@ -143,10 +143,23 @@ final class AppStore {
         usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: product.price, tint: tint), at: 0)
     }
 
-    /// Adds a product she already uses (not bought through FACELIFT) to "What I'm using".
-    func addUsed(brand: String, name: String, price: Int) {
-        let tint = UsedProduct.Tint.allCases[usedProducts.count % UsedProduct.Tint.allCases.count]
-        usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: price, tint: tint), at: 0)
+    /// Replaces "What I'm using" with the edited list from the editor sheet. Blank rows are dropped.
+    func saveUsedProducts(_ drafts: [ProductDraft]) {
+        let tints = UsedProduct.Tint.allCases
+        usedProducts = drafts.enumerated().compactMap { offset, draft in
+            let brand = draft.brand.trimmingCharacters(in: .whitespaces)
+            let name = draft.name.trimmingCharacters(in: .whitespaces)
+            guard !brand.isEmpty || !name.isEmpty else { return nil }
+            let existing = usedProducts.first { $0.id == draft.id }
+            return UsedProduct(
+                id: draft.id,
+                brand: brand,
+                name: name,
+                price: Int(draft.price.filter(\.isNumber)) ?? 0,
+                tint: existing?.tint ?? tints[offset % tints.count],
+                url: ProductDraft.cleanURL(draft.url)
+            )
+        }
     }
 
     func removeUsed(_ product: UsedProduct) {
