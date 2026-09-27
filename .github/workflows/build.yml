@@ -22,6 +22,7 @@ jobs:
           xcodebuild build \
             -project FACELIFT.xcodeproj \
             -scheme FACELIFT \
+            -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
           exit ${PIPESTATUS[0]}

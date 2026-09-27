@@ -88,7 +88,7 @@ enum SkinConditionsService {
               let humidity = averages?.humidity ?? today?.humidity else { return nil }
 
         #if DEBUG
-        print("[SkinConditions] NASA averages: uv=\(averages?.uv.description ?? "nil") humidity=\(averages?.humidity.description ?? "nil") | Open-Meteo today: uv=\(today?.uv.description ?? "nil") humidity=\(today?.humidity.description ?? "nil") aqi=\(today?.aqi.description ?? "nil")")
+        print("[SkinConditions] NASA averages: uv=\(String(describing: averages?.uv)) humidity=\(String(describing: averages?.humidity)) | Open-Meteo: uv=\(String(describing: today?.uv)) humidity=\(String(describing: today?.humidity)) aqi=\(String(describing: today?.aqi))")
         #endif
 
         return SkinConditions(
