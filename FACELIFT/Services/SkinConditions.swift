@@ -4,7 +4,7 @@ import Foundation
 ///
 /// UV and humidity are long-term yearly averages from NASA POWER (public data, no key).
 /// If NASA can't be reached, today's values from Open-Meteo are used instead so the screen
-/// never comes up empty. Air quality comes from Open-Meteo, whose free tier is non-commercial:
+/// never comes up empty. Air quality is a ~3-month average from Open-Meteo, whose free tier is non-commercial:
 /// move that to a paid plan (or another source) before launch.
 struct SkinConditions: Equatable {
     let uvIndex: Int
@@ -119,11 +119,12 @@ enum SkinConditionsService {
         return (uv == nil && humidity == nil) ? nil : (uv, humidity)
     }
 
-    /// Today's peak UV, average humidity and current air quality from Open-Meteo.
+    /// Today's peak UV and average humidity, plus the average air quality over the last ~3 months,
+/// from Open-Meteo.
     private static func openMeteoToday(lat: String, lon: String) async -> (uv: Double?, humidity: Double?, aqi: Double?)? {
         guard
             let weatherURL = URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(lat)&longitude=\(lon)&daily=uv_index_max&hourly=relative_humidity_2m&forecast_days=1&timezone=auto"),
-            let airURL = URL(string: "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\(lat)&longitude=\(lon)&current=us_aqi")
+            let airURL = URL(string: "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\(lat)&longitude=\(lon)&hourly=us_aqi&past_days=92&forecast_days=1")
         else { return nil }
 
         var uv: Double?
@@ -138,7 +139,8 @@ enum SkinConditionsService {
         }
         if let response = try? await URLSession.shared.data(from: airURL),
            let air = try? JSONDecoder().decode(AirResponse.self, from: response.0) {
-            aqi = air.current.usAQI
+            let readings = air.hourly.usAQI.compactMap { $0 }
+            if !readings.isEmpty { aqi = readings.reduce(0, +) / Double(readings.count) }
         }
         return (uv == nil && humidity == nil && aqi == nil) ? nil : (uv, humidity, aqi)
     }
@@ -157,10 +159,10 @@ enum SkinConditionsService {
     }
 
     private struct AirResponse: Decodable {
-        struct Current: Decodable {
-            let usAQI: Double?
+        struct Hourly: Decodable {
+            let usAQI: [Double?]
             enum CodingKeys: String, CodingKey { case usAQI = "us_aqi" }
         }
-        let current: Current
+        let hourly: Hourly
     }
 }
