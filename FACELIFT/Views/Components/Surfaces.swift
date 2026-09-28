@@ -79,37 +79,18 @@ struct ConcernChip: View {
     }
 }
 
-/// A faint wash of color behind the analysis so glass cards have something to refract,
-/// while the page still reads as the light cream canvas.
-/// Stays fixed while the cards scroll over it.
+/// Plain cream canvas behind the analysis (the colored wash was removed).
 struct GlassBackdrop: View {
     var body: some View {
-        ZStack {
-            Palette.canvas
-            Circle()
-                .fill(Palette.rose.opacity(0.14))
-                .frame(width: 360, height: 360)
-                .blur(radius: 90)
-                .offset(x: -150, y: -250)
-            Circle()
-                .fill(Palette.gold.opacity(0.07))
-                .frame(width: 320, height: 320)
-                .blur(radius: 100)
-                .offset(x: 170, y: 60)
-            Circle()
-                .fill(Palette.sage.opacity(0.06))
-                .frame(width: 340, height: 340)
-                .blur(radius: 100)
-                .offset(x: -120, y: 380)
-        }
-        .drawingGroup()
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+        Palette.canvas
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }
 
-/// Frosted glass card: blurred material, a light top-left sheen tinted with the category
-/// color, and a bright hairline edge.
+/// Frosted glass card: blurred material, the same soft blush sheen in the top-left on every
+/// card (so gold and blue cards don't get a heavy tint), and a bright hairline edge.
+/// The category color still shows in the label, numbers and bars.
 struct GlassCardBackground: View {
     let accent: Color
     var radius: CGFloat = 24
@@ -129,7 +110,7 @@ struct GlassCardBackground: View {
             )
             .overlay(
                 shape.fill(
-                    RadialGradient(colors: [accent.opacity(0.20), .clear], center: .topLeading, startRadius: 0, endRadius: 240)
+                    RadialGradient(colors: [Palette.rose.opacity(0.20), .clear], center: .topLeading, startRadius: 0, endRadius: 240)
                 )
             )
             .overlay(
@@ -142,6 +123,6 @@ struct GlassCardBackground: View {
                     lineWidth: 1
                 )
             )
-            .shadow(color: accent.opacity(0.14), radius: 22, x: 0, y: 10)
+            .shadow(color: Palette.rose.opacity(0.14), radius: 22, x: 0, y: 10)
     }
 }
