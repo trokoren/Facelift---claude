@@ -13,10 +13,23 @@ import Observation
 @Observable
 final class FaceScanController: NSObject, ARSessionDelegate {
     enum Phase: Equatable {
-        case aligning   // look straight ahead to start
+        case aligning   // line her face up with the outline
+        case mapping    // the scan line sweeps down and back up her face
         case circling   // fill the ring
         case done
     }
+
+    enum LightLevel: Equatable {
+        case good
+        case low
+    }
+
+    /// Width of the oval window for a given screen width. Shared with the view.
+    static func ovalWidth(for screenWidth: CGFloat) -> CGFloat { min(screenWidth * 0.8, 340) }
+    /// Oval height = width x this.
+    static let ovalAspect: CGFloat = 1.3
+    /// Seconds for the scan line to sweep down and back up.
+    static let mappingDuration: Double = 1.8
 
     static var isSupported: Bool { ARFaceTrackingConfiguration.isSupported }
     /// One segment per tick on the ring, so what lights up is exactly where her nose went.
@@ -31,6 +44,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     private(set) var pointer: CGPoint = .zero
     /// 0...1: how closely her face lines up with the outline at the start. Brightens it.
     private(set) var alignment: Double = 0
+    /// 0...1 through the scan-line sweep while mapping.
+    private(set) var sweepProgress: Double = 0
+    private(set) var lightLevel: LightLevel = .good
 
     var filledCount: Int { filled.filter { $0 }.count }
     var progress: Double { Double(filledCount) / Double(Self.segmentCount) }
@@ -49,6 +65,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored private var dwell: [Double] = Array(repeating: 0, count: FaceScanController.segmentCount)
     @ObservationIgnored private var lastTimestamp: TimeInterval?
     @ObservationIgnored private var hold: Double = 0
+    @ObservationIgnored private var mappingStart: TimeInterval?
     @ObservationIgnored private var capturedSides: Set<Int> = []
 
     // Tuning. Direction values are roughly sin(head angle): 0.28 is about a 16 degree turn.
@@ -122,9 +139,11 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         let distance = simd_length(cameraPosition - facePosition)
 
         // Hints are advice only; they never pause the scan.
-        if let light = frame.lightEstimate, light.ambientIntensity < 250 {
-            setHint("Find brighter, even light")
-        } else if phase == .circling && distance > 0.55 {
+        if let light = frame.lightEstimate {
+            let level: LightLevel = light.ambientIntensity < (lightLevel == .low ? 380 : 300) ? .low : .good
+            if level != lightLevel { lightLevel = level }
+        }
+        if phase == .circling && distance > 0.55 {
             setHint("Bring your phone a little closer")
         } else if phase == .circling && distance < 0.26 {
             setHint("Hold your phone a little farther away")
@@ -163,6 +182,15 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             if hold >= 1 {
                 baseline = current
                 capture(frame)                 // straight-on photo
+                mappingStart = frame.timestamp
+                phase = .mapping
+            }
+
+        case .mapping:
+            let elapsed = frame.timestamp - (mappingStart ?? frame.timestamp)
+            let progress = min(1, elapsed / Self.mappingDuration)
+            sweepProgress = progress
+            if progress >= 1 {
                 phase = .circling
             }
 
@@ -236,7 +264,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     private func outlineMatch(face: ARFaceAnchor, direction: SIMD2<Double>) -> (score: Double, isMatched: Bool, hint: String?) {
         guard let view = sceneView, view.bounds.width > 0 else { return (0, false, nil) }
         let bounds = view.bounds
-        let diameter = min(bounds.width * 0.8, 360)
+        let diameter = Self.ovalWidth(for: bounds.width)
         let target = CGPoint(x: bounds.midX, y: bounds.midY + Self.eyeOffsetY * diameter)
         let targetSpacing = Self.eyeSpacing * diameter
 
