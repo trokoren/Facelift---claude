@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// Full skin analysis: category cards + "What your skin needs." recommendations.
 /// Fresh results show a sticky "Next" button; history shows "Back to My Skin".
@@ -9,6 +10,7 @@ struct AnalysisView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.requestReview) private var requestReview
     @State private var insight: InsightContent?
     @State private var shopCount: Int = 0
 
@@ -25,6 +27,14 @@ struct AnalysisView: View {
             InsightSheet(content: item)
         }
         .sensoryFeedback(.impact(weight: .light), trigger: shopCount)
+        .task {
+            // Happy moment: a fresh scan that beat her last one. Let the scores animate in first.
+            guard isFresh, store.shouldAskForReviewAfterScan else { return }
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            store.markReviewAsked()
+            requestReview()
+        }
     }
 
     private func content(for scan: Scan) -> some View {

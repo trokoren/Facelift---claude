@@ -20,7 +20,7 @@ struct NotificationsStepView: View {
 
             OnboardingTitle(
                 title: "Your best skin is\n28 days away.",
-                subtitle: "The glow-up happens in the follow-through.\nOne gentle nudge a week keeps you on track.",
+                subtitle: "Don't forget about your skin!\nOne gentle nudge a week keeps you on track.",
                 titleSize: 34
             )
             .padding(.horizontal, 24)

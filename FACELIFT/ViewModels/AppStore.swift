@@ -125,6 +125,19 @@ final class AppStore {
         isScanning = false
     }
 
+    /// True right after a scan that beat the previous one: the best moment to ask for a rating.
+    /// Asks at most once every 120 days (Apple also caps the popup at 3 times a year).
+    var shouldAskForReviewAfterScan: Bool {
+        guard scans.count >= 2, scans[0].overallScore > scans[1].overallScore else { return false }
+        let key = "facelift.lastReviewAsk"
+        let last = UserDefaults.standard.object(forKey: key) as? Date ?? .distantPast
+        return Date().timeIntervalSince(last) > 120 * 24 * 60 * 60
+    }
+
+    func markReviewAsked() {
+        UserDefaults.standard.set(Date(), forKey: "facelift.lastReviewAsk")
+    }
+
     func finishResults() {
         mySkinPath = []
     }
