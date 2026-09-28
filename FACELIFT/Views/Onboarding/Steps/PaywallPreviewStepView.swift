@@ -3,6 +3,7 @@ import SwiftUI
 /// Blurred analysis behind a "Your results are waiting." card and the unlock CTA.
 struct PaywallPreviewStepView: View {
     @Environment(OnboardingStore.self) private var flow
+    @Environment(AppStore.self) private var store
     @State private var isRevealed: Bool = false
 
     var body: some View {
@@ -152,7 +153,7 @@ struct PaywallPreviewStepView: View {
                 .padding(.horizontal, 24)
 
             VStack(spacing: 12) {
-                ForEach(SampleData.categories()) { category in
+                ForEach(store.latestReport?.categories ?? SampleData.categories()) { category in
                     AnalysisCardView(category: category) {}
                 }
             }

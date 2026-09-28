@@ -98,8 +98,11 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         guard Self.isSupported else { return }
         let configuration = ARFaceTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
-        // Sharpest photos the front camera offers during face tracking.
-        if let best = ARFaceTrackingConfiguration.supportedVideoFormats.max(by: {
+        // Sharpest photos the front camera offers during face tracking. Prefer the format that
+        // also supports a full-resolution still, so the straight-on photo can be HD.
+        if let recommended = ARFaceTrackingConfiguration.recommendedVideoFormatForHighResolutionFrameCapturing {
+            configuration.videoFormat = recommended
+        } else if let best = ARFaceTrackingConfiguration.supportedVideoFormats.max(by: {
             $0.imageResolution.width * $0.imageResolution.height < $1.imageResolution.width * $1.imageResolution.height
         }) {
             configuration.videoFormat = best
@@ -196,6 +199,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             if hold >= 1 {
                 baseline = current
                 capture(frame)                 // straight-on photo
+                upgradeFrontPhoto()
                 mappingStart = frame.timestamp
                 phase = .mapping
             }
@@ -337,6 +341,29 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else { return }
         captures.append(UIImage(cgImage: cgImage))
+    }
+
+    /// Swaps the straight-on photo for a full-resolution still (sharper skin detail for the
+    /// analysis). If the phone can't take one, the video-frame photo is kept.
+    private func upgradeFrontPhoto() {
+        let context = ciContext
+        session.captureHighResolutionFrame { @Sendable [weak self] frame, _ in
+            guard let frame,
+                  let photo = FaceScanController.photo(from: frame.capturedImage, maxSide: 2560, context: context) else { return }
+            DispatchQueue.main.async {
+                guard let self, !self.captures.isEmpty else { return }
+                self.captures[0] = photo
+            }
+        }
+    }
+
+    nonisolated private static func photo(from buffer: CVPixelBuffer, maxSide: CGFloat, context: CIContext) -> UIImage? {
+        let image = CIImage(cvPixelBuffer: buffer).oriented(.leftMirrored)
+        let longest = max(image.extent.width, image.extent.height)
+        let scale = min(1, maxSide / longest)
+        let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 
     private func finish() {

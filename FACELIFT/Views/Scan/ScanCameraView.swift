@@ -17,7 +17,9 @@ struct ScanCameraView: View {
     var body: some View {
         if FaceScanController.isSupported {
             if didCapture {
-                SkinAnalyzingView { store.completeScan() }
+                SkinAnalyzingView(onFinished: { store.completeScan() }, onRetry: {
+                    withAnimation(.easeInOut(duration: 0.4)) { didCapture = false }
+                })
                     .transition(.opacity)
             } else {
                 CircleScanView(onComplete: { images in

@@ -2,11 +2,18 @@ import SwiftUI
 
 /// The "reading your skin" moment after the circle scan: black with slow, glowing rose
 /// streaks, a four-step checklist and a progress bar. No camera.
+///
+/// The real analysis runs underneath. The checklist paces itself, then holds on the last step
+/// until the results are in. If the photo can't be read, she gets a clear reason and a way
+/// to scan again.
 struct SkinAnalyzingView: View {
     let onFinished: () -> Void
+    let onRetry: () -> Void
 
+    @Environment(AppStore.self) private var store
     @State private var completed: Int = 0
     @State private var progress: Double = 0
+    @State private var failure: String?
 
     private let stages: [String] = [
         "Mapping your face",
@@ -41,6 +48,56 @@ struct SkinAnalyzingView: View {
 
                 Spacer()
 
+                if let failure {
+                    failureView(failure)
+                        .transition(.opacity)
+                } else {
+                    checklist
+                        .transition(.opacity)
+                }
+
+                Spacer()
+                Spacer()
+                    .frame(height: 44)
+            }
+            .padding(.horizontal, 32)
+        }
+        .preferredColorScheme(.dark)
+        .sensoryFeedback(.success, trigger: completed == stages.count)
+        .sensoryFeedback(.error, trigger: failure != nil)
+        .task { await run() }
+    }
+
+    private func failureView(_ message: String) -> some View {
+        VStack(spacing: 0) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(Palette.rose)
+            Text("Let's try that again")
+                .font(FLFont.serif(34))
+                .foregroundStyle(.white)
+                .padding(.top, 18)
+            Text(message)
+                .font(FLFont.sans(16))
+                .foregroundStyle(Palette.nightBody)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.top, 10)
+            Button(action: onRetry) {
+                Text("Scan again")
+                    .font(FLFont.sans(17, .semibold))
+                    .foregroundStyle(Palette.night)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Capsule().fill(Palette.rose))
+            }
+            .buttonStyle(PressableStyle())
+            .padding(.top, 32)
+        }
+    }
+
+    private var checklist: some View {
+        VStack(spacing: 0) {
                 Text("Reading your skin")
                     .font(FLFont.serif(38))
                     .foregroundStyle(.white)
@@ -87,34 +144,40 @@ struct SkinAnalyzingView: View {
                 }
                 .frame(width: 180, height: 3)
                 .padding(.top, 36)
-
-                Spacer()
-                Spacer()
-                    .frame(height: 44)
-            }
-            .padding(.horizontal, 32)
         }
-        .preferredColorScheme(.dark)
-        .sensoryFeedback(.success, trigger: completed == stages.count)
-        .task { await run() }
     }
 
     private func run() async {
-        let total = Double(stages.count) * stageDuration
-        let ticks = 100
+        let analysis = Task { await store.analyzeLastScan() }
+        let count = Double(stages.count)
+
+        // Every step but the last at a steady pace...
+        await animate(from: 0, to: (count - 1) / count, duration: (count - 1) * stageDuration)
+        if Task.isCancelled { return }
+
+        // ...then wait for the results before ticking off the last one.
+        if let message = await analysis.value {
+            withAnimation(.easeInOut(duration: 0.4)) { failure = message }
+            return
+        }
+        await animate(from: (count - 1) / count, to: 1, duration: stageDuration)
+        try? await Task.sleep(for: .milliseconds(500))
+        if Task.isCancelled { return }
+        onFinished()
+    }
+
+    private func animate(from start: Double, to end: Double, duration: Double) async {
+        let ticks = max(1, Int(duration * 12))
         for tick in 1...ticks {
-            try? await Task.sleep(for: .seconds(total / Double(ticks)))
+            try? await Task.sleep(for: .seconds(duration / Double(ticks)))
             if Task.isCancelled { return }
-            let fraction = Double(tick) / Double(ticks)
-            withAnimation(.linear(duration: total / Double(ticks))) { progress = fraction }
+            let fraction = start + (end - start) * Double(tick) / Double(ticks)
+            withAnimation(.linear(duration: duration / Double(ticks))) { progress = fraction }
             let stage = min(stages.count, Int(fraction * Double(stages.count) + 0.0001))
             if stage != completed {
                 withAnimation(.easeOut(duration: 0.3)) { completed = stage }
             }
         }
-        try? await Task.sleep(for: .milliseconds(500))
-        if Task.isCancelled { return }
-        onFinished()
     }
 }
 

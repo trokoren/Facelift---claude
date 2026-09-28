@@ -14,6 +14,8 @@ final class AppStore {
     var isScanning: Bool = false
     /// Photos from the most recent scan. Memory only (never written to disk); cleared once analyzed.
     var lastCaptures: [UIImage] = []
+    /// Real results from the most recent scan, until they're saved into a Scan.
+    var latestReport: SkinReport?
 
     var scans: [Scan] = SampleData.scans
     var usedProducts: [UsedProduct] = SampleData.usedProducts
@@ -104,16 +106,36 @@ final class AppStore {
         selectedTab = .mySkin
     }
 
+    /// Reads the straight-on photo from the last scan. Returns nil on success, or a message to
+    /// show her. Without a server set up (Backend), it succeeds with sample results.
+    func analyzeLastScan() async -> String? {
+        latestReport = nil
+        guard Backend.isConfigured else {
+            lastCaptures = []
+            return nil
+        }
+        guard let front = lastCaptures.first else { return SkinAnalysisError.generic.message }
+        do {
+            latestReport = try await SkinAnalysisService.analyze(front)
+            lastCaptures = []
+            return nil
+        } catch {
+            return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic.message
+        }
+    }
+
     /// Finishes a camera scan: records the result and shows the fresh analysis.
     func completeScan() {
         let base = latestScan
+        let report = latestReport
+        latestReport = nil
         let scan = Scan(
             id: UUID(),
             date: Date(),
             portraitName: nil,
-            concerns: base?.concerns ?? ["Dehydration", "Fine Lines", "Texture"],
+            concerns: report?.topConcerns ?? base?.concerns ?? ["Dehydration", "Fine Lines", "Texture"],
             productsShopped: 0,
-            categories: SampleData.categories(shift: 2),
+            categories: report?.categories ?? SampleData.categories(shift: 2),
             recommendations: SampleData.recommendations
         )
         scans.insert(scan, at: 0)
@@ -210,13 +232,14 @@ final class AppStore {
                     id: first.id,
                     date: first.date,
                     portraitName: first.portraitName,
-                    concerns: answers.topConcerns,
+                    concerns: latestReport?.topConcerns ?? answers.topConcerns,
                     productsShopped: first.productsShopped,
-                    categories: first.categories,
+                    categories: latestReport?.categories ?? first.categories,
                     recommendations: first.recommendations
                 )
             }
         }
+        latestReport = nil
         UserDefaults.standard.set(true, forKey: Self.onboardingKey)
         mySkinPath = []
         selectedTab = signIn ? .scan : .mySkin
