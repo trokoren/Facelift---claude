@@ -444,7 +444,8 @@ struct ScanPrivacySheet: View {
         .background(Color.black.opacity(0.35).ignoresSafeArea())
         .preferredColorScheme(.light)
         .sheet(isPresented: $showsPolicy) {
-            PrivacyPolicyView()
+            SafariSheet(url: LegalLinks.privacyPolicy)
+                .ignoresSafeArea()
         }
     }
 }

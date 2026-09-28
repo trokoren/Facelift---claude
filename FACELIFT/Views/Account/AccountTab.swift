@@ -14,8 +14,6 @@ struct AccountTab: View {
                         HelpFeedbackView()
                     case .privacy:
                         PrivacyDataView()
-                    case .policy:
-                        PrivacyPolicyView()
                     }
                 }
         }

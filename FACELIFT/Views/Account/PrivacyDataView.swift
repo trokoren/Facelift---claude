@@ -4,6 +4,7 @@ struct PrivacyDataView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingDelete: Bool = false
+    @State private var showsPolicy: Bool = false
 
     var body: some View {
         ScrollView {
@@ -52,7 +53,9 @@ struct PrivacyDataView: View {
                     .padding(.horizontal, 28)
                     .padding(.top, 22)
 
-                NavigationLink(value: AccountRoute.policy) {
+                Button {
+                    showsPolicy = true
+                } label: {
                     SettingsRow(title: "Privacy Policy")
                 }
                 .buttonStyle(CardPressStyle())
@@ -68,6 +71,10 @@ struct PrivacyDataView: View {
         .scrollBounceBehavior(.basedOnSize)
         .background(Palette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showsPolicy) {
+            SafariSheet(url: LegalLinks.privacyPolicy)
+                .ignoresSafeArea()
+        }
         .confirmationDialog("Delete older scans? Your latest scan is kept.", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete history", role: .destructive) {
                 withAnimation { store.deleteHistory() }
