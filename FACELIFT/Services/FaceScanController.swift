@@ -67,7 +67,10 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored private var lastTimestamp: TimeInterval?
     @ObservationIgnored private var hold: Double = 0
     @ObservationIgnored private var mappingStart: TimeInterval?
-    @ObservationIgnored private var capturedSides: Set<Int> = []
+    /// Straight-on photos taken while she holds still, each with how well framed it was
+    /// (lower is better). The best two are analyzed and their scores averaged.
+    @ObservationIgnored private var frontShots: [(photo: UIImage, quality: Double)] = []
+    @ObservationIgnored private var lastShotTime: TimeInterval = 0
 
     // Tuning. Direction values are roughly sin(head angle): 0.28 is about a 16 degree turn.
     @ObservationIgnored private let steadyTolerance: Double = 0.05
@@ -198,13 +201,22 @@ final class FaceScanController: NSObject, ARSessionDelegate {
 
             if hold >= 1 {
                 baseline = current
-                capture(frame)                 // straight-on photo
+                takeFrontShot(frame, quality: framing(match: match, direction: current))
                 upgradeFrontPhoto()
                 mappingStart = frame.timestamp
                 phase = .mapping
             }
 
         case .mapping:
+            // She's holding still while the line sweeps: take a couple more straight-on
+            // photos, but only when she's squarely framed and not moving.
+            let match = outlineMatch(face: face, direction: current)
+            let isSteady = simd_length(current - steadyReference) < steadyTolerance
+            steadyReference = current + (steadyReference - current) * 0.8
+            if match.isMatched && isSteady && frontShots.count < 3 && frame.timestamp - lastShotTime > 0.45 {
+                takeFrontShot(frame, quality: framing(match: match, direction: current))
+            }
+
             let elapsed = frame.timestamp - (mappingStart ?? frame.timestamp)
             let progress = min(1, elapsed / Self.mappingDuration)
             sweepProgress = progress
@@ -241,14 +253,6 @@ final class FaceScanController: NSObject, ARSessionDelegate {
                 updated[i] = true
             }
             if updated != filled { filled = updated }
-
-            // One photo per side: right, down, left, up.
-            let side = Int(((angle + .pi / 4).truncatingRemainder(dividingBy: fullTurn)) / (.pi / 2)) % 4
-            // Wait until she's held this direction long enough to fill it: steadier photo.
-            if filled[index] && !capturedSides.contains(side) {
-                capturedSides.insert(side)
-                capture(frame)
-            }
 
             if filled.allSatisfy({ $0 }) {
                 finish()
@@ -333,26 +337,40 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         }
     }
 
-    private func capture(_ frame: ARFrame) {
-        guard captures.count < 6 else { return }
-        let image = CIImage(cvPixelBuffer: frame.capturedImage).oriented(.leftMirrored)
-        let longest = max(image.extent.width, image.extent.height)
-        let scale = min(1, 1600 / longest)
-        let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else { return }
-        captures.append(UIImage(cgImage: cgImage))
+    /// How squarely she's framed: 0 is perfect. Looking off-axis and distance changes move
+    /// skin scores the most, so they weigh the most.
+    private func framing(match: (score: Double, isMatched: Bool, hint: String?), direction: SIMD2<Double>) -> Double {
+        simd_length(direction) + (1 - match.score)
+    }
+
+    private func takeFrontShot(_ frame: ARFrame, quality: Double) {
+        guard let photo = Self.photo(from: frame.capturedImage, maxSide: 2560, context: ciContext) else { return }
+        frontShots.append((photo, quality))
+        captures.append(photo)
+        lastShotTime = frame.timestamp
+        #if DEBUG
+        print("Front shot \(frontShots.count): \(Int(photo.size.width))x\(Int(photo.size.height)), framing \(String(format: "%.3f", quality))")
+        #endif
     }
 
     /// Swaps the straight-on photo for a full-resolution still (sharper skin detail for the
     /// analysis). If the phone can't take one, the video-frame photo is kept.
     private func upgradeFrontPhoto() {
         let context = ciContext
-        session.captureHighResolutionFrame { @Sendable [weak self] frame, _ in
+        session.captureHighResolutionFrame { @Sendable [weak self] frame, error in
             guard let frame,
-                  let photo = FaceScanController.photo(from: frame.capturedImage, maxSide: 2560, context: context) else { return }
+                  let photo = FaceScanController.photo(from: frame.capturedImage, maxSide: 2560, context: context) else {
+                #if DEBUG
+                print("High-res front photo unavailable:", error.map { String(describing: $0) } ?? "no frame")
+                #endif
+                return
+            }
             DispatchQueue.main.async {
-                guard let self, !self.captures.isEmpty else { return }
-                self.captures[0] = photo
+                guard let self, !self.frontShots.isEmpty else { return }
+                self.frontShots[0].photo = photo
+                #if DEBUG
+                print("High-res front photo: \(Int(photo.size.width))x\(Int(photo.size.height))")
+                #endif
             }
         }
     }
@@ -371,7 +389,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         phase = .done
         // Don't pause here: pausing freezes her last (mid-turn) frame on screen. The view
         // fades the camera out, then stops the session when it goes away.
-        onFinish?(captures)
+        // Best two straight-on photos. Nothing else leaves this screen.
+        let best = frontShots.sorted { $0.quality < $1.quality }.prefix(2).map(\.photo)
+        onFinish?(Array(best))
     }
 
     private func setHint(_ text: String?) {

@@ -13,6 +13,34 @@ struct SkinReport: Decodable {
     let concerns: [String: Concern]
 }
 
+extension SkinReport {
+    /// Averages several readings of the same face, marker by marker. Smooths out small
+    /// differences in angle and light between photos.
+    static func averaged(_ reports: [SkinReport]) -> SkinReport? {
+        guard let first = reports.first else { return nil }
+        guard reports.count > 1 else { return first }
+        var concerns: [String: Concern] = [:]
+        let keys = Set(reports.flatMap { $0.concerns.keys })
+        for key in keys {
+            let values = reports.compactMap { $0.concerns[key] }
+            let count = Double(values.count)
+            concerns[key] = Concern(
+                ui: values.map(\.ui).reduce(0, +) / count,
+                raw: values.map(\.raw).reduce(0, +) / count
+            )
+        }
+        func mean(_ values: [Double]) -> Double? {
+            values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+        }
+        return SkinReport(
+            mode: first.mode,
+            overall: mean(reports.compactMap(\.overall)),
+            skinAge: mean(reports.compactMap(\.skinAge)),
+            concerns: concerns
+        )
+    }
+}
+
 /// Turns the 14 measured markers into FACELIFT's three cards, insights and top concerns.
 extension SkinReport {
     private struct Marker {

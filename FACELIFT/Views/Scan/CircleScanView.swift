@@ -168,9 +168,11 @@ struct CircleScanView: View {
         .animation(.easeOut(duration: 0.25), value: scan.hint)
         .animation(.easeOut(duration: 0.25), value: scan.lightLevel)
         .sensoryFeedback(.selection, trigger: scan.filledCount)
-        .sensoryFeedback(.impact(weight: .light), trigger: scan.captures.count)
+        .sensoryFeedback(.impact(weight: .light), trigger: scan.captures.isEmpty)
         .sensoryFeedback(.success, trigger: finishGlow)
-        .onChange(of: scan.captures.count) { _, _ in
+        .onChange(of: scan.captures.isEmpty) { _, isEmpty in
+            // One soft flash when the straight-on photo is taken.
+            guard !isEmpty else { return }
             flash = 0.35
             withAnimation(.easeOut(duration: 0.4)) { flash = 0 }
         }

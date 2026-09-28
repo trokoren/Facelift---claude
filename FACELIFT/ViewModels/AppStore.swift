@@ -114,14 +114,37 @@ final class AppStore {
             lastCaptures = []
             return nil
         }
-        guard let front = lastCaptures.first else { return SkinAnalysisError.generic.message }
-        do {
-            latestReport = try await SkinAnalysisService.analyze(front)
-            lastCaptures = []
-            return nil
-        } catch {
-            return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic.message
+        let photos = Array(lastCaptures.prefix(2))
+        guard !photos.isEmpty else { return SkinAnalysisError.generic.message }
+
+        // Read the best two photos at the same time and average them. If one can't be
+        // read, the other still counts.
+        var reports: [SkinReport] = []
+        var firstError: Error?
+        await withTaskGroup(of: Result<SkinReport, Error>.self) { group in
+            for photo in photos {
+                group.addTask { @MainActor in
+                    do { return .success(try await SkinAnalysisService.analyze(photo)) }
+                    catch { return .failure(error) }
+                }
+            }
+            for await result in group {
+                switch result {
+                case .success(let report): reports.append(report)
+                case .failure(let error): if firstError == nil { firstError = error }
+                }
+            }
         }
+
+        guard let report = SkinReport.averaged(reports) else {
+            return (firstError as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic.message
+        }
+        #if DEBUG
+        print("Analyzed \(reports.count) of \(photos.count) photos (\(report.mode ?? "?") mode)")
+        #endif
+        latestReport = report
+        lastCaptures = []
+        return nil
     }
 
     /// Finishes a camera scan: records the result and shows the fresh analysis.
