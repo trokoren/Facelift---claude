@@ -2,9 +2,9 @@ import SwiftUI
 import ARKit
 import SceneKit
 
-/// Full-screen guided scan: a large circular live preview with a rose face mesh and a
-/// segmented ring around it. A dot follows her nose from the start; she centers it and holds
-/// still (a thin ring fills), the ticks light up, then she slowly circles her head.
+/// Full-screen guided scan: a large circular live preview inside a segmented ring.
+/// She lines her face up with an outline to start; when it matches, the ticks light up and a
+/// constellation appears on her features, then she slowly circles her head to fill the ring.
 struct CircleScanView: View {
     let onComplete: ([UIImage]) -> Void
     let onCancel: () -> Void
@@ -89,32 +89,13 @@ struct CircleScanView: View {
                     SegmentRing(filled: scan.filled, diameter: ringRadius * 2, isLive: scan.phase != .aligning)
                         .position(center)
 
-                    // Hold ring: fills while she keeps the dot centered and still.
+                    // Face outline: line up with it to start. Brightens and turns rose as her
+                    // face matches, then dissolves when the scan begins.
                     if scan.phase == .aligning {
-                        Circle()
-                            .trim(from: 0, to: scan.holdProgress)
-                            .stroke(Palette.rose, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .frame(width: diameter + 10, height: diameter + 10)
-                            .animation(.linear(duration: 0.1), value: scan.holdProgress)
+                        FaceOutline(diameter: diameter, alignment: scan.alignment)
                             .position(center)
                             .allowsHitTesting(false)
-                            .transition(.opacity)
-                    }
-
-                    // Dot that follows her nose, from the very first frame.
-                    if scan.phase != .done {
-                        Circle()
-                            .fill(Palette.rose)
-                            .frame(width: 12, height: 12)
-                            .shadow(color: Palette.rose.opacity(0.9), radius: 8)
-                            .position(
-                                x: center.x + scan.pointer.x * ringRadius,
-                                y: center.y + scan.pointer.y * ringRadius
-                            )
-                            .animation(.linear(duration: 0.08), value: scan.pointer)
-                            .allowsHitTesting(false)
-                            .transition(.opacity)
+                            .transition(.opacity.combined(with: .scale(scale: 1.04)))
                     }
 
                     // Instructions sit just under the ring.
@@ -236,7 +217,7 @@ struct CircleScanView: View {
 
     private var title: String {
         switch scan.phase {
-        case .aligning: "Center the dot\nand hold still"
+        case .aligning: "Line your face up\nwith the outline"
         case .circling: "Now slowly circle\nyour head"
         case .done: "Scan complete"
         }
@@ -244,10 +225,55 @@ struct CircleScanView: View {
 
     private var subtitle: String {
         switch scan.phase {
-        case .aligning: "Your scan starts in a moment"
+        case .aligning: "Eyes on the marks, then hold still"
         case .circling: "Fill the ring all the way around"
         case .done: " "
         }
+    }
+}
+
+/// Dotted face oval with two eye marks. Its geometry matches what the scan controller checks.
+private struct FaceOutline: View {
+    let diameter: CGFloat
+    /// 0...1 from the controller.
+    let alignment: Double
+
+    var body: some View {
+        let ovalWidth = diameter * 0.56
+        let ovalHeight = diameter * 0.76
+        let eyeY = FaceScanController.eyeOffsetY * diameter
+        let eyeX = FaceScanController.eyeSpacing * diameter / 2
+        let isMatched = alignment >= 1
+        let color = isMatched ? Palette.rose : Color.white.opacity(0.35 + 0.45 * alignment)
+
+        ZStack {
+            Ellipse()
+                .stroke(color, style: StrokeStyle(lineWidth: isMatched ? 2.5 : 1.5, lineCap: .round, dash: isMatched ? [] : [2, 7]))
+                .frame(width: ovalWidth, height: ovalHeight)
+                .offset(y: diameter * 0.05)
+                .shadow(color: Palette.rose.opacity(isMatched ? 0.8 : 0), radius: 10)
+
+            ForEach([-1.0, 1.0], id: \.self) { side in
+                EyeMark()
+                    .stroke(color, style: StrokeStyle(lineWidth: isMatched ? 2.5 : 1.8, lineCap: .round))
+                    .frame(width: diameter * 0.1, height: diameter * 0.035)
+                    .offset(x: CGFloat(side) * eyeX, y: eyeY)
+            }
+        }
+        .frame(width: diameter, height: diameter)
+        .animation(.easeOut(duration: 0.2), value: alignment)
+        .sensoryFeedback(.impact(weight: .medium), trigger: isMatched)
+    }
+}
+
+/// A soft almond: the eye mark on the outline.
+private struct EyeMark: Shape {
+    nonisolated func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.midY), control: CGPoint(x: rect.midX, y: rect.minY - rect.height * 0.6))
+        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.midY), control: CGPoint(x: rect.midX, y: rect.maxY + rect.height * 0.6))
+        return p
     }
 }
 
@@ -314,79 +340,181 @@ private struct ARFacePreview: UIViewRepresentable {
     }
 }
 
-/// A light constellation of glowing points across her face (a sparse sample of ARKit's
-/// live face mesh, no lines). Points fade where the face turns away from the camera, so it
-/// melts into the face. ARKit calls the renderer methods on SceneKit's render thread.
+/// A constellation on her face: glowing stars on real features (brows, eye corners, nose,
+/// cheekbones, lips, jaw, chin, forehead) joined by fine rose lines, moving live with her.
+/// Landmarks are found once on ARKit's face mesh, then follow it every frame.
+/// ARKit calls the renderer methods on SceneKit's render thread.
 final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
-    nonisolated(unsafe) private var meshNode: SCNNode?
-    nonisolated(unsafe) private var faceGeometry: ARSCNFaceGeometry?
-    nonisolated(unsafe) private var pointElement: SCNGeometryElement?
+    nonisolated(unsafe) private var container: SCNNode?
+    nonisolated(unsafe) private var stars: [SCNNode] = []
+    nonisolated(unsafe) private var linesNode: SCNNode?
+    nonisolated(unsafe) private var landmarks: [Int] = []
     nonisolated(unsafe) private var wantsVisible = false
 
-    /// Use every Nth vertex of the ~1,200-point mesh for an airy constellation.
-    private static let stride = 4
+    /// Star pairs joined by lines (indexes into the landmark list built below).
+    private static let links: [(Int, Int)] = [
+        // Brows (outer, middle, inner) on each side, meeting at the bridge.
+        (0, 1), (1, 2), (2, 12), (3, 4), (4, 5), (5, 12),
+        // Eyes: inner corner to outer corner.
+        (6, 7), (8, 9),
+        // Forehead to inner brows; bridge down the nose to the lips and chin.
+        (20, 2), (20, 5), (12, 13), (13, 16), (16, 17),
+        // Outer eye to cheekbone to jaw to chin.
+        (7, 14), (14, 18), (18, 17), (9, 15), (15, 19), (19, 17)
+    ]
 
-    /// Fades brightness by how directly each spot faces the camera.
-    private static let softEdges = """
-    #pragma transparent
-    #pragma body
-    float facing = abs(normalize(_surface.normal).z);
-    _output.color *= smoothstep(0.25, 0.85, facing);
-    """
-
-    private static let blush = UIColor(red: 0.97, green: 0.82, blue: 0.81, alpha: 1)
+    private static let lineColor = UIColor(red: 0.90, green: 0.70, blue: 0.70, alpha: 0.55)
 
     func setVisible(_ visible: Bool) {
         guard visible != wantsVisible else { return }
         wantsVisible = visible
-        guard let node = meshNode else { return }
+        guard let node = container else { return }
         SCNTransaction.begin()
-        SCNTransaction.animationDuration = visible ? 0.7 : 0.3
+        SCNTransaction.animationDuration = visible ? 0.8 : 0.3
         node.opacity = visible ? 1 : 0
-        node.scale = visible ? SCNVector3(1, 1, 1) : SCNVector3(1.03, 1.03, 1.03)
+        node.scale = visible ? SCNVector3(1, 1, 1) : SCNVector3(1.04, 1.04, 1.04)
         SCNTransaction.commit()
     }
 
     nonisolated func renderer(_ renderer: any SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
-        guard let face = anchor as? ARFaceAnchor,
-              let device = renderer.device,
-              let geometry = ARSCNFaceGeometry(device: device) else { return nil }
-        faceGeometry = geometry
-
-        let count = face.geometry.vertices.count
-        let indices = Swift.stride(from: 0, to: count, by: Self.stride).map { UInt32($0) }
-        let element = SCNGeometryElement(indices: indices, primitiveType: .point)
-        element.pointSize = 4
-        element.minimumPointScreenSpaceRadius = 1.4
-        element.maximumPointScreenSpaceRadius = 2.6
-        pointElement = element
+        guard let face = anchor as? ARFaceAnchor else { return nil }
+        landmarks = Self.findLandmarks(face)
 
         let node = SCNNode()
+        let glow = Self.glowImage
+        stars = landmarks.map { _ in
+            let plane = SCNPlane(width: 0.011, height: 0.011)
+            let material = SCNMaterial()
+            material.lightingModel = .constant
+            material.diffuse.contents = glow
+            material.blendMode = .add
+            material.writesToDepthBuffer = false
+            material.readsFromDepthBuffer = false
+            plane.firstMaterial = material
+            let star = SCNNode(geometry: plane)
+            star.constraints = [SCNBillboardConstraint()]
+            star.renderingOrder = 10
+            node.addChildNode(star)
+            return star
+        }
+
+        let lines = SCNNode()
+        lines.renderingOrder = 5
+        node.addChildNode(lines)
+        linesNode = lines
+
         node.opacity = wantsVisible ? 1 : 0
-        node.scale = wantsVisible ? SCNVector3(1, 1, 1) : SCNVector3(1.03, 1.03, 1.03)
-        meshNode = node
-        updatePoints(on: node, face: face)
+        node.scale = wantsVisible ? SCNVector3(1, 1, 1) : SCNVector3(1.04, 1.04, 1.04)
+        container = node
+        update(face)
         return node
     }
 
     nonisolated func renderer(_ renderer: any SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
         guard let face = anchor as? ARFaceAnchor else { return }
-        updatePoints(on: node, face: face)
+        update(face)
     }
 
-    /// Refreshes the points from the latest face shape (a few hundred points; cheap).
-    nonisolated private func updatePoints(on node: SCNNode, face: ARFaceAnchor) {
-        guard let geometry = faceGeometry, let element = pointElement else { return }
-        geometry.update(from: face.geometry)
-        let sources = geometry.sources(for: .vertex) + geometry.sources(for: .normal)
-        let points = SCNGeometry(sources: sources, elements: [element])
+    /// Moves every star to its landmark and redraws the lines between them.
+    nonisolated private func update(_ face: ARFaceAnchor) {
+        let vertices = face.geometry.vertices
+        guard !landmarks.isEmpty, landmarks.allSatisfy({ $0 < vertices.count }) else { return }
+        // Lift points a hair off the skin so they never sink into it.
+        let points = landmarks.map { vertices[$0] + simd_float3(0, 0, 0.002) }
 
+        for (star, point) in zip(stars, points) {
+            star.simdPosition = point
+        }
+
+        let source = SCNGeometrySource(vertices: points.map { SCNVector3($0.x, $0.y, $0.z) })
+        var indices: [UInt16] = []
+        for (a, b) in Self.links where a < points.count && b < points.count {
+            indices.append(UInt16(a))
+            indices.append(UInt16(b))
+        }
+        let element = SCNGeometryElement(indices: indices, primitiveType: .line)
+        let geometry = SCNGeometry(sources: [source], elements: [element])
         let material = SCNMaterial()
         material.lightingModel = .constant
-        material.diffuse.contents = Self.blush
-        material.transparency = 0.9
-        material.shaderModifiers = [.fragment: Self.softEdges]
-        points.firstMaterial = material
-        node.geometry = points
+        material.diffuse.contents = Self.lineColor
+        material.writesToDepthBuffer = false
+        material.readsFromDepthBuffer = false
+        geometry.firstMaterial = material
+        linesNode?.geometry = geometry
     }
+
+    /// Picks mesh vertices for each landmark using the face's own geometry and eye positions,
+    /// so it adapts to every face. Order matters: `links` refers to these positions.
+    nonisolated private static func findLandmarks(_ face: ARFaceAnchor) -> [Int] {
+        let v = face.geometry.vertices
+        guard !v.isEmpty else { return [] }
+
+        let leftEye = simd_make_float3(face.leftEyeTransform.columns.3)
+        let rightEye = simd_make_float3(face.rightEyeTransform.columns.3)
+        let eyeY = (leftEye.y + rightEye.y) / 2
+        let half = abs(leftEye.x - rightEye.x) / 2   // half the eye spacing
+        let sign: Float = leftEye.x < rightEye.x ? -1 : 1   // which x side the left eye is on
+
+        // Nearest vertex to a point on the face (x, y), preferring the front surface.
+        func nearest(_ x: Float, _ y: Float) -> Int {
+            var best = 0
+            var bestScore = Float.greatestFiniteMagnitude
+            for (i, p) in v.enumerated() {
+                let score = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) - 0.02 * p.z
+                if score < bestScore {
+                    bestScore = score
+                    best = i
+                }
+            }
+            return best
+        }
+
+        let noseTip = v.indices.max { v[$0].z < v[$1].z } ?? 0
+        let centerLine = v.indices.filter { abs(v[$0].x) < 0.006 }
+        let chin = centerLine.min { v[$0].y < v[$1].y } ?? noseTip
+        let forehead = centerLine.max { v[$0].y < v[$1].y } ?? noseTip
+        let tipY = v[noseTip].y
+        let chinY = v[chin].y
+        let browY = eyeY + 0.024
+
+        func side(_ s: Float, _ amount: Float) -> Float { s * sign * half * amount }
+
+        return [
+            // 0-2 left brow (outer, middle, inner), 3-5 right brow (outer, middle, inner)
+            nearest(side(1, 1.65), browY - 0.004), nearest(side(1, 1.05), browY + 0.003), nearest(side(1, 0.45), browY),
+            nearest(side(-1, 1.65), browY - 0.004), nearest(side(-1, 1.05), browY + 0.003), nearest(side(-1, 0.45), browY),
+            // 6-7 left eye inner/outer corner, 8-9 right eye inner/outer corner
+            nearest(side(1, 0.55), eyeY), nearest(side(1, 1.5), eyeY),
+            nearest(side(-1, 0.55), eyeY), nearest(side(-1, 1.5), eyeY),
+            // 10-11 unused spacers kept for stable numbering (under-eye)
+            nearest(side(1, 1.0), eyeY - 0.018), nearest(side(-1, 1.0), eyeY - 0.018),
+            // 12 bridge, 13 nose tip
+            nearest(0, eyeY + 0.004), noseTip,
+            // 14-15 cheekbones
+            nearest(side(1, 1.55), eyeY - 0.032), nearest(side(-1, 1.55), eyeY - 0.032),
+            // 16 upper lip center, 17 chin
+            nearest(0, tipY - 0.026), chin,
+            // 18-19 jaw
+            nearest(side(1, 1.35), chinY + 0.03), nearest(side(-1, 1.35), chinY + 0.03),
+            // 20 top of forehead
+            forehead
+        ]
+    }
+
+    /// Bright core with a soft rose halo, drawn once.
+    private static let glowImage: UIImage = {
+        let size = CGSize(width: 64, height: 64)
+        return UIGraphicsImageRenderer(size: size).image { context in
+            let colors = [
+                UIColor(white: 1, alpha: 1).cgColor,
+                UIColor(red: 1, green: 0.86, blue: 0.85, alpha: 0.9).cgColor,
+                UIColor(red: 0.83, green: 0.55, blue: 0.56, alpha: 0.35).cgColor,
+                UIColor(red: 0.83, green: 0.55, blue: 0.56, alpha: 0).cgColor
+            ] as CFArray
+            let locations: [CGFloat] = [0, 0.14, 0.4, 1]
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: locations) else { return }
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            context.cgContext.drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: size.width / 2, options: [])
+        }
+    }()
 }
