@@ -42,12 +42,8 @@ struct AnalysisView: View {
             VStack(alignment: .leading, spacing: 0) {
                 BrandHeader(subtitle: "Your Skin Analysis.")
 
-                if !isFresh {
-                    backRow
-                }
-
                 SectionLabel("YOUR ANALYSIS")
-                    .padding(.top, isFresh ? 22 : 18)
+                    .padding(.top, 22)
                     .padding(.horizontal, 24)
 
                 VStack(spacing: 12) {
@@ -77,6 +73,12 @@ struct AnalysisView: View {
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
         .background { GlassBackdrop() }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // Past scans: the way back stays pinned while the report scrolls.
+            if !isFresh {
+                backRow(date: scan.formattedDate)
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             // Pinned so the next step is always visible, not buried under the recommendations.
             if isFresh {
@@ -91,29 +93,37 @@ struct AnalysisView: View {
         }
     }
 
-    private var backRow: some View {
+    private func backRow(date: String) -> some View {
         VStack(spacing: 0) {
-            Button {
-                dismiss()
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.left")
-                        .font(.system(size: 12, weight: .light))
-                    Text("Back to My Skin")
-                        .font(FLFont.sans(13.5))
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.left")
+                            .font(.system(size: 13, weight: .regular))
+                        Text("Back to My Skin")
+                            .font(FLFont.sans(14, .medium))
+                    }
+                    .foregroundStyle(Palette.rose)
+                    .frame(height: 44)
+                    .contentShape(Rectangle())
                 }
-                .foregroundStyle(Palette.rose)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(height: 36)
-                .contentShape(Rectangle())
+                .buttonStyle(PressableStyle(scale: 0.98))
+
+                Spacer()
+
+                Text(date)
+                    .font(FLFont.serifItalic(15))
+                    .foregroundStyle(Palette.stone)
             }
-            .buttonStyle(PressableStyle(scale: 0.98))
+            .padding(.horizontal, 24)
 
             Rectangle()
                 .fill(Palette.hairline)
                 .frame(height: 1)
         }
-        .padding(.horizontal, 24)
+        .background(Palette.canvas.opacity(0.96).ignoresSafeArea(edges: .top))
     }
 
     private var needsBanner: some View {
