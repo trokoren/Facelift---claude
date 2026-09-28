@@ -42,11 +42,17 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored private var smoothed: SIMD2<Double>?
     @ObservationIgnored private var steadyReference: SIMD2<Double> = .zero
     @ObservationIgnored private var baseline: SIMD2<Double> = .zero
+    /// Seconds her nose has spent pointing at each segment. A segment fills once it has
+    /// been held long enough, which paces the scan so it can't be whipped through.
+    @ObservationIgnored private var dwell: [Double] = Array(repeating: 0, count: FaceScanController.segmentCount)
+    @ObservationIgnored private var lastTimestamp: TimeInterval?
     @ObservationIgnored private var capturedSides: Set<Int> = []
 
-    // Tuning. Direction values are roughly sin(head angle): 0.22 is about a 13 degree turn.
+    // Tuning. Direction values are roughly sin(head angle): 0.28 is about a 16 degree turn.
     @ObservationIgnored private let steadyTolerance: Double = 0.05
-    @ObservationIgnored private let turnThreshold: Double = 0.22
+    @ObservationIgnored private let turnThreshold: Double = 0.28
+    /// How long each segment needs her attention before it fills (16 segments).
+    @ObservationIgnored private let dwellPerSegment: Double = 0.3
     /// How far a turn reaches the ring for the pointer dot.
     @ObservationIgnored private let pointerReach: Double = 0.42
     /// 0...1, higher follows faster, lower is steadier.
@@ -61,6 +67,12 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         guard Self.isSupported else { return }
         let configuration = ARFaceTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
+        // Sharpest photos the front camera offers during face tracking.
+        if let best = ARFaceTrackingConfiguration.supportedVideoFormats.max(by: {
+            $0.imageResolution.width * $0.imageResolution.height < $1.imageResolution.width * $1.imageResolution.height
+        }) {
+            configuration.videoFormat = best
+        }
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
     }
 
@@ -130,6 +142,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             }
 
         case .circling:
+            let elapsed = min(max(frame.timestamp - (lastTimestamp ?? frame.timestamp), 0), 0.1)
+            lastTimestamp = frame.timestamp
             let relative = current - baseline
             updatePointer(relative)
 
@@ -141,6 +155,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             let angle = (atan2(relative.y, relative.x) + fullTurn).truncatingRemainder(dividingBy: fullTurn)
 
             let index = min(Int(angle / fullTurn * Double(Self.segmentCount)), Self.segmentCount - 1)
+            dwell[index] += elapsed
+            guard dwell[index] >= dwellPerSegment || filled[index] else { return }
             var updated = filled
             updated[index] = true
             // Forgive single gaps between two filled segments.

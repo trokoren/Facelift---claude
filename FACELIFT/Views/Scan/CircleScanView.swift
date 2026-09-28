@@ -230,7 +230,7 @@ struct CircleScanView: View {
         switch scan.phase {
         case .aligning: "Look straight ahead"
         case .circling: "Slowly move your head\nin a circle"
-        case .done: "Got it"
+        case .done: "Scan complete"
         }
     }
 
@@ -238,7 +238,7 @@ struct CircleScanView: View {
         switch scan.phase {
         case .aligning: "Keep your face inside the circle"
         case .circling: "Fill the ring all the way around"
-        case .done: "Scan complete"
+        case .done: " "
         }
     }
 }
