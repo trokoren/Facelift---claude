@@ -39,46 +39,48 @@ struct AnalysisView: View {
 
     private func content(for scan: Scan) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            // The FACELIFT header scrolls away; on past scans the "Back to My Skin" bar
+            // sits just under it and then sticks to the top once it gets there.
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                 BrandHeader(subtitle: "Your Skin Analysis.")
 
-                SectionLabel("YOUR ANALYSIS")
-                    .padding(.top, 22)
+                Section {
+                    SectionLabel("YOUR ANALYSIS")
+                        .padding(.top, 22)
+                        .padding(.horizontal, 24)
+
+                    VStack(spacing: 12) {
+                        ForEach(scan.categories) { category in
+                            AnalysisCardView(category: category) {
+                                insight = InsightContent(category: category)
+                            }
+                        }
+                    }
                     .padding(.horizontal, 24)
+                    .padding(.top, 16)
 
-                VStack(spacing: 12) {
-                    ForEach(scan.categories) { category in
-                        AnalysisCardView(category: category) {
-                            insight = InsightContent(category: category)
+                    needsBanner
+                        .padding(.top, 20)
+
+                    VStack(alignment: .leading, spacing: 26) {
+                        ForEach(scan.recommendations) { recommendation in
+                            RecommendationSectionView(recommendation: recommendation) { product in
+                                shop(product, scanID: scan.id)
+                            }
                         }
                     }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-
-                needsBanner
-                    .padding(.top, 20)
-
-                VStack(alignment: .leading, spacing: 26) {
-                    ForEach(scan.recommendations) { recommendation in
-                        RecommendationSectionView(recommendation: recommendation) { product in
-                            shop(product, scanID: scan.id)
-                        }
+                    .padding(.top, 32)
+                } header: {
+                    if !isFresh {
+                        backRow(date: scan.formattedDate)
                     }
                 }
-                .padding(.top, 32)
             }
             .padding(.bottom, 20)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
         .background { GlassBackdrop() }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            // Past scans: the way back stays pinned while the report scrolls.
-            if !isFresh {
-                backRow(date: scan.formattedDate)
-            }
-        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             // Pinned so the next step is always visible, not buried under the recommendations.
             if isFresh {
@@ -123,7 +125,7 @@ struct AnalysisView: View {
                 .fill(Palette.hairline)
                 .frame(height: 1)
         }
-        .background(Palette.canvas.opacity(0.96).ignoresSafeArea(edges: .top))
+        .background(Palette.canvas.opacity(0.97))
     }
 
     private var needsBanner: some View {
