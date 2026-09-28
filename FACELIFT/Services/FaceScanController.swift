@@ -155,21 +155,24 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             let angle = (atan2(relative.y, relative.x) + fullTurn).truncatingRemainder(dividingBy: fullTurn)
 
             let index = min(Int(angle / fullTurn * Double(Self.segmentCount)), Self.segmentCount - 1)
+            // Time spent here counts fully for this segment and half for its neighbors,
+            // so a slow sweep fills smoothly without needing pixel-perfect aim. Nothing is
+            // filled on her behalf: the ring completes only when she's actually gone around.
+            let count = Self.segmentCount
             dwell[index] += elapsed
-            guard dwell[index] >= dwellPerSegment || filled[index] else { return }
+            dwell[(index + 1) % count] += elapsed * 0.5
+            dwell[(index + count - 1) % count] += elapsed * 0.5
+
             var updated = filled
-            updated[index] = true
-            // Forgive single gaps between two filled segments.
-            for i in 0..<Self.segmentCount where !updated[i] {
-                let previous = updated[(i + Self.segmentCount - 1) % Self.segmentCount]
-                let next = updated[(i + 1) % Self.segmentCount]
-                if previous && next { updated[i] = true }
+            for i in 0..<count where !updated[i] && dwell[i] >= dwellPerSegment {
+                updated[i] = true
             }
             if updated != filled { filled = updated }
 
             // One photo per side: right, down, left, up.
             let side = Int(((angle + .pi / 4).truncatingRemainder(dividingBy: fullTurn)) / (.pi / 2)) % 4
-            if !capturedSides.contains(side) {
+            // Wait until she's held this direction long enough to fill it: steadier photo.
+            if filled[index] && !capturedSides.contains(side) {
                 capturedSides.insert(side)
                 capture(frame)
             }
