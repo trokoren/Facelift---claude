@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
     const file = fileJson?.data?.files?.[0];
     const upload = file?.requests?.[0];
     if (!file?.file_id || !upload?.url) {
+      console.error("YouCam upload slot failed", JSON.stringify(fileJson));
       return json({ error: "Upload slot failed", detail: fileJson }, 502);
     }
 
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
     const taskJson = await taskRes.json();
     const taskId = taskJson?.data?.task_id;
     if (!taskId) {
+      console.error("YouCam rejected task", JSON.stringify({ hd, bytes: bytes.length, width, height, response: taskJson }));
       const code = String(taskJson?.error_code ?? taskJson?.error ?? taskJson?.message ?? "");
       return json({ error: friendlyError(code), code, detail: taskJson }, 422);
     }
@@ -127,6 +129,7 @@ Deno.serve(async (req) => {
       }
 
       if (status === "error") {
+        console.error("YouCam task failed", JSON.stringify({ hd, width, height, response: poll }));
         const code = String(poll?.data?.error ?? poll?.data?.error_message ?? poll?.error_code ?? "");
         return json({ error: friendlyError(code), code }, 422);
       }
