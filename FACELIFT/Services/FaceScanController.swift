@@ -1,4 +1,5 @@
 import ARKit
+import SceneKit
 import CoreImage
 import UIKit
 import Observation
@@ -32,6 +33,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     var progress: Double { Double(filledCount) / Double(Self.segmentCount) }
 
     @ObservationIgnored let session = ARSession()
+    /// The on-screen preview. Head direction is measured in its coordinates, so the ring
+    /// always matches exactly what she sees (mirroring included).
+    @ObservationIgnored weak var sceneView: ARSCNView?
     @ObservationIgnored var onFinish: (([UIImage]) -> Void)?
     @ObservationIgnored private let ciContext = CIContext()
     @ObservationIgnored private var centeredSince: Date?
@@ -95,9 +99,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         // Hints are advice only; they never pause the scan.
         if let light = frame.lightEstimate, light.ambientIntensity < 250 {
             setHint("Find brighter, even light")
-        } else if distance > 0.6 {
+        } else if distance > 0.55 {
             setHint("Bring your phone a little closer")
-        } else if distance < 0.2 {
+        } else if distance < 0.28 {
             setHint("Hold your phone a little farther away")
         } else {
             setHint(nil)
@@ -163,15 +167,27 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         }
     }
 
-    /// Where the head is pointing, as seen on the mirrored selfie preview:
-    /// x > 0 toward the right edge of the screen, y > 0 toward the bottom. About sin(angle).
+    /// Where the nose is pointing on screen: x > 0 toward the right edge, y > 0 toward the
+    /// bottom, roughly sin(angle). Measured by projecting a point 10 cm out from the face
+    /// (along the nose) into the preview view, so it matches what she sees.
     private func headDirection(face: ARFaceAnchor, camera: ARCamera) -> SIMD2<Double> {
-        // The face's "forward" (out of the nose) in the camera's portrait view space,
-        // where x is screen-right and y is screen-up for the un-mirrored image.
-        let forwardWorld = simd_float4(simd_normalize(simd_make_float3(face.transform.columns.2)), 0)
-        let forwardView = camera.viewMatrix(for: .portrait) * forwardWorld
-        // Mirror x for the selfie preview; flip y so down is positive like SwiftUI.
-        return SIMD2(Double(-forwardView.x), Double(-forwardView.y))
+        let facePosition = simd_make_float3(face.transform.columns.3)
+        let forward = simd_normalize(simd_make_float3(face.transform.columns.2))
+        let sideways = simd_normalize(simd_make_float3(face.transform.columns.0))
+
+        func onScreen(_ point: simd_float3) -> CGPoint {
+            if let view = sceneView {
+                let projected = view.projectPoint(SCNVector3(point.x, point.y, point.z))
+                return CGPoint(x: CGFloat(projected.x), y: CGFloat(projected.y))
+            }
+            return camera.projectPoint(point, orientation: .portrait, viewportSize: CGSize(width: 1000, height: 1000))
+        }
+
+        let center = onScreen(facePosition)
+        let ahead = onScreen(facePosition + forward * 0.1)
+        let side = onScreen(facePosition + sideways * 0.1)
+        let scale = max(Double(hypot(side.x - center.x, side.y - center.y)), 1)
+        return SIMD2(Double(ahead.x - center.x) / scale, Double(ahead.y - center.y) / scale)
     }
 
     private func updatePointer(_ relative: SIMD2<Double>) {

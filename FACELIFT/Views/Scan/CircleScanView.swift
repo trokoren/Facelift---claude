@@ -22,7 +22,11 @@ struct CircleScanView: View {
             ZStack {
                 // Full-screen live camera; the dark layer on top has a clear circle cut out,
                 // so she sees herself framed, with the rest softly visible behind the tint.
+                // Camera at its natural 3:4 shape (no extra zoom), centered on the circle
+                // so her face lands inside it.
                 ARFacePreview(controller: scan)
+                    .frame(width: width, height: width * 4 / 3)
+                    .position(x: width / 2, y: centerY)
 
                 Rectangle()
                     .fill(Palette.night.opacity(0.72))
@@ -223,6 +227,7 @@ private struct ARFacePreview: UIViewRepresentable {
     func makeUIView(context: Context) -> ARSCNView {
         let view = ARSCNView(frame: .zero)
         view.session = controller.session
+        controller.sceneView = view
         view.scene = SCNScene()
         view.automaticallyUpdatesLighting = false
         view.backgroundColor = .black
