@@ -11,6 +11,9 @@ struct CircleScanView: View {
     @State private var scan = FaceScanController()
     @State private var showsQuickOption: Bool = false
     @State private var pulse: Bool = false
+    @State private var flash: Double = 0
+    @State private var finishSweep: CGFloat = 0
+    @State private var finishGlow: Bool = false
 
     var body: some View {
         ZStack {
@@ -21,7 +24,7 @@ struct CircleScanView: View {
                 let width = geo.size.width
                 let height = geo.size.height
                 let diameter = min(width * 0.8, 360)
-                let center = CGPoint(x: width / 2, y: height / 2)
+                let center = CGPoint(x: width / 2, y: height / 2 - 30)
                 let ringRadius = diameter / 2 + 23
 
                 ZStack {
@@ -61,6 +64,24 @@ struct CircleScanView: View {
                         .stroke(Color.white.opacity(0.18), lineWidth: 1)
                         .frame(width: diameter, height: diameter)
                         .position(center)
+
+                    // Shutter: a soft white flash each time a photo is taken.
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: diameter, height: diameter)
+                        .opacity(flash)
+                        .position(center)
+                        .allowsHitTesting(false)
+
+                    // Finish: a rose sweep closes the ring, then glows once.
+                    Circle()
+                        .trim(from: 0, to: finishSweep)
+                        .stroke(Palette.rose, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: ringRadius * 2, height: ringRadius * 2)
+                        .shadow(color: Palette.rose.opacity(finishGlow ? 0.95 : 0), radius: finishGlow ? 24 : 0)
+                        .position(center)
+                        .allowsHitTesting(false)
 
                     SegmentRing(filled: scan.filled, diameter: ringRadius * 2)
                         .position(center)
@@ -117,10 +138,20 @@ struct CircleScanView: View {
         .animation(.easeOut(duration: 0.25), value: scan.phase)
         .animation(.easeOut(duration: 0.25), value: scan.hint)
         .sensoryFeedback(.selection, trigger: scan.filledCount)
-        .sensoryFeedback(.success, trigger: scan.phase == .done)
+        .sensoryFeedback(.impact(weight: .light), trigger: scan.captures.count)
+        .sensoryFeedback(.success, trigger: finishGlow)
+        .onChange(of: scan.captures.count) { _, _ in
+            flash = 0.35
+            withAnimation(.easeOut(duration: 0.4)) { flash = 0 }
+        }
         .onAppear {
             pulse = true
-            scan.onFinish = { images in onComplete(images) }
+            scan.onFinish = { images in
+                Task { @MainActor in
+                    await playFinish()
+                    onComplete(images)
+                }
+            }
             scan.start()
         }
         .onDisappear { scan.stop() }
@@ -128,6 +159,14 @@ struct CircleScanView: View {
             try? await Task.sleep(for: .seconds(25))
             withAnimation { showsQuickOption = true }
         }
+    }
+
+    /// Ring closes with a rose sweep, glows once, then hands off to the analysis screen.
+    private func playFinish() async {
+        withAnimation(.easeInOut(duration: 0.55)) { finishSweep = 1 }
+        try? await Task.sleep(for: .milliseconds(550))
+        withAnimation(.easeOut(duration: 0.35)) { finishGlow = true }
+        try? await Task.sleep(for: .milliseconds(650))
     }
 
     private var header: some View {
@@ -199,7 +238,7 @@ struct CircleScanView: View {
         switch scan.phase {
         case .aligning: "Keep your face inside the circle"
         case .circling: "Fill the ring all the way around"
-        case .done: "Reading your skin…"
+        case .done: "Scan complete"
         }
     }
 }
@@ -221,10 +260,12 @@ private struct SegmentRing: View {
 
                 Capsule()
                     .fill(isOn ? Palette.rose : Color.white.opacity(0.2))
-                    .frame(width: 4, height: isOn ? 22 : 16)
+                    .frame(width: 4, height: 22)
+                    .scaleEffect(y: isOn ? 1 : 0.72, anchor: .center)
+                    .shadow(color: Palette.rose.opacity(isOn ? 0.8 : 0), radius: isOn ? 6 : 0)
                     .offset(y: -diameter / 2)
                     .rotationEffect(.degrees(angle + 90))
-                    .animation(.easeOut(duration: 0.2), value: isOn)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isOn)
             }
         }
         .frame(width: diameter, height: diameter)
