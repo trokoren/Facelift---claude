@@ -3,9 +3,8 @@ import SwiftUI
 /// FACELIFT's privacy policy, in plain language. Reached from Account → Privacy & Data and
 /// from the scan consent card.
 ///
-/// PLACEHOLDER COPY: items in [brackets] must be filled in, the analysis vendor's terms must
-/// be confirmed to match "analyzed then deleted, never stored or used for training", and the
-/// final text should be reviewed by a lawyer (biometric privacy laws such as Illinois BIPA,
+/// Before launch: confirm the analysis vendor's terms match "analyzed then deleted, never
+/// stored or used for training", keep the vendor list current, and have a lawyer review (biometric privacy laws such as Illinois BIPA,
 /// Texas and Washington apply to face scans). The same text should be published at
 /// faceliftai.app/privacy for the App Store listing.
 struct PrivacyPolicyView: View {
@@ -18,7 +17,7 @@ struct PrivacyPolicyView: View {
         var id: String { title }
     }
 
-    private let lastUpdated = "[Month Day, 2026]"
+    private let lastUpdated = "September 27, 2026"
 
     private let sections: [Section] = [
         Section(
@@ -75,11 +74,11 @@ struct PrivacyPolicyView: View {
                 "We never sell your personal information. We share only what's needed with the service providers that help run FACELIFT, and they may use it only to provide their service to us:"
             ],
             bullets: [
-                "Skin analysis: [Perfect Corp.] analyzes your photos and deletes them right away.",
-                "Secure hosting: [Supabase] stores your account and results.",
-                "Subscriptions: Apple and [RevenueCat] process and manage your subscription. We never see your payment details.",
-                "App analytics: [PostHog] helps us understand how the app is used.",
-                "Climate data: your city's location is sent to [NASA POWER and Open-Meteo] to look up local averages."
+                "Skin analysis: Perfect Corp. analyzes your photos and deletes them right away.",
+                "Secure hosting: Supabase stores your account and results.",
+                "Subscriptions: Apple and RevenueCat process and manage your subscription. We never see your payment details.",
+                "App analytics: PostHog helps us understand how the app is used.",
+                "Climate data: your city's location is sent to NASA POWER and Open-Meteo to look up local averages."
             ]
         ),
         Section(
@@ -98,7 +97,7 @@ struct PrivacyPolicyView: View {
             title: "Your choices",
             bullets: [
                 "Delete your scan history in Account → Privacy & Data.",
-                "Delete your account and all your data by emailing us at [trevor@faceliftai.app]. We'll confirm within [30] days.",
+                "Delete your account and all your data by emailing us at trevor@faceliftai.app. We'll confirm within 30 days.",
                 "Turn reminders, camera access or tracking on or off anytime in your iPhone's Settings.",
                 "Ask us for a copy of your data, or to correct it, by emailing us."
             ]
@@ -106,7 +105,7 @@ struct PrivacyPolicyView: View {
         Section(
             title: "How long we keep it",
             paragraphs: [
-                "Photos are deleted immediately after analysis. Your results and answers are kept until you delete them or your account. When you delete your account, we delete your data within [30] days, except anything we're required by law to keep."
+                "Photos are deleted immediately after analysis. Your results and answers are kept until you delete them or your account. When you delete your account, we delete your data within 30 days, except anything we're required by law to keep."
             ]
         ),
         Section(
@@ -118,7 +117,7 @@ struct PrivacyPolicyView: View {
         Section(
             title: "Children",
             paragraphs: [
-                "FACELIFT is not intended for anyone under [18]. We don't knowingly collect information from children. If you believe a child has used FACELIFT, email us and we'll delete their data."
+                "FACELIFT is not intended for anyone under 18. We don't knowingly collect information from children. If you believe a child has used FACELIFT, email us and we'll delete their data."
             ]
         ),
         Section(
@@ -130,8 +129,8 @@ struct PrivacyPolicyView: View {
         Section(
             title: "Contact us",
             paragraphs: [
-                "Questions or requests: [trevor@faceliftai.app]",
-                "[FACELIFT legal entity name], [mailing address]"
+                "Questions or requests: trevor@faceliftai.app",
+                "Facelift App, LLC, 2214 Weatherstone Circle, Highlands Ranch, CO 80126"
             ]
         )
     ]
