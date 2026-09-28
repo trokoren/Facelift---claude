@@ -28,6 +28,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// Live head direction relative to where she started (x right, y down on screen), roughly
     /// -1...1. Drives the dot that follows her nose around the ring.
     private(set) var pointer: CGPoint = .zero
+    /// 0...1 while she holds still at the start; fills the thin ring around the circle.
+    private(set) var holdProgress: Double = 0
 
     var filledCount: Int { filled.filter { $0 }.count }
     var progress: Double { Double(filledCount) / Double(Self.segmentCount) }
@@ -38,7 +40,6 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored weak var sceneView: ARSCNView?
     @ObservationIgnored var onFinish: (([UIImage]) -> Void)?
     @ObservationIgnored private let ciContext = CIContext()
-    @ObservationIgnored private var centeredSince: Date?
     @ObservationIgnored private var smoothed: SIMD2<Double>?
     @ObservationIgnored private var steadyReference: SIMD2<Double> = .zero
     @ObservationIgnored private var baseline: SIMD2<Double> = .zero
@@ -46,10 +47,15 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// been held long enough, which paces the scan so it can't be whipped through.
     @ObservationIgnored private var dwell: [Double] = Array(repeating: 0, count: FaceScanController.segmentCount)
     @ObservationIgnored private var lastTimestamp: TimeInterval?
+    @ObservationIgnored private var hold: Double = 0
     @ObservationIgnored private var capturedSides: Set<Int> = []
 
     // Tuning. Direction values are roughly sin(head angle): 0.28 is about a 16 degree turn.
     @ObservationIgnored private let steadyTolerance: Double = 0.05
+    /// How close to center the dot must be to start the hold (about 10 degrees).
+    @ObservationIgnored private let centerTolerance: Double = 0.18
+    /// Seconds of steady, centered hold before the scan starts.
+    @ObservationIgnored private let holdDuration: Double = 1.0
     @ObservationIgnored private let turnThreshold: Double = 0.28
     /// How long each segment needs her attention before it fills (16 segments).
     @ObservationIgnored private let dwellPerSegment: Double = 0.3
@@ -100,7 +106,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
 
         guard let face = frame.anchors.compactMap({ $0 as? ARFaceAnchor }).first, face.isTracked else {
             setHint("Center your face in the circle")
-            centeredSince = nil
+            hold = max(0, hold - 0.05)
+            if hold == 0 && holdProgress != 0 { holdProgress = 0 }
             return
         }
 
@@ -124,26 +131,39 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         let current = smoothed.map { $0 + (raw - $0) * smoothing } ?? raw
         smoothed = current
 
+        let elapsed = min(max(frame.timestamp - (lastTimestamp ?? frame.timestamp), 0), 0.1)
+        lastTimestamp = frame.timestamp
+
         switch phase {
         case .aligning:
-            // Wherever she naturally holds the phone becomes "center" once she's steady,
-            // so a phone held low or off to one side doesn't throw off the ring.
-            if simd_length(current - steadyReference) < steadyTolerance {
-                let since = centeredSince ?? Date()
-                centeredSince = since
-                if Date().timeIntervalSince(since) > 0.7 {
-                    baseline = current
-                    capture(frame)                 // straight-on photo
-                    phase = .circling
-                }
+            // The dot follows her nose right away; centering it and holding still fills the
+            // hold ring. Moving drains it.
+            updatePointer(current)
+            let isSteady = simd_length(current - steadyReference) < steadyTolerance
+            let isCentered = simd_length(current) < centerTolerance
+            steadyReference = current + (steadyReference - current) * 0.8
+
+            if isSteady && isCentered {
+                hold = min(1, hold + elapsed / holdDuration)
             } else {
-                steadyReference = current
-                centeredSince = nil
+                hold = max(0, hold - elapsed * 2)
+                if hint == nil {
+                    setHint(isCentered ? "Hold still for a moment" : "Center the dot in the circle")
+                }
+            }
+
+            // Publish in small steps so the screen isn't redrawn every single frame.
+            if abs(hold - holdProgress) > 0.03 || hold == 0 || hold == 1 {
+                if hold != holdProgress { holdProgress = hold }
+            }
+
+            if hold >= 1 {
+                baseline = current
+                capture(frame)                 // straight-on photo
+                phase = .circling
             }
 
         case .circling:
-            let elapsed = min(max(frame.timestamp - (lastTimestamp ?? frame.timestamp), 0), 0.1)
-            lastTimestamp = frame.timestamp
             let relative = current - baseline
             updatePointer(relative)
 
@@ -232,7 +252,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     private func finish() {
         guard phase != .done else { return }
         phase = .done
-        session.pause()
+        // Don't pause here: pausing freezes her last (mid-turn) frame on screen. The view
+        // fades the camera out, then stops the session when it goes away.
         onFinish?(captures)
     }
 

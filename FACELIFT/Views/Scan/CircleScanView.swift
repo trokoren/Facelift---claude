@@ -2,8 +2,9 @@ import SwiftUI
 import ARKit
 import SceneKit
 
-/// Full-screen guided scan: a large circular live preview with a segmented ring around it.
-/// She looks straight ahead to start, then slowly circles her head until the ring is full.
+/// Full-screen guided scan: a large circular live preview with a rose face mesh and a
+/// segmented ring around it. A dot follows her nose from the start; she centers it and holds
+/// still (a thin ring fills), the ticks light up, then she slowly circles her head.
 struct CircleScanView: View {
     let onComplete: ([UIImage]) -> Void
     let onCancel: () -> Void
@@ -14,6 +15,7 @@ struct CircleScanView: View {
     @State private var flash: Double = 0
     @State private var finishSweep: CGFloat = 0
     @State private var finishGlow: Bool = false
+    @State private var cameraOpacity: Double = 1
 
     var body: some View {
         ZStack {
@@ -32,6 +34,7 @@ struct CircleScanView: View {
                     // edges faded into the background so there's no hard edge.
                     ARFacePreview(controller: scan)
                         .frame(width: width, height: width * 4 / 3)
+                        .opacity(cameraOpacity)
                         .mask(
                             LinearGradient(
                                 stops: [
@@ -83,15 +86,28 @@ struct CircleScanView: View {
                         .position(center)
                         .allowsHitTesting(false)
 
-                    SegmentRing(filled: scan.filled, diameter: ringRadius * 2)
+                    SegmentRing(filled: scan.filled, diameter: ringRadius * 2, isLive: scan.phase != .aligning)
                         .position(center)
 
-                    // Glowing dot that follows her nose around the ring.
-                    if scan.phase == .circling {
+                    // Hold ring: fills while she keeps the dot centered and still.
+                    if scan.phase == .aligning {
+                        Circle()
+                            .trim(from: 0, to: scan.holdProgress)
+                            .stroke(Palette.rose, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .frame(width: diameter + 10, height: diameter + 10)
+                            .animation(.linear(duration: 0.1), value: scan.holdProgress)
+                            .position(center)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+
+                    // Dot that follows her nose, from the very first frame.
+                    if scan.phase != .done {
                         Circle()
                             .fill(Palette.rose)
-                            .frame(width: 16, height: 16)
-                            .shadow(color: Palette.rose.opacity(0.9), radius: 10)
+                            .frame(width: 12, height: 12)
+                            .shadow(color: Palette.rose.opacity(0.9), radius: 8)
                             .position(
                                 x: center.x + scan.pointer.x * ringRadius,
                                 y: center.y + scan.pointer.y * ringRadius
@@ -161,6 +177,9 @@ struct CircleScanView: View {
 
     /// Ring closes with a rose sweep, glows once, then hands off to the analysis screen.
     private func playFinish() async {
+        withAnimation(.easeOut(duration: 0.3)) { cameraOpacity = 0 }
+        try? await Task.sleep(for: .milliseconds(250))
+        scan.stop()
         withAnimation(.easeInOut(duration: 0.55)) { finishSweep = 1 }
         try? await Task.sleep(for: .milliseconds(550))
         withAnimation(.easeOut(duration: 0.35)) { finishGlow = true }
@@ -217,15 +236,15 @@ struct CircleScanView: View {
 
     private var title: String {
         switch scan.phase {
-        case .aligning: "Look straight ahead"
-        case .circling: "Slowly move your head\nin a circle"
+        case .aligning: "Center the dot\nand hold still"
+        case .circling: "Now slowly circle\nyour head"
         case .done: "Scan complete"
         }
     }
 
     private var subtitle: String {
         switch scan.phase {
-        case .aligning: "Keep your face inside the circle"
+        case .aligning: "Your scan starts in a moment"
         case .circling: "Fill the ring all the way around"
         case .done: " "
         }
@@ -236,6 +255,8 @@ struct CircleScanView: View {
 private struct SegmentRing: View {
     let filled: [Bool]
     let diameter: CGFloat
+    /// Dim while she's centering; switching on lights the ticks up in a quick sweep.
+    var isLive: Bool = true
 
     private let ticks = 48
 
@@ -248,13 +269,15 @@ private struct SegmentRing: View {
                 let angle = (Double(tick) + 0.5) / Double(ticks) * 360
 
                 Capsule()
-                    .fill(isOn ? Palette.rose : Color.white.opacity(0.2))
+                    .fill(isOn ? Palette.rose : Color.white.opacity(isLive ? 0.3 : 0.08))
                     .frame(width: 4, height: 22)
-                    .scaleEffect(y: isOn ? 1 : 0.72, anchor: .center)
+                    .scaleEffect(y: isOn ? 1 : (isLive ? 0.72 : 0.45), anchor: .center)
                     .shadow(color: Palette.rose.opacity(isOn ? 0.8 : 0), radius: isOn ? 6 : 0)
                     .offset(y: -diameter / 2)
                     .rotationEffect(.degrees(angle + 90))
                     .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isOn)
+                    // Ignition: ticks switch on one after another around the ring.
+                    .animation(.easeOut(duration: 0.25).delay(Double(tick) * 0.012), value: isLive)
             }
         }
         .frame(width: diameter, height: diameter)
@@ -264,13 +287,17 @@ private struct SegmentRing: View {
     }
 }
 
-/// Live, mirrored front-camera feed from the ARKit session.
+/// Live, mirrored front-camera feed from the ARKit session, with a fine rose wireframe
+/// of her face that follows every movement.
 private struct ARFacePreview: UIViewRepresentable {
     let controller: FaceScanController
+
+    func makeCoordinator() -> FaceMeshRenderer { FaceMeshRenderer() }
 
     func makeUIView(context: Context) -> ARSCNView {
         let view = ARSCNView(frame: .zero)
         view.session = controller.session
+        view.delegate = context.coordinator
         controller.sceneView = view
         view.scene = SCNScene()
         view.automaticallyUpdatesLighting = false
@@ -281,4 +308,30 @@ private struct ARFacePreview: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: ARSCNView, context: Context) {}
+}
+
+/// Draws ARKit's face geometry as a thin rose mesh. Called on SceneKit's render thread.
+final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
+    nonisolated func renderer(_ renderer: any SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
+        guard anchor is ARFaceAnchor,
+              let device = renderer.device,
+              let geometry = ARSCNFaceGeometry(device: device) else { return nil }
+
+        let material = geometry.firstMaterial ?? SCNMaterial()
+        material.fillMode = .lines
+        material.lightingModel = .constant
+        material.diffuse.contents = UIColor(red: 0.83, green: 0.63, blue: 0.63, alpha: 1)
+        material.isDoubleSided = false
+        geometry.firstMaterial = material
+
+        let node = SCNNode(geometry: geometry)
+        node.opacity = 0.35
+        return node
+    }
+
+    nonisolated func renderer(_ renderer: any SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
+        guard let face = anchor as? ARFaceAnchor,
+              let geometry = node.geometry as? ARSCNFaceGeometry else { return }
+        geometry.update(from: face.geometry)
+    }
 }
