@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Category score card with a colored left edge and animated metric bars.
+/// Category score card: frosted glass with a soft blush sheen, rose accents and animated bars.
 struct AnalysisCardView: View {
     let category: AnalysisCategory
     let onLearnMore: () -> Void
@@ -15,11 +15,8 @@ struct AnalysisCardView: View {
                     .tracking(2.3)
                     .foregroundStyle(category.accent)
                 Spacer(minLength: 8)
-                FaceLineIcon(sparkle: category.showsSparkle)
-                    .stroke(category.iconTint, style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round))
-                    .frame(width: 19, height: 26)
-                    .padding(.top, -5)
-                    .accessibilityHidden(true)
+                CategoryIcon(kind: category.kind, tint: category.iconTint)
+                    .padding(.top, -8)
             }
 
             HStack(alignment: .top) {

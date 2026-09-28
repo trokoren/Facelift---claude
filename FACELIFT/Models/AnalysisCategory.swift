@@ -25,26 +25,12 @@ struct AnalysisCategory: Identifiable, Hashable {
 
     var id: String { kind.rawValue }
 
-    var accent: Color {
-        switch kind {
-        case .aging: Palette.gold
-        case .tone: Palette.rose
-        case .health: Palette.sage
-        }
-    }
+    /// All three cards share the brand rose so they read as one set.
+    var accent: Color { Palette.rose }
 
-    var showsSparkle: Bool { kind == .health }
-
-    /// Metric score + bar color. Skin Health stays fully green; the other cards flag scores
-    /// under 60 in ember.
-    func tint(for metric: Metric) -> Color {
-        switch kind {
-        case .health: return Palette.sage
-        case .tone: return metric.score < 60 ? Palette.ember : Palette.rose
-        case .aging: return metric.score < 60 ? Palette.ember : Palette.gold
-        }
-    }
+    /// Metric score + bar color: rose on every card.
+    func tint(for metric: Metric) -> Color { Palette.rose }
 
     /// Face icon color in the card corner.
-    var iconTint: Color { kind == .health ? Palette.sage : Palette.rose }
+    var iconTint: Color { Palette.rose }
 }

@@ -129,8 +129,6 @@ struct CircleScanView: View {
             // Top bar respects the status bar.
             VStack(spacing: 0) {
                 header
-                PrivacyNote(tint: Color(hex: 0xC9C1BF))
-                    .padding(.top, 4)
                 Spacer()
             }
         }
@@ -169,19 +167,10 @@ struct CircleScanView: View {
         try? await Task.sleep(for: .milliseconds(650))
     }
 
+    /// Top bar: close on the left, the privacy promise centered.
     private var header: some View {
         ZStack {
-            HStack(spacing: 9) {
-                Circle()
-                    .fill(Palette.nightDot)
-                    .frame(width: 7, height: 7)
-                    .opacity(pulse ? 0.35 : 1)
-                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
-                Text("CAMERA ACTIVE")
-                    .font(FLFont.sans(12))
-                    .tracking(1.4)
-                    .foregroundStyle(Palette.nightText)
-            }
+            PrivacyNote(tint: Color(hex: 0xD9D1CF))
 
             HStack {
                 Button(action: onCancel) {

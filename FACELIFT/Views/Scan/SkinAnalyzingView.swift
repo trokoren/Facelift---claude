@@ -36,6 +36,9 @@ struct SkinAnalyzingView: View {
             .allowsHitTesting(false)
 
             VStack(spacing: 0) {
+                PrivacyNote(tint: Color(hex: 0xD9D1CF))
+                    .frame(height: 44)
+
                 Spacer()
 
                 Text("Reading your skin")
@@ -86,9 +89,8 @@ struct SkinAnalyzingView: View {
                 .padding(.top, 36)
 
                 Spacer()
-
-                PrivacyNote(tint: Color(hex: 0xB3ABA9))
-                    .padding(.bottom, 16)
+                Spacer()
+                    .frame(height: 44)
             }
             .padding(.horizontal, 32)
         }
