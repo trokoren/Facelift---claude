@@ -15,9 +15,10 @@ struct PrivacyDataView: View {
                     .padding(.top, 22)
 
                 VStack(alignment: .leading, spacing: 14) {
-                    point("Your camera feed is analysed in the moment and never saved as a photo.")
+                    point("Your photos are analyzed, then deleted right away. Never stored, sold, or used for training.")
+                    point("The 3D map of your face that guides the scan never leaves your phone.")
                     point("We keep your scores and recommendations so you can see your progress.")
-                    point("Nothing is shared or sold. Your skin is your business.")
+                    point("We never sell your data. Your skin is your business.")
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -41,6 +42,20 @@ struct PrivacyDataView: View {
                     .disabled(store.scans.count <= 1)
                     .opacity(store.scans.count <= 1 ? 0.5 : 1)
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
+                .cardSurface()
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+
+                SectionLabel("LEGAL")
+                    .padding(.horizontal, 28)
+                    .padding(.top, 22)
+
+                NavigationLink(value: AccountRoute.policy) {
+                    SettingsRow(title: "Privacy Policy")
+                }
+                .buttonStyle(CardPressStyle())
                 .padding(.horizontal, 20)
                 .padding(.vertical, 4)
                 .cardSurface()

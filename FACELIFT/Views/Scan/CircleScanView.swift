@@ -385,7 +385,7 @@ struct ScanPrivacySheet: View {
         set { UserDefaults.standard.set(newValue, forKey: key) }
     }
 
-    @Environment(\.openURL) private var openURL
+    @State private var showsPolicy: Bool = false
 
     var body: some View {
         VStack {
@@ -423,7 +423,7 @@ struct ScanPrivacySheet: View {
                 .padding(.top, 4)
 
                 Button {
-                    if let url = URL(string: "https://faceliftai.app/privacy") { openURL(url) }
+                    showsPolicy = true
                 } label: {
                     (Text("By continuing, you agree to FACELIFT analyzing your photos as described in our ")
                      + Text("Privacy Policy").underline()
@@ -443,6 +443,9 @@ struct ScanPrivacySheet: View {
         }
         .background(Color.black.opacity(0.35).ignoresSafeArea())
         .preferredColorScheme(.light)
+        .sheet(isPresented: $showsPolicy) {
+            PrivacyPolicyView()
+        }
     }
 }
 

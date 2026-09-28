@@ -7,4 +7,5 @@ enum MySkinRoute: Hashable {
 enum AccountRoute: Hashable {
     case help
     case privacy
+    case policy
 }
