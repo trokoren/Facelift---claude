@@ -314,26 +314,27 @@ private struct ARFacePreview: UIViewRepresentable {
     }
 }
 
-/// Draws ARKit's live face geometry as tiny glowing points joined by whisper-thin lines.
-/// Both fade out where the face turns away from the camera (jaw, hairline, ears), so the
-/// mesh blends into the face instead of sitting on it like a mask.
-/// ARKit calls the renderer methods on SceneKit's render thread.
+/// A light constellation of glowing points across her face (a sparse sample of ARKit's
+/// live face mesh, no lines). Points fade where the face turns away from the camera, so it
+/// melts into the face. ARKit calls the renderer methods on SceneKit's render thread.
 final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
     nonisolated(unsafe) private var meshNode: SCNNode?
-    nonisolated(unsafe) private var pointNode: SCNNode?
+    nonisolated(unsafe) private var faceGeometry: ARSCNFaceGeometry?
     nonisolated(unsafe) private var pointElement: SCNGeometryElement?
     nonisolated(unsafe) private var wantsVisible = false
+
+    /// Use every Nth vertex of the ~1,200-point mesh for an airy constellation.
+    private static let stride = 4
 
     /// Fades brightness by how directly each spot faces the camera.
     private static let softEdges = """
     #pragma transparent
     #pragma body
     float facing = abs(normalize(_surface.normal).z);
-    _output.color *= smoothstep(0.2, 0.8, facing);
+    _output.color *= smoothstep(0.25, 0.85, facing);
     """
 
-    private static let rose = UIColor(red: 0.83, green: 0.63, blue: 0.63, alpha: 1)
-    private static let blush = UIColor(red: 0.96, green: 0.80, blue: 0.79, alpha: 1)
+    private static let blush = UIColor(red: 0.97, green: 0.82, blue: 0.81, alpha: 1)
 
     func setVisible(_ visible: Bool) {
         guard visible != wantsVisible else { return }
@@ -349,59 +350,43 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
     nonisolated func renderer(_ renderer: any SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
         guard let face = anchor as? ARFaceAnchor,
               let device = renderer.device,
-              let lines = ARSCNFaceGeometry(device: device) else { return nil }
+              let geometry = ARSCNFaceGeometry(device: device) else { return nil }
+        faceGeometry = geometry
 
-        // Whisper-thin connecting lines.
-        let lineMaterial = SCNMaterial()
-        lineMaterial.fillMode = .lines
-        lineMaterial.lightingModel = .constant
-        lineMaterial.diffuse.contents = Self.rose
-        lineMaterial.transparency = 0.14
-        lineMaterial.shaderModifiers = [.fragment: Self.softEdges]
-        lines.firstMaterial = lineMaterial
-
-        let container = SCNNode()
-        container.addChildNode(SCNNode(geometry: lines))
-
-        // Tiny points on every vertex of the face mesh.
         let count = face.geometry.vertices.count
-        let element = SCNGeometryElement(indices: (0..<count).map { UInt32($0) }, primitiveType: .point)
-        element.pointSize = 3
-        element.minimumPointScreenSpaceRadius = 1.1
-        element.maximumPointScreenSpaceRadius = 2.2
+        let indices = Swift.stride(from: 0, to: count, by: Self.stride).map { UInt32($0) }
+        let element = SCNGeometryElement(indices: indices, primitiveType: .point)
+        element.pointSize = 4
+        element.minimumPointScreenSpaceRadius = 1.4
+        element.maximumPointScreenSpaceRadius = 2.6
         pointElement = element
 
-        let points = SCNNode()
-        container.addChildNode(points)
-        pointNode = points
-        updatePoints(from: lines)
-
-        // Start hidden; it draws on when the scan begins.
-        container.opacity = wantsVisible ? 1 : 0
-        container.scale = wantsVisible ? SCNVector3(1, 1, 1) : SCNVector3(1.03, 1.03, 1.03)
-        meshNode = container
-        return container
+        let node = SCNNode()
+        node.opacity = wantsVisible ? 1 : 0
+        node.scale = wantsVisible ? SCNVector3(1, 1, 1) : SCNVector3(1.03, 1.03, 1.03)
+        meshNode = node
+        updatePoints(on: node, face: face)
+        return node
     }
 
     nonisolated func renderer(_ renderer: any SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
-        guard let face = anchor as? ARFaceAnchor,
-              let lines = node.childNodes.first?.geometry as? ARSCNFaceGeometry else { return }
-        lines.update(from: face.geometry)
-        updatePoints(from: lines)
+        guard let face = anchor as? ARFaceAnchor else { return }
+        updatePoints(on: node, face: face)
     }
 
-    /// Rebuilds the point cloud from the freshly updated mesh (about 1,200 points; cheap).
-    nonisolated private func updatePoints(from lines: ARSCNFaceGeometry) {
-        guard let element = pointElement, let points = pointNode else { return }
-        let sources = lines.sources(for: .vertex) + lines.sources(for: .normal)
-        let geometry = SCNGeometry(sources: sources, elements: [element])
+    /// Refreshes the points from the latest face shape (a few hundred points; cheap).
+    nonisolated private func updatePoints(on node: SCNNode, face: ARFaceAnchor) {
+        guard let geometry = faceGeometry, let element = pointElement else { return }
+        geometry.update(from: face.geometry)
+        let sources = geometry.sources(for: .vertex) + geometry.sources(for: .normal)
+        let points = SCNGeometry(sources: sources, elements: [element])
 
         let material = SCNMaterial()
         material.lightingModel = .constant
         material.diffuse.contents = Self.blush
-        material.transparency = 0.85
+        material.transparency = 0.9
         material.shaderModifiers = [.fragment: Self.softEdges]
-        geometry.firstMaterial = material
-        points.geometry = geometry
+        points.firstMaterial = material
+        node.geometry = points
     }
 }

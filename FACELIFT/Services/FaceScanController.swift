@@ -19,7 +19,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     }
 
     static var isSupported: Bool { ARFaceTrackingConfiguration.isSupported }
-    static let segmentCount = 16
+    /// One segment per tick on the ring, so what lights up is exactly where her nose went.
+    static let segmentCount = 48
 
     private(set) var phase: Phase = .aligning
     private(set) var filled: [Bool] = Array(repeating: false, count: FaceScanController.segmentCount)
@@ -57,8 +58,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// Seconds of steady, centered hold before the scan starts.
     @ObservationIgnored private let holdDuration: Double = 1.0
     @ObservationIgnored private let turnThreshold: Double = 0.28
-    /// How long each segment needs her attention before it fills (16 segments).
-    @ObservationIgnored private let dwellPerSegment: Double = 0.3
+    /// Attention each tick needs before it lights (neighbors share half, so a smooth sweep
+    /// lights ticks right under the dot). A full circle takes roughly 6 to 9 seconds.
+    @ObservationIgnored private let dwellPerSegment: Double = 0.2
     /// How far a turn reaches the ring for the pointer dot.
     @ObservationIgnored private let pointerReach: Double = 0.42
     /// 0...1, higher follows faster, lower is steadier.
