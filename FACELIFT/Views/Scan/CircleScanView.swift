@@ -32,7 +32,7 @@ struct CircleScanView: View {
                 ZStack {
                     // Native 3:4 camera (no extra zoom), centered, with its top and bottom
                     // edges faded into the background so there's no hard edge.
-                    ARFacePreview(controller: scan)
+                    ARFacePreview(controller: scan, isMeshVisible: scan.phase == .circling)
                         .frame(width: width, height: width * 4 / 3)
                         .opacity(cameraOpacity)
                         .mask(
@@ -287,10 +287,12 @@ private struct SegmentRing: View {
     }
 }
 
-/// Live, mirrored front-camera feed from the ARKit session, with a fine rose wireframe
-/// of her face that follows every movement.
+/// Live, mirrored front-camera feed from the ARKit session, with a delicate rose
+/// "constellation" mesh on her face.
 private struct ARFacePreview: UIViewRepresentable {
     let controller: FaceScanController
+    /// Hidden while she centers; draws on at ignition; dissolves at the end.
+    let isMeshVisible: Bool
 
     func makeCoordinator() -> FaceMeshRenderer { FaceMeshRenderer() }
 
@@ -307,31 +309,99 @@ private struct ARFacePreview: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: ARSCNView, context: Context) {}
+    func updateUIView(_ uiView: ARSCNView, context: Context) {
+        context.coordinator.setVisible(isMeshVisible)
+    }
 }
 
-/// Draws ARKit's face geometry as a thin rose mesh. Called on SceneKit's render thread.
+/// Draws ARKit's live face geometry as tiny glowing points joined by whisper-thin lines.
+/// Both fade out where the face turns away from the camera (jaw, hairline, ears), so the
+/// mesh blends into the face instead of sitting on it like a mask.
+/// ARKit calls the renderer methods on SceneKit's render thread.
 final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
+    nonisolated(unsafe) private var meshNode: SCNNode?
+    nonisolated(unsafe) private var pointNode: SCNNode?
+    nonisolated(unsafe) private var pointElement: SCNGeometryElement?
+    nonisolated(unsafe) private var wantsVisible = false
+
+    /// Fades brightness by how directly each spot faces the camera.
+    private static let softEdges = """
+    #pragma transparent
+    #pragma body
+    float facing = abs(normalize(_surface.normal).z);
+    _output.color *= smoothstep(0.2, 0.8, facing);
+    """
+
+    private static let rose = UIColor(red: 0.83, green: 0.63, blue: 0.63, alpha: 1)
+    private static let blush = UIColor(red: 0.96, green: 0.80, blue: 0.79, alpha: 1)
+
+    func setVisible(_ visible: Bool) {
+        guard visible != wantsVisible else { return }
+        wantsVisible = visible
+        guard let node = meshNode else { return }
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = visible ? 0.7 : 0.3
+        node.opacity = visible ? 1 : 0
+        node.scale = visible ? SCNVector3(1, 1, 1) : SCNVector3(1.03, 1.03, 1.03)
+        SCNTransaction.commit()
+    }
+
     nonisolated func renderer(_ renderer: any SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
-        guard anchor is ARFaceAnchor,
+        guard let face = anchor as? ARFaceAnchor,
               let device = renderer.device,
-              let geometry = ARSCNFaceGeometry(device: device) else { return nil }
+              let lines = ARSCNFaceGeometry(device: device) else { return nil }
 
-        let material = geometry.firstMaterial ?? SCNMaterial()
-        material.fillMode = .lines
-        material.lightingModel = .constant
-        material.diffuse.contents = UIColor(red: 0.83, green: 0.63, blue: 0.63, alpha: 1)
-        material.isDoubleSided = false
-        geometry.firstMaterial = material
+        // Whisper-thin connecting lines.
+        let lineMaterial = SCNMaterial()
+        lineMaterial.fillMode = .lines
+        lineMaterial.lightingModel = .constant
+        lineMaterial.diffuse.contents = Self.rose
+        lineMaterial.transparency = 0.14
+        lineMaterial.shaderModifiers = [.fragment: Self.softEdges]
+        lines.firstMaterial = lineMaterial
 
-        let node = SCNNode(geometry: geometry)
-        node.opacity = 0.35
-        return node
+        let container = SCNNode()
+        container.addChildNode(SCNNode(geometry: lines))
+
+        // Tiny points on every vertex of the face mesh.
+        let count = face.geometry.vertices.count
+        let element = SCNGeometryElement(indices: (0..<count).map { UInt32($0) }, primitiveType: .point)
+        element.pointSize = 3
+        element.minimumPointScreenSpaceRadius = 1.1
+        element.maximumPointScreenSpaceRadius = 2.2
+        pointElement = element
+
+        let points = SCNNode()
+        container.addChildNode(points)
+        pointNode = points
+        updatePoints(from: lines)
+
+        // Start hidden; it draws on when the scan begins.
+        container.opacity = wantsVisible ? 1 : 0
+        container.scale = wantsVisible ? SCNVector3(1, 1, 1) : SCNVector3(1.03, 1.03, 1.03)
+        meshNode = container
+        return container
     }
 
     nonisolated func renderer(_ renderer: any SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
         guard let face = anchor as? ARFaceAnchor,
-              let geometry = node.geometry as? ARSCNFaceGeometry else { return }
-        geometry.update(from: face.geometry)
+              let lines = node.childNodes.first?.geometry as? ARSCNFaceGeometry else { return }
+        lines.update(from: face.geometry)
+        updatePoints(from: lines)
+    }
+
+    /// Rebuilds the point cloud from the freshly updated mesh (about 1,200 points; cheap).
+    nonisolated private func updatePoints(from lines: ARSCNFaceGeometry) {
+        guard let element = pointElement, let points = pointNode else { return }
+        let sources = lines.sources(for: .vertex) + lines.sources(for: .normal)
+        let geometry = SCNGeometry(sources: sources, elements: [element])
+
+        let material = SCNMaterial()
+        material.lightingModel = .constant
+        material.diffuse.contents = Self.blush
+        material.transparency = 0.85
+        material.shaderModifiers = [.fragment: Self.softEdges]
+        geometry.firstMaterial = material
+        points.geometry = geometry
     }
 }
