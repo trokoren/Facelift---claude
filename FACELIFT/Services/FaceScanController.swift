@@ -21,7 +21,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
 
     enum LightLevel: Equatable {
         case good
-        case low
+        case dim
+        case dark
     }
 
     /// Width of the oval window for a given screen width. Shared with the view.
@@ -140,11 +141,23 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         let distance = simd_length(cameraPosition - facePosition)
 
         // Hints are advice only; they never pause the scan.
+        // Live light check. ARKit reports ~1000 for a well-lit face; a little hysteresis
+        // keeps the chip from flickering right at a threshold.
         if let light = frame.lightEstimate {
-            let level: LightLevel = light.ambientIntensity < (lightLevel == .low ? 380 : 300) ? .low : .good
+            let intensity = light.ambientIntensity
+            let level: LightLevel
+            switch lightLevel {
+            case .good: level = intensity < 520 ? (intensity < 260 ? .dark : .dim) : .good
+            case .dim: level = intensity > 620 ? .good : (intensity < 260 ? .dark : .dim)
+            case .dark: level = intensity > 340 ? (intensity > 620 ? .good : .dim) : .dark
+            }
             if level != lightLevel { lightLevel = level }
         }
-        if phase == .circling && distance > 0.55 {
+        if lightLevel == .dark {
+            setHint("Too dark to read your skin. Face a window or lamp.")
+        } else if lightLevel == .dim && phase == .aligning {
+            setHint("Brighter light gives a more accurate scan")
+        } else if phase == .circling && distance > 0.55 {
             setHint("Bring your phone a little closer")
         } else if phase == .circling && distance < 0.26 {
             setHint("Hold your phone a little farther away")

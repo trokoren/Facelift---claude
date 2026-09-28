@@ -276,21 +276,45 @@ struct CircleScanView: View {
     }
 }
 
-/// Sun icon + "Good light" / "Too dark", live from the camera.
+/// Live light check from the camera: "Good light", "A bit dim" or "Too dark".
 private struct LightChip: View {
     let level: FaceScanController.LightLevel
 
+    private var icon: String {
+        switch level {
+        case .good: "sun.max.fill"
+        case .dim: "sun.min"
+        case .dark: "moon"
+        }
+    }
+
+    private var text: String {
+        switch level {
+        case .good: "Good light"
+        case .dim: "A bit dim"
+        case .dark: "Too dark"
+        }
+    }
+
+    private var tint: Color {
+        level == .good ? Color.white.opacity(0.9) : Palette.rose
+    }
+
     var body: some View {
         HStack(spacing: 7) {
-            Image(systemName: level == .good ? "sun.max" : "sun.min")
+            Image(systemName: icon)
                 .font(.system(size: 13, weight: .regular))
-            Text(level == .good ? "Good light" : "Too dark")
+                .contentTransition(.symbolEffect(.replace))
+            Text(text)
                 .font(FLFont.sans(13.5, .medium))
+                .contentTransition(.opacity)
         }
-        .foregroundStyle(level == .good ? Color.white.opacity(0.9) : Palette.rose)
+        .foregroundStyle(tint)
         .padding(.horizontal, 16)
         .frame(height: 38)
+        .background(level == .good ? Color.clear : Palette.rose.opacity(0.12), in: Capsule())
         .overlay(Capsule().stroke(level == .good ? Color.white.opacity(0.22) : Palette.rose.opacity(0.7), lineWidth: 1))
+        .animation(.easeOut(duration: 0.3), value: level)
         .accessibilityElement(children: .combine)
     }
 }
