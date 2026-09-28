@@ -12,6 +12,8 @@ final class AppStore {
     var mySkinPath: [MySkinRoute] = []
     var accountPath: [AccountRoute] = []
     var isScanning: Bool = false
+    /// Photos from the most recent scan. Memory only (never written to disk); cleared once analyzed.
+    var lastCaptures: [UIImage] = []
 
     var scans: [Scan] = SampleData.scans
     var usedProducts: [UsedProduct] = SampleData.usedProducts

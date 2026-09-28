@@ -9,11 +9,26 @@ struct ScanCameraView: View {
     @State private var sweepDown: Bool = false
     @State private var pulse: Bool = false
     @State private var didFinish: Bool = false
+    @State private var didCapture: Bool = false
 
-    private let ovalSize = CGSize(width: 209, height: 271)
+    private let ovalSize = CGSize(width: 250, height: 324)
     private let scanDuration: Double = 5
 
     var body: some View {
+        if FaceScanController.isSupported && !didCapture {
+            CircleScanView(onComplete: { images in
+                store.lastCaptures = images
+                withAnimation(.easeInOut(duration: 0.3)) { didCapture = true }
+            }, onCancel: close)
+            .transition(.opacity)
+        } else {
+            readingView
+        }
+    }
+
+    /// After the circle scan (or on phones without Face ID): live camera in the oval while
+    /// the skin is read.
+    private var readingView: some View {
         ZStack(alignment: .top) {
             Palette.night.ignoresSafeArea()
 
@@ -25,7 +40,7 @@ struct ScanCameraView: View {
                     .padding(.top, 12)
 
                 oval
-                    .padding(.top, 130)
+                    .padding(.top, 90)
 
                 Group {
                     switch camera.status {
@@ -119,7 +134,7 @@ struct ScanCameraView: View {
 
     private var scanningState: some View {
         VStack(spacing: 0) {
-            Text("Hold still while we read your skin.")
+            Text(didCapture ? "Reading your skin…" : "Hold still while we read your skin.")
                 .font(FLFont.sans(14.1, .light))
                 .tracking(0.4)
                 .foregroundStyle(Palette.nightBody)

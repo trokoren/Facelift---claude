@@ -3,6 +3,8 @@ import SwiftUI
 /// Dark scan: live camera inside the rose oval, then a four-step checklist and progress bar.
 struct ScanLoadingStepView: View {
     @Environment(OnboardingStore.self) private var flow
+    @Environment(AppStore.self) private var store
+    @State private var didCapture: Bool = false
     @State private var camera = CameraService()
     @State private var progress: Double = 0
     @State private var sweepDown: Bool = false
@@ -10,11 +12,24 @@ struct ScanLoadingStepView: View {
     @State private var completedSteps: Int = 0
     @State private var didFinish: Bool = false
 
-    private let ovalSize = CGSize(width: 209, height: 271)
+    private let ovalSize = CGSize(width: 250, height: 324)
     private let stages: [String] = ["Reading your skin", "Scanning 14+ categories", "Scoring categories", "Building your report"]
     private let stageDuration: Double = 1.6
 
     var body: some View {
+        if FaceScanController.isSupported && !didCapture {
+            CircleScanView(onComplete: { images in
+                store.lastCaptures = images
+                withAnimation(.easeInOut(duration: 0.3)) { didCapture = true }
+            }, onCancel: { flow.back() })
+            .transition(.opacity)
+        } else {
+            analyzingView
+        }
+    }
+
+    /// Checklist + progress while the scan is analyzed.
+    private var analyzingView: some View {
         ZStack(alignment: .top) {
             Palette.night.ignoresSafeArea()
 
@@ -36,7 +51,7 @@ struct ScanLoadingStepView: View {
                     .padding(.top, 14)
 
                 oval
-                    .padding(.top, 96)
+                    .padding(.top, 48)
 
                 VStack(alignment: .leading, spacing: 20) {
                     ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in

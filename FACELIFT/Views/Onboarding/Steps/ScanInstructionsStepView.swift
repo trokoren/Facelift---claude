@@ -69,8 +69,8 @@ struct ScanInstructionsStepView: View {
 
             VStack(spacing: 12) {
                 InstructionRow(number: 1, image: "onb_step1", title: "Glasses off, face bare", detail: "Soft, even light works best")
-                InstructionRow(number: 2, image: "onb_step2", title: "Face the camera", detail: "Keep your face inside the oval")
-                InstructionRow(number: 3, image: "onb_step3", title: "Hold still", detail: "It only takes a few seconds")
+                InstructionRow(number: 2, image: "onb_step2", title: "Look straight ahead", detail: "Start with your face inside the circle")
+                InstructionRow(number: 3, image: "onb_step3", title: "Move in a slow circle", detail: "Fill the ring all the way around")
             }
             .padding(.top, 16)
 
