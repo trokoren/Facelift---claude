@@ -576,15 +576,21 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
     private static let links: [(Int, Int)] = [
         // Brows (outer, middle, inner) on each side, meeting at the bridge.
         (0, 1), (1, 2), (2, 12), (3, 4), (4, 5), (5, 12),
-        // Eyes: inner corner to outer corner.
-        (6, 7), (8, 9),
+        // Eyes: inner corner to outer corner, and down to the under-eye.
+        (6, 7), (8, 9), (7, 10), (9, 11),
         // Forehead to inner brows; bridge down the nose to the lips and chin.
         (20, 2), (20, 5), (12, 13), (13, 16), (16, 17),
-        // Outer eye to cheekbone to jaw to chin.
-        (7, 14), (14, 18), (18, 17), (9, 15), (15, 19), (19, 17)
+        // Face outline: outer brow, temple, by the ear, jaw corner, jaw, chin.
+        (0, 21), (21, 23), (23, 25), (25, 18), (18, 17),
+        (3, 22), (22, 24), (24, 26), (26, 19), (19, 17),
+        // Cheekbones: under-eye to cheekbone, out to the ear, down to the jaw corner.
+        (10, 14), (14, 23), (14, 25), (11, 15), (15, 24), (15, 26),
+        // Nose tip to cheekbones.
+        (13, 14), (13, 15)
     ]
 
-    private static let lineColor = UIColor(red: 0.90, green: 0.70, blue: 0.70, alpha: 0.55)
+    private static let lineColor = UIColor(white: 1, alpha: 0.55)
+    nonisolated(unsafe) private var strands: [SCNNode] = []
 
     func setVisible(_ visible: Bool) {
         guard visible != wantsVisible else { return }
@@ -625,6 +631,24 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
         lines.renderingOrder = 5
         node.addChildNode(lines)
         linesNode = lines
+
+        // Fine white strands between stars. Real geometry, because GPU "lines" draw one
+        // pixel wide and all but vanish on a Retina screen.
+        let strandMaterial = SCNMaterial()
+        strandMaterial.lightingModel = .constant
+        strandMaterial.diffuse.contents = Self.lineColor
+        strandMaterial.writesToDepthBuffer = false
+        strandMaterial.readsFromDepthBuffer = false
+        strands = Self.links.map { _ in
+            let cylinder = SCNCylinder(radius: 0.00032, height: 1)
+            cylinder.radialSegmentCount = 6
+            cylinder.firstMaterial = strandMaterial
+            let strand = SCNNode(geometry: cylinder)
+            strand.renderingOrder = 6
+            strand.opacity = 0
+            lines.addChildNode(strand)
+            return strand
+        }
 
         if let device = renderer.device, let mesh = ARSCNFaceGeometry(device: device) {
             let material = SCNMaterial()
@@ -697,21 +721,23 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
             }
         }
 
-        let source = SCNGeometrySource(vertices: points.map { SCNVector3($0.x, $0.y, $0.z) })
-        var indices: [UInt16] = []
-        for (a, b) in Self.links where a < points.count && b < points.count {
-            indices.append(UInt16(a))
-            indices.append(UInt16(b))
+        // Stretch each strand between its two stars; show it once both have lit up.
+        for ((a, b), strand) in zip(Self.links, strands) where a < points.count && b < points.count {
+            let start = points[a]
+            let end = points[b]
+            let length = simd_distance(start, end)
+            guard length > 0.0001 else { continue }
+            strand.simdPosition = (start + end) / 2
+            strand.simdScale = simd_float3(1, length, 1)
+            strand.simdOrientation = simd_quatf(from: simd_float3(0, 1, 0), to: simd_normalize(end - start))
+            let shouldShow = litStars.contains(a) && litStars.contains(b)
+            if shouldShow && strand.opacity == 0 {
+                SCNTransaction.begin()
+                SCNTransaction.animationDuration = 0.35
+                strand.opacity = 1
+                SCNTransaction.commit()
+            }
         }
-        let element = SCNGeometryElement(indices: indices, primitiveType: .line)
-        let geometry = SCNGeometry(sources: [source], elements: [element])
-        let material = SCNMaterial()
-        material.lightingModel = .constant
-        material.diffuse.contents = Self.lineColor
-        material.writesToDepthBuffer = false
-        material.readsFromDepthBuffer = false
-        geometry.firstMaterial = material
-        linesNode?.geometry = geometry
     }
 
     /// Brightens a star with a little pop when the scan line reaches it.
@@ -780,10 +806,16 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
             nearest(side(1, 1.55), eyeY - 0.032), nearest(side(-1, 1.55), eyeY - 0.032),
             // 16 upper lip center, 17 chin
             nearest(0, tipY - 0.026), chin,
-            // 18-19 jaw
-            nearest(side(1, 1.35), chinY + 0.03), nearest(side(-1, 1.35), chinY + 0.03),
+            // 18-19 lower jaw
+            nearest(side(1, 1.6), chinY + 0.018), nearest(side(-1, 1.6), chinY + 0.018),
             // 20 top of forehead
-            forehead
+            forehead,
+            // 21-22 temples
+            nearest(side(1, 2.15), browY - 0.002), nearest(side(-1, 2.15), browY - 0.002),
+            // 23-24 in front of the ears
+            nearest(side(1, 2.35), eyeY - 0.03), nearest(side(-1, 2.35), eyeY - 0.03),
+            // 25-26 jaw corners
+            nearest(side(1, 2.2), eyeY - 0.068), nearest(side(-1, 2.2), eyeY - 0.068)
         ]
     }
 

@@ -76,8 +76,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     // Face outline geometry, as fractions of the circle's diameter. Shared with the view.
     /// Target distance between her eyes on screen (about 30 to 45 cm from the phone).
     static let eyeSpacing: CGFloat = 0.24
-    /// Target height of her eyes relative to the circle's center (negative is up).
-    static let eyeOffsetY: CGFloat = -0.1
+    /// Target height of her eyes relative to the oval's center (negative is up). Eyes sit
+    /// a little above the middle of the face outline, like on a real face.
+    static let eyeOffsetY: CGFloat = 0.0
     @ObservationIgnored private let turnThreshold: Double = 0.24
     /// Attention each tick needs before it lights (neighbors share half, so a smooth sweep
     /// lights ticks right under the dot). A full circle takes roughly 6 to 9 seconds.
