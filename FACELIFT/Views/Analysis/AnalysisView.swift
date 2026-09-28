@@ -81,6 +81,13 @@ struct AnalysisView: View {
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
         .background { GlassBackdrop() }
+        // Solid strip behind the status bar so scrolled content never shows above the
+        // pinned back bar.
+        .overlay(alignment: .top) {
+            Color.clear
+                .frame(height: 0)
+                .background(Palette.canvas.ignoresSafeArea(edges: .top))
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             // Pinned so the next step is always visible, not buried under the recommendations.
             if isFresh {
@@ -125,7 +132,7 @@ struct AnalysisView: View {
                 .fill(Palette.hairline)
                 .frame(height: 1)
         }
-        .background(Palette.canvas.opacity(0.97))
+        .background(Palette.canvas)
     }
 
     private var needsBanner: some View {
