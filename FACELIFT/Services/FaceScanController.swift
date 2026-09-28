@@ -24,6 +24,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     private(set) var filled: [Bool] = Array(repeating: false, count: FaceScanController.segmentCount)
     private(set) var hint: String?
     private(set) var captures: [UIImage] = []
+    /// Live head direction relative to where she started (x right, y down on screen), roughly
+    /// -1...1. Drives the dot that follows her nose around the ring.
+    private(set) var pointer: CGPoint = .zero
 
     var filledCount: Int { filled.filter { $0 }.count }
     var progress: Double { Double(filledCount) / Double(Self.segmentCount) }
@@ -32,11 +35,18 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored var onFinish: (([UIImage]) -> Void)?
     @ObservationIgnored private let ciContext = CIContext()
     @ObservationIgnored private var centeredSince: Date?
+    @ObservationIgnored private var smoothed: SIMD2<Double>?
+    @ObservationIgnored private var steadyReference: SIMD2<Double> = .zero
+    @ObservationIgnored private var baseline: SIMD2<Double> = .zero
     @ObservationIgnored private var capturedSides: Set<Int> = []
 
-    // Tuning. Direction values are roughly sin(head angle): 0.26 is about a 15 degree turn.
-    @ObservationIgnored private let centeredThreshold: Double = 0.12
-    @ObservationIgnored private let turnThreshold: Double = 0.26
+    // Tuning. Direction values are roughly sin(head angle): 0.22 is about a 13 degree turn.
+    @ObservationIgnored private let steadyTolerance: Double = 0.05
+    @ObservationIgnored private let turnThreshold: Double = 0.22
+    /// How far a turn reaches the ring for the pointer dot.
+    @ObservationIgnored private let pointerReach: Double = 0.42
+    /// 0...1, higher follows faster, lower is steadier.
+    @ObservationIgnored private let smoothing: Double = 0.35
 
     override init() {
         super.init()
@@ -82,42 +92,49 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         let facePosition = simd_make_float3(face.transform.columns.3)
         let distance = simd_length(cameraPosition - facePosition)
 
+        // Hints are advice only; they never pause the scan.
         if let light = frame.lightEstimate, light.ambientIntensity < 250 {
             setHint("Find brighter, even light")
-            return
-        }
-        if distance > 0.6 {
+        } else if distance > 0.6 {
             setHint("Bring your phone a little closer")
-            return
-        }
-        if distance < 0.2 {
+        } else if distance < 0.2 {
             setHint("Hold your phone a little farther away")
-            return
+        } else {
+            setHint(nil)
         }
-        setHint(nil)
 
-        let direction = headDirection(face: face, facePosition: facePosition, camera: frame.camera)
-        let magnitude = hypot(direction.x, direction.y)
+        // Smooth out jitter from frame to frame.
+        let raw = headDirection(face: face, camera: frame.camera)
+        let current = smoothed.map { $0 + (raw - $0) * smoothing } ?? raw
+        smoothed = current
 
         switch phase {
         case .aligning:
-            if magnitude < centeredThreshold {
+            // Wherever she naturally holds the phone becomes "center" once she's steady,
+            // so a phone held low or off to one side doesn't throw off the ring.
+            if simd_length(current - steadyReference) < steadyTolerance {
                 let since = centeredSince ?? Date()
                 centeredSince = since
-                if Date().timeIntervalSince(since) > 0.6 {
+                if Date().timeIntervalSince(since) > 0.7 {
+                    baseline = current
                     capture(frame)                 // straight-on photo
                     phase = .circling
                 }
             } else {
+                steadyReference = current
                 centeredSince = nil
             }
 
         case .circling:
+            let relative = current - baseline
+            updatePointer(relative)
+
+            let magnitude = simd_length(relative)
             guard magnitude > turnThreshold else { return }
 
             // Screen angle: 0 = right, increasing clockwise (screen y points down).
             let fullTurn = Double.pi * 2
-            let angle = (atan2(direction.y, direction.x) + fullTurn).truncatingRemainder(dividingBy: fullTurn)
+            let angle = (atan2(relative.y, relative.x) + fullTurn).truncatingRemainder(dividingBy: fullTurn)
 
             let index = min(Int(angle / fullTurn * Double(Self.segmentCount)), Self.segmentCount - 1)
             var updated = filled
@@ -146,22 +163,25 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         }
     }
 
-    /// Where the head is pointing, as seen on the (mirrored) selfie preview.
-    /// x > 0 is toward the right edge of the screen, y > 0 toward the bottom.
-    private func headDirection(face: ARFaceAnchor, facePosition: simd_float3, camera: ARCamera) -> (x: Double, y: Double) {
-        let viewport = CGSize(width: 1000, height: 1000)
-        let forward = simd_normalize(simd_make_float3(face.transform.columns.2))
-        let sideways = simd_normalize(simd_make_float3(face.transform.columns.0))
+    /// Where the head is pointing, as seen on the mirrored selfie preview:
+    /// x > 0 toward the right edge of the screen, y > 0 toward the bottom. About sin(angle).
+    private func headDirection(face: ARFaceAnchor, camera: ARCamera) -> SIMD2<Double> {
+        // The face's "forward" (out of the nose) in the camera's portrait view space,
+        // where x is screen-right and y is screen-up for the un-mirrored image.
+        let forwardWorld = simd_float4(simd_normalize(simd_make_float3(face.transform.columns.2)), 0)
+        let forwardView = camera.viewMatrix(for: .portrait) * forwardWorld
+        // Mirror x for the selfie preview; flip y so down is positive like SwiftUI.
+        return SIMD2(Double(-forwardView.x), Double(-forwardView.y))
+    }
 
-        let center = camera.projectPoint(facePosition, orientation: .portrait, viewportSize: viewport)
-        let ahead = camera.projectPoint(facePosition + forward * 0.1, orientation: .portrait, viewportSize: viewport)
-        let side = camera.projectPoint(facePosition + sideways * 0.1, orientation: .portrait, viewportSize: viewport)
-
-        let scale = max(Double(hypot(side.x - center.x, side.y - center.y)), 1)
-        // The preview is mirrored like a selfie, so flip x to match what she sees.
-        let x = -Double(ahead.x - center.x) / scale
-        let y = Double(ahead.y - center.y) / scale
-        return (x, y)
+    private func updatePointer(_ relative: SIMD2<Double>) {
+        var point = relative / pointerReach
+        let length = simd_length(point)
+        if length > 1 { point /= length }
+        let next = CGPoint(x: point.x, y: point.y)
+        if abs(next.x - pointer.x) > 0.01 || abs(next.y - pointer.y) > 0.01 {
+            pointer = next
+        }
     }
 
     private func capture(_ frame: ARFrame) {

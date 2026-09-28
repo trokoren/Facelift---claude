@@ -15,13 +15,19 @@ struct ScanCameraView: View {
     private let scanDuration: Double = 5
 
     var body: some View {
-        if FaceScanController.isSupported && !didCapture {
-            CircleScanView(onComplete: { images in
-                store.lastCaptures = images
-                withAnimation(.easeInOut(duration: 0.3)) { didCapture = true }
-            }, onCancel: close)
-            .transition(.opacity)
+        if FaceScanController.isSupported {
+            if didCapture {
+                SkinAnalyzingView { store.completeScan() }
+                    .transition(.opacity)
+            } else {
+                CircleScanView(onComplete: { images in
+                    store.lastCaptures = images
+                    withAnimation(.easeInOut(duration: 0.4)) { didCapture = true }
+                }, onCancel: close)
+                .transition(.opacity)
+            }
         } else {
+            // Phones without the Face ID camera: the simple single-view scan.
             readingView
         }
     }
@@ -134,7 +140,7 @@ struct ScanCameraView: View {
 
     private var scanningState: some View {
         VStack(spacing: 0) {
-            Text(didCapture ? "Reading your skin…" : "Hold still while we read your skin.")
+            Text("Hold still while we read your skin.")
                 .font(FLFont.sans(14.1, .light))
                 .tracking(0.4)
                 .foregroundStyle(Palette.nightBody)

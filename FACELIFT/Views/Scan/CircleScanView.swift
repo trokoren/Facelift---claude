@@ -14,50 +14,86 @@ struct CircleScanView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let diameter = min(geo.size.width * 0.8, 360)
+            let width = geo.size.width
+            let diameter = min(width * 0.8, 360)
+            let top = geo.safeAreaInsets.top
+            let centerY = top + 96 + diameter / 2 + 20
 
-            VStack(spacing: 0) {
-                header
+            ZStack {
+                // Full-screen live camera; the dark layer on top has a clear circle cut out,
+                // so she sees herself framed, with the rest softly visible behind the tint.
+                ARFacePreview(controller: scan)
 
-                PrivacyNote(tint: Color(hex: 0xB3ABA9))
-                    .padding(.top, 8)
-
-                Spacer(minLength: 12)
-
-                ZStack {
-                    ARFacePreview(controller: scan)
-                        .frame(width: diameter, height: diameter)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
-
-                    SegmentRing(filled: scan.filled, diameter: diameter + 46)
-                }
-                .frame(width: diameter + 70, height: diameter + 70)
-                .frame(maxWidth: .infinity)
-
-                Spacer(minLength: 12)
-
-                instructions
-                    .padding(.horizontal, 32)
-
-                if showsQuickOption && scan.phase != .done {
-                    Button {
-                        scan.finishNow()
-                    } label: {
-                        Text("Having trouble? Finish scan")
-                            .font(FLFont.sans(14))
-                            .foregroundStyle(Palette.nightBody)
-                            .underline()
-                            .frame(height: 44)
+                Rectangle()
+                    .fill(Palette.night.opacity(0.72))
+                    .mask {
+                        ZStack {
+                            Rectangle()
+                            Circle()
+                                .frame(width: diameter, height: diameter)
+                                .position(x: width / 2, y: centerY)
+                                .blendMode(.destinationOut)
+                        }
+                        .compositingGroup()
                     }
-                    .buttonStyle(PressableStyle())
-                    .padding(.top, 6)
-                    .transition(.opacity)
+                    .allowsHitTesting(false)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    .frame(width: diameter, height: diameter)
+                    .position(x: width / 2, y: centerY)
+
+                SegmentRing(filled: scan.filled, diameter: diameter + 46)
+                    .position(x: width / 2, y: centerY)
+
+                // Glowing dot that follows her nose around the ring.
+                if scan.phase == .circling {
+                    Circle()
+                        .fill(Palette.rose)
+                        .frame(width: 16, height: 16)
+                        .shadow(color: Palette.rose.opacity(0.9), radius: 10)
+                        .position(
+                            x: width / 2 + scan.pointer.x * (diameter / 2 + 23),
+                            y: centerY + scan.pointer.y * (diameter / 2 + 23)
+                        )
+                        .animation(.linear(duration: 0.08), value: scan.pointer)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
                 }
 
-                Spacer(minLength: 20)
+                VStack(spacing: 0) {
+                    header
+                        .padding(.top, top)
+                    PrivacyNote(tint: Color(hex: 0xC9C1BF))
+                        .padding(.top, 6)
+                    Spacer()
+                }
+
+                VStack(spacing: 0) {
+                    instructions
+                        .padding(.horizontal, 32)
+
+                    if showsQuickOption && scan.phase != .done {
+                        Button {
+                            scan.finishNow()
+                        } label: {
+                            Text("Having trouble? Finish scan")
+                                .font(FLFont.sans(14))
+                                .foregroundStyle(Palette.nightBody)
+                                .underline()
+                                .frame(height: 44)
+                        }
+                        .buttonStyle(PressableStyle())
+                        .padding(.top, 6)
+                        .transition(.opacity)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, centerY + diameter / 2 + 48)
             }
+            .frame(width: width, height: geo.size.height)
         }
+        .ignoresSafeArea()
         .background(Palette.night.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: scan.phase)

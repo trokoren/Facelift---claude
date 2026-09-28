@@ -17,13 +17,19 @@ struct ScanLoadingStepView: View {
     private let stageDuration: Double = 1.6
 
     var body: some View {
-        if FaceScanController.isSupported && !didCapture {
-            CircleScanView(onComplete: { images in
-                store.lastCaptures = images
-                withAnimation(.easeInOut(duration: 0.3)) { didCapture = true }
-            }, onCancel: { flow.back() })
-            .transition(.opacity)
+        if FaceScanController.isSupported {
+            if didCapture {
+                SkinAnalyzingView { flow.next() }
+                    .transition(.opacity)
+            } else {
+                CircleScanView(onComplete: { images in
+                    store.lastCaptures = images
+                    withAnimation(.easeInOut(duration: 0.4)) { didCapture = true }
+                }, onCancel: { flow.back() })
+                .transition(.opacity)
+            }
         } else {
+            // Phones without the Face ID camera: the simple camera + checklist.
             analyzingView
         }
     }
