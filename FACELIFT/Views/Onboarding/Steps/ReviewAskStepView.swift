@@ -5,7 +5,10 @@ import StoreKit
 struct ReviewAskStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(\.requestReview) private var requestReview
+    @Environment(\.scenePhase) private var scenePhase
     @State private var didAsk: Bool = false
+    @State private var promptAppeared: Bool = false
+    @State private var didAdvance: Bool = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -47,39 +50,56 @@ struct ReviewAskStepView: View {
                     .font(FLFont.sans(15))
                     .tracking(3)
                     .foregroundStyle(Color(hex: 0xC8C2BE))
-                    .padding(.top, 20)
+                    .padding(.top, 14)
 
-                GoldStars(size: 26, spacing: 12)
-                    .padding(.top, 18)
+                GoldStars(size: 22, spacing: 10)
+                    .padding(.top, 14)
 
-                Text("\"I finally understand my skin. The recommendations actually worked and my texture improved in two weeks.\"")
-                    .font(FLFont.serifItalic(17.5))
+                Text("\"Obsessed with this app. The scans are scary accurate and the recs actually worked. I'm getting compliments on my skin for the first time in years.\"")
+                    .font(FLFont.serifItalic(16.5))
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(5)
-                    .padding(.top, 22)
-                    .padding(.horizontal, 10)
+                    .lineSpacing(3)
+                    .padding(.top, 14)
+                    .padding(.horizontal, 18)
 
-                Text("— SOFIA M., 34")
-                    .font(FLFont.sans(12.5))
+                Text("SOFIA M., 34")
+                    .font(FLFont.sans(12))
                     .tracking(2)
                     .foregroundStyle(Color(hex: 0x8F8A87))
-                    .padding(.top, 24)
+                    .padding(.top, 12)
 
-                // First tap shows Apple's rating popup over this screen; once it's answered,
-                // the button reads "Continue" and moves on.
-                OnboardingCTA(title: didAsk ? "Continue" : "Next") {
+                // Tap shows Apple's rating popup over this screen. Once she rates or taps
+                // "Not Now", onboarding moves on by itself. If Apple doesn't show the popup
+                // (it limits how often it appears), we move on after a short beat.
+                OnboardingCTA(title: "Next") {
                     if didAsk {
-                        flow.next()
+                        advance()
                     } else {
+                        didAsk = true
                         requestReview()
-                        withAnimation(.easeOut(duration: 0.2).delay(0.6)) { didAsk = true }
+                        Task {
+                            try? await Task.sleep(for: .seconds(2.5))
+                            if !promptAppeared { advance() }
+                        }
                     }
                 }
-                .padding(.top, 34)
+                .padding(.top, 26)
                 .padding(.bottom, 10)
             }
             .padding(.horizontal, 24)
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard didAsk else { return }
+            // The rating popup makes the app briefly inactive; coming back means it was answered.
+            if phase == .inactive { promptAppeared = true }
+            if phase == .active && promptAppeared { advance() }
+        }
+    }
+
+    private func advance() {
+        guard !didAdvance else { return }
+        didAdvance = true
+        flow.next()
     }
 }

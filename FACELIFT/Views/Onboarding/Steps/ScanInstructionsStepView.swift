@@ -6,18 +6,20 @@ struct ScanInstructionsStepView: View {
     @State private var pulse: Bool = false
 
     var body: some View {
-        GeometryReader { geo in
-            let photoHeight = geo.size.height * 0.34 + geo.safeAreaInsets.top
-
-            VStack(spacing: 0) {
-                ZStack(alignment: .top) {
+        // The card is only as tall as its content; the photo fills whatever space is left,
+        // so there's no dead gap under the steps on taller phones.
+        VStack(spacing: 0) {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
                     Image("onb_ready_scan")
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: geo.size.width, height: photoHeight + 40)
-                        .clipped()
                         .overlay(Color.black.opacity(0.5))
-
+                        .allowsHitTesting(false)
+                }
+                .clipped()
+                .overlay(alignment: .top) {
                     HStack(spacing: 9) {
                         Circle()
                             .fill(Palette.nightDot)
@@ -29,17 +31,15 @@ struct ScanInstructionsStepView: View {
                             .tracking(1.6)
                             .foregroundStyle(Color(hex: 0xA79D99))
                     }
-                    .padding(.top, geo.safeAreaInsets.top + 12)
+                    .padding(.top, 12)
                 }
-                .frame(width: geo.size.width, height: photoHeight)
+                .padding(.bottom, -40)
+                .ignoresSafeArea(edges: .top)
 
-                sheet
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.white)
-                    .clipShape(.rect(topLeadingRadius: 40, topTrailingRadius: 40, style: .continuous))
-                    .padding(.top, -40)
-            }
-            .ignoresSafeArea(edges: .top)
+            sheet
+                .frame(maxWidth: .infinity)
+                .background(Color.white.ignoresSafeArea(edges: .bottom))
+                .clipShape(.rect(topLeadingRadius: 40, topTrailingRadius: 40, style: .continuous))
         }
         .background(Color.white.ignoresSafeArea())
         .onAppear { pulse = true }
@@ -78,9 +78,8 @@ struct ScanInstructionsStepView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 18)
 
-            Spacer(minLength: 12)
-
             OnboardingCTA(title: "I'm ready") { flow.next() }
+                .padding(.top, 22)
                 .padding(.bottom, 10)
         }
         .padding(.horizontal, 24)

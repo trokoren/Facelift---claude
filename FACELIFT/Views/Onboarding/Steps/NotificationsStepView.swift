@@ -1,10 +1,13 @@
 import SwiftUI
 import UserNotifications
 
-/// "Don't forget about your skin." — lock-screen mock and the permission ask.
+/// The commitment moment before the scan: her 28-day glow-up only happens if she keeps
+/// showing up, and the reminders are how. Lock-screen mock shows the payoff, then the ask.
 struct NotificationsStepView: View {
     @Environment(OnboardingStore.self) private var flow
+    @Environment(\.openURL) private var openURL
     @State private var isRequesting: Bool = false
+    @State private var isDenied: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,8 +19,8 @@ struct NotificationsStepView: View {
             .frame(height: 44)
 
             OnboardingTitle(
-                title: "Don't forget\nabout your skin.",
-                subtitle: "We'll remind you to scan and track your progress.\nWe won't spam, pinky promise.",
+                title: "Your best skin is\n28 days away.",
+                subtitle: "The glow-up happens in the follow-through.\nOne gentle nudge a week keeps you on track.",
                 titleSize: 34
             )
             .padding(.horizontal, 24)
@@ -33,13 +36,13 @@ struct NotificationsStepView: View {
         .background(Palette.canvas.ignoresSafeArea())
         .overlay(alignment: .bottom) {
             VStack(spacing: 10) {
-                OnboardingCTA(title: "Turn On Notifications", isEnabled: !isRequesting) {
+                OnboardingCTA(title: isDenied ? "Open Settings" : "Keep me on track", isEnabled: !isRequesting) {
                     Task { await request() }
                 }
                 Button {
                     flow.next()
                 } label: {
-                    Text("Not now")
+                    Text(isDenied ? "Continue without reminders" : "Not now")
                         .font(FLFont.sans(16))
                         .foregroundStyle(Palette.stone)
                         .frame(height: 44)
@@ -88,37 +91,22 @@ struct NotificationsStepView: View {
                 .foregroundStyle(Palette.body)
                 .padding(.top, -6)
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 10) {
-                    Text("F")
-                        .font(FLFont.serif(15))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            LinearGradient(colors: [Color(hex: 0xE39A94), Palette.rose], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        )
-                    Text("FACELIFT")
-                        .font(FLFont.sans(14, .medium))
-                        .foregroundStyle(Palette.stone)
-                    Spacer()
-                    Text("now")
-                        .font(FLFont.sans(13))
-                        .foregroundStyle(Palette.mist)
-                }
-                Text("Time for your weekly scan ✦")
-                    .font(FLFont.sans(15.5, .semibold))
-                    .foregroundStyle(Palette.ink)
-                    .padding(.top, 4)
-                Text("See how your skin has changed since last week. Your score is waiting.")
-                    .font(FLFont.sans(14.5))
-                    .foregroundStyle(Palette.body)
-                    .lineSpacing(3)
+            VStack(spacing: 10) {
+                NotificationBubble(
+                    time: "now",
+                    title: "Week 4: you did it ✦",
+                    message: "Your skin score is up 12 points since day one. Come see the difference."
+                )
+                NotificationBubble(
+                    time: "1w ago",
+                    title: "Time for your weekly scan",
+                    message: "Two minutes. Let's see what changed."
+                )
+                .opacity(0.75)
+                .scaleEffect(0.95)
             }
-            .padding(14)
-            .background(Color.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .padding(.horizontal, 16)
-            .padding(.top, 30)
+            .padding(.top, 26)
 
             Spacer(minLength: 60)
         }
@@ -134,11 +122,68 @@ struct NotificationsStepView: View {
     }
 
     private func request() async {
-        isRequesting = true
         let center = UNUserNotificationCenter.current()
-        let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
-        flow.answers.notificationsRequested = granted
-        isRequesting = false
-        flow.next()
+        let status = await center.notificationSettings().authorizationStatus
+
+        switch status {
+        case .notDetermined:
+            // First time: Apple's "Allow notifications?" popup.
+            isRequesting = true
+            let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+            flow.answers.notificationsRequested = granted
+            isRequesting = false
+            flow.next()
+        case .denied:
+            // She said no before; iOS won't ask twice, so offer Settings instead.
+            if isDenied, let url = URL(string: UIApplication.openSettingsURLString) {
+                openURL(url)
+            } else {
+                withAnimation(.easeOut(duration: 0.2)) { isDenied = true }
+            }
+        default:
+            // Already allowed.
+            flow.answers.notificationsRequested = true
+            flow.next()
+        }
+    }
+}
+
+private struct NotificationBubble: View {
+    let time: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                Text("F")
+                    .font(FLFont.serif(15))
+                    .foregroundStyle(.white)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        LinearGradient(colors: [Color(hex: 0xE39A94), Palette.rose], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    )
+                Text("FACELIFT")
+                    .font(FLFont.sans(14, .medium))
+                    .foregroundStyle(Palette.stone)
+                Spacer()
+                Text(time)
+                    .font(FLFont.sans(13))
+                    .foregroundStyle(Palette.mist)
+            }
+            Text(title)
+                .font(FLFont.sans(15.5, .semibold))
+                .foregroundStyle(Palette.ink)
+                .padding(.top, 4)
+            Text(message)
+                .font(FLFont.sans(14.5))
+                .foregroundStyle(Palette.body)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(Color.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Palette.ink.opacity(0.05), radius: 10, x: 0, y: 4)
     }
 }

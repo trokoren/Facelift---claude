@@ -6,29 +6,29 @@ struct ScienceStepView: View {
     @State private var isRevealed: Bool = false
 
     var body: some View {
-        OnboardingPage(title: "Built on real\nskin science.", titleSize: 34, titleTop: 4) {
+        OnboardingPage(title: "Built on real\nskin science.", titleSize: 32, titleTop: 0) {
             Text("Our analysis draws from 14,000+ anonymized skin profiles and decades of peer-reviewed dermatology research.")
                 .font(FLFont.sans(14))
                 .foregroundStyle(Palette.stone)
                 .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .padding(.top, 10)
+                .lineSpacing(2)
+                .padding(.top, 6)
 
             HStack(spacing: 10) {
                 statChip("92 studies")
                 statChip("14k+ profiles")
                 statChip("98% accuracy")
             }
-            .padding(.top, 14)
+            .padding(.top, 10)
 
             misidentifyCard
-                .padding(.top, 16)
+                .padding(.top, 12)
 
             barrierCard
-                .padding(.top, 12)
+                .padding(.top, 8)
 
             compatibilityCard
-                .padding(.top, 12)
+                .padding(.top, 8)
         } footer: {
             OnboardingCTA(title: "Continue") { flow.next() }
                 .padding(.top, 8)
@@ -48,7 +48,7 @@ struct ScienceStepView: View {
             .font(FLFont.sans(13, .medium))
             .foregroundStyle(Palette.ink)
             .padding(.horizontal, 14)
-            .frame(height: 34)
+            .frame(height: 30)
             .background(Color.white, in: Capsule())
     }
 
@@ -69,14 +69,14 @@ struct ScienceStepView: View {
                         .foregroundStyle(Palette.stone)
                 }
             }
-            .frame(width: 88, height: 88)
+            .frame(width: 76, height: 76)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("of women misidentify their skin type")
                     .font(FLFont.sans(15.5, .medium))
                     .foregroundStyle(Palette.ink)
                     .lineSpacing(2)
-                Text("FACELIFT's scan gets it right — instantly.")
+                Text("FACELIFT's scan gets it right, instantly.")
                     .font(FLFont.sans(13.5))
                     .foregroundStyle(Palette.body)
                     .lineSpacing(2)
@@ -87,7 +87,8 @@ struct ScienceStepView: View {
                     .foregroundStyle(Palette.label)
             }
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(radius: 26)
     }
@@ -117,10 +118,11 @@ struct ScienceStepView: View {
             }
 
             barrierChart
-                .frame(height: 112)
+                .frame(height: 88)
                 .padding(.top, 8)
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .cardSurface(radius: 26)
     }
 
@@ -240,7 +242,8 @@ struct ScienceStepView: View {
             compatibilityRow(title: "FACELIFT", value: 0.94, label: "94%", emphasized: true)
                 .padding(.top, 12)
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .cardSurface(radius: 26)
     }
 

@@ -16,14 +16,15 @@ struct Results28StepView: View {
             }
             .padding(.top, 16)
 
-            VStack(spacing: 4) {
+            VStack(spacing: 0) {
                 Text("93%")
                     .font(FLFont.serif(72))
                     .foregroundStyle(Palette.ink)
+                    .frame(height: 70)
                 Text("of women see visible results.")
                     .font(FLFont.sans(16))
                     .foregroundStyle(Palette.body)
-                    .padding(.top, -12)
+                    .padding(.top, 6)
             }
             .padding(.top, 24)
         } footer: {

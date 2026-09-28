@@ -6,38 +6,40 @@ struct PaywallPreviewStepView: View {
     @State private var isRevealed: Bool = false
 
     var body: some View {
-        ScrollView {
+        ZStack {
+            Palette.canvas.ignoresSafeArea()
+
+            // Only the blurred report scrolls, hinting at how much is waiting underneath.
+            ScrollView {
+                VStack(spacing: 0) {
+                    blurredAnalysis
+                    blurredAnalysis
+                    blurredAnalysis
+                }
+                .blur(radius: 5)
+                .padding(.bottom, 120)
+            }
+            .scrollIndicators(.hidden)
+            .accessibilityHidden(true)
+
+            // Static overlay. Cards ignore touches so swipes pass through to the scroll view.
             VStack(spacing: 0) {
                 resultsCard
                     .padding(.top, 20)
                     .padding(.horizontal, 24)
+                    .allowsHitTesting(false)
+
+                Spacer(minLength: 12)
 
                 testimonial
-                    .padding(.top, 16)
                     .padding(.horizontal, 24)
-
-                // A peek at the locked report underneath, so scrolling shows there's more.
-                blurredAnalysis
-                    .blur(radius: 5)
+                    .padding(.bottom, 16)
                     .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                    .mask(
-                        LinearGradient(colors: [.black, .black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    )
+
+                OnboardingCTA(title: "Unlock My Results") { flow.next() }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 10)
             }
-            .padding(.bottom, 12)
-        }
-        .scrollIndicators(.hidden)
-        .background(Palette.canvas.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            OnboardingCTA(title: "Unlock My Results") { flow.next() }
-                .padding(.horizontal, 24)
-                .padding(.top, 14)
-                .padding(.bottom, 10)
-                .background(
-                    LinearGradient(colors: [Palette.canvas.opacity(0), Palette.canvas, Palette.canvas], startPoint: .top, endPoint: .bottom)
-                        .ignoresSafeArea()
-                )
         }
         .onAppear {
             withAnimation(.easeOut(duration: 1.0).delay(0.2)) { isRevealed = true }
