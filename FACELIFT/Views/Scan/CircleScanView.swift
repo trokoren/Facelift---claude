@@ -95,6 +95,21 @@ struct CircleScanView: View {
                     OvalTickRing(filled: scan.filled, size: ringSize, isLive: scan.phase == .circling || scan.phase == .done)
                         .position(center)
 
+                    // Dot that follows her nose around the ring once the circle starts.
+                    if scan.phase == .circling {
+                        Circle()
+                            .fill(Palette.rose)
+                            .frame(width: 12, height: 12)
+                            .shadow(color: Palette.rose.opacity(0.9), radius: 8)
+                            .position(
+                                x: center.x + scan.pointer.x * ringSize.width / 2,
+                                y: center.y + scan.pointer.y * ringSize.height / 2
+                            )
+                            .animation(.linear(duration: 0.08), value: scan.pointer)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+
                     if scan.phase == .aligning {
                         FaceOutline(diameter: ovalWidth, alignment: scan.alignment)
                             .position(center)

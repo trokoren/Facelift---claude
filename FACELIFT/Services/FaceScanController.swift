@@ -78,10 +78,10 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     static let eyeSpacing: CGFloat = 0.24
     /// Target height of her eyes relative to the circle's center (negative is up).
     static let eyeOffsetY: CGFloat = -0.1
-    @ObservationIgnored private let turnThreshold: Double = 0.28
+    @ObservationIgnored private let turnThreshold: Double = 0.24
     /// Attention each tick needs before it lights (neighbors share half, so a smooth sweep
     /// lights ticks right under the dot). A full circle takes roughly 6 to 9 seconds.
-    @ObservationIgnored private let dwellPerSegment: Double = 0.2
+    @ObservationIgnored private let dwellPerSegment: Double = 0.12
     /// How far a turn reaches the ring for the pointer dot.
     @ObservationIgnored private let pointerReach: Double = 0.42
     /// 0...1, higher follows faster, lower is steadier.
@@ -210,9 +210,13 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             // so a slow sweep fills smoothly without needing pixel-perfect aim. Nothing is
             // filled on her behalf: the ring completes only when she's actually gone around.
             let count = Self.segmentCount
+            // Aiming lights a small cluster around the dot: full credit for it and the ticks
+            // either side, half credit two ticks out. A relaxed circle closes the ring.
             dwell[index] += elapsed
-            dwell[(index + 1) % count] += elapsed * 0.5
-            dwell[(index + count - 1) % count] += elapsed * 0.5
+            dwell[(index + 1) % count] += elapsed
+            dwell[(index + count - 1) % count] += elapsed
+            dwell[(index + 2) % count] += elapsed * 0.5
+            dwell[(index + count - 2) % count] += elapsed * 0.5
 
             var updated = filled
             for i in 0..<count where !updated[i] && dwell[i] >= dwellPerSegment {
