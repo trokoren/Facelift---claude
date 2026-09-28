@@ -13,92 +13,106 @@ struct CircleScanView: View {
     @State private var pulse: Bool = false
 
     var body: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let diameter = min(width * 0.8, 360)
-            let top = geo.safeAreaInsets.top
-            let centerY = top + 96 + diameter / 2 + 20
+        ZStack {
+            Palette.night.ignoresSafeArea()
 
-            ZStack {
-                // Full-screen live camera; the dark layer on top has a clear circle cut out,
-                // so she sees herself framed, with the rest softly visible behind the tint.
-                // Camera at its natural 3:4 shape (no extra zoom), centered on the circle
-                // so her face lands inside it.
-                ARFacePreview(controller: scan)
-                    .frame(width: width, height: width * 4 / 3)
-                    .position(x: width / 2, y: centerY)
+            // Camera, tint, circle and ring, all centered on the screen.
+            GeometryReader { geo in
+                let width = geo.size.width
+                let height = geo.size.height
+                let diameter = min(width * 0.8, 360)
+                let center = CGPoint(x: width / 2, y: height / 2)
+                let ringRadius = diameter / 2 + 23
 
-                Rectangle()
-                    .fill(Palette.night.opacity(0.72))
-                    .mask {
-                        ZStack {
-                            Rectangle()
-                            Circle()
-                                .frame(width: diameter, height: diameter)
-                                .position(x: width / 2, y: centerY)
-                                .blendMode(.destinationOut)
-                        }
-                        .compositingGroup()
-                    }
-                    .allowsHitTesting(false)
-
-                Circle()
-                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    .frame(width: diameter, height: diameter)
-                    .position(x: width / 2, y: centerY)
-
-                SegmentRing(filled: scan.filled, diameter: diameter + 46)
-                    .position(x: width / 2, y: centerY)
-
-                // Glowing dot that follows her nose around the ring.
-                if scan.phase == .circling {
-                    Circle()
-                        .fill(Palette.rose)
-                        .frame(width: 16, height: 16)
-                        .shadow(color: Palette.rose.opacity(0.9), radius: 10)
-                        .position(
-                            x: width / 2 + scan.pointer.x * (diameter / 2 + 23),
-                            y: centerY + scan.pointer.y * (diameter / 2 + 23)
+                ZStack {
+                    // Native 3:4 camera (no extra zoom), centered, with its top and bottom
+                    // edges faded into the background so there's no hard edge.
+                    ARFacePreview(controller: scan)
+                        .frame(width: width, height: width * 4 / 3)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .black, location: 0.18),
+                                    .init(color: .black, location: 0.82),
+                                    .init(color: .clear, location: 1)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
                         )
-                        .animation(.linear(duration: 0.08), value: scan.pointer)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
+                        .position(center)
 
-                VStack(spacing: 0) {
-                    header
-                        .padding(.top, top)
-                    PrivacyNote(tint: Color(hex: 0xC9C1BF))
-                        .padding(.top, 6)
-                    Spacer()
-                }
-
-                VStack(spacing: 0) {
-                    instructions
-                        .padding(.horizontal, 32)
-
-                    if showsQuickOption && scan.phase != .done {
-                        Button {
-                            scan.finishNow()
-                        } label: {
-                            Text("Having trouble? Finish scan")
-                                .font(FLFont.sans(14))
-                                .foregroundStyle(Palette.nightBody)
-                                .underline()
-                                .frame(height: 44)
+                    Rectangle()
+                        .fill(Palette.night.opacity(0.7))
+                        .mask {
+                            ZStack {
+                                Rectangle()
+                                Circle()
+                                    .frame(width: diameter, height: diameter)
+                                    .position(center)
+                                    .blendMode(.destinationOut)
+                            }
+                            .compositingGroup()
                         }
-                        .buttonStyle(PressableStyle())
-                        .padding(.top, 6)
-                        .transition(.opacity)
+                        .allowsHitTesting(false)
+
+                    Circle()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        .frame(width: diameter, height: diameter)
+                        .position(center)
+
+                    SegmentRing(filled: scan.filled, diameter: ringRadius * 2)
+                        .position(center)
+
+                    // Glowing dot that follows her nose around the ring.
+                    if scan.phase == .circling {
+                        Circle()
+                            .fill(Palette.rose)
+                            .frame(width: 16, height: 16)
+                            .shadow(color: Palette.rose.opacity(0.9), radius: 10)
+                            .position(
+                                x: center.x + scan.pointer.x * ringRadius,
+                                y: center.y + scan.pointer.y * ringRadius
+                            )
+                            .animation(.linear(duration: 0.08), value: scan.pointer)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
                     }
-                    Spacer(minLength: 0)
+
+                    // Instructions sit just under the ring.
+                    VStack(spacing: 0) {
+                        instructions
+                        if showsQuickOption && scan.phase != .done {
+                            Button {
+                                scan.finishNow()
+                            } label: {
+                                Text("Having trouble? Finish scan")
+                                    .font(FLFont.sans(14))
+                                    .foregroundStyle(Palette.nightBody)
+                                    .underline()
+                                    .frame(height: 44)
+                            }
+                            .buttonStyle(PressableStyle())
+                            .padding(.top, 4)
+                            .transition(.opacity)
+                        }
+                    }
+                    .frame(width: width - 64)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .position(x: center.x, y: center.y + ringRadius + 90)
                 }
-                .padding(.top, centerY + diameter / 2 + 48)
             }
-            .frame(width: width, height: geo.size.height)
+            .ignoresSafeArea()
+
+            // Top bar respects the status bar.
+            VStack(spacing: 0) {
+                header
+                PrivacyNote(tint: Color(hex: 0xC9C1BF))
+                    .padding(.top, 4)
+                Spacer()
+            }
         }
-        .ignoresSafeArea()
-        .background(Palette.night.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.25), value: scan.phase)
         .animation(.easeOut(duration: 0.25), value: scan.hint)
