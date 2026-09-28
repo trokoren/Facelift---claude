@@ -29,22 +29,22 @@ struct AnalysisCategory: Identifiable, Hashable {
         switch kind {
         case .aging: Palette.gold
         case .tone: Palette.rose
-        case .health: Palette.sky
+        case .health: Palette.sage
         }
     }
 
     var showsSparkle: Bool { kind == .health }
 
-    /// Metric score + bar color. Skin Health stays fully blue; the other cards flag scores
+    /// Metric score + bar color. Skin Health stays fully green; the other cards flag scores
     /// under 60 in ember.
     func tint(for metric: Metric) -> Color {
         switch kind {
-        case .health: return Palette.sky
+        case .health: return Palette.sage
         case .tone: return metric.score < 60 ? Palette.ember : Palette.rose
         case .aging: return metric.score < 60 ? Palette.ember : Palette.gold
         }
     }
 
     /// Face icon color in the card corner.
-    var iconTint: Color { kind == .health ? Palette.sky : Palette.rose }
+    var iconTint: Color { kind == .health ? Palette.sage : Palette.rose }
 }

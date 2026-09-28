@@ -6,30 +6,41 @@ struct PaywallPreviewStepView: View {
     @State private var isRevealed: Bool = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             Palette.canvas.ignoresSafeArea()
 
-            // Only the blurred report scrolls, hinting at how much is waiting underneath.
+            // The real results layout (same cards as the analysis screen), blurred.
+            // Only this layer scrolls, hinting at how much is waiting underneath.
             ScrollView {
-                VStack(spacing: 0) {
-                    blurredAnalysis
-                    blurredAnalysis
-                    blurredAnalysis
-                }
-                .blur(radius: 5)
-                .padding(.bottom, 120)
+                blurredAnalysis
+                    .disabled(true)
+                    .blur(radius: 6)
+                    .padding(.bottom, 160)
             }
             .scrollIndicators(.hidden)
             .accessibilityHidden(true)
 
-            // Static overlay. Cards ignore touches so swipes pass through to the scroll view.
+            // Original static overlay. Cards ignore touches so swipes reach the scroll view.
             VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Text("scroll")
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .font(FLFont.sans(13))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .frame(height: 32)
+                .background(Color(hex: 0x6E6866).opacity(0.85), in: Capsule())
+                .padding(.top, 40)
+                .allowsHitTesting(false)
+
                 resultsCard
-                    .padding(.top, 20)
+                    .padding(.top, 18)
                     .padding(.horizontal, 24)
                     .allowsHitTesting(false)
 
-                Spacer(minLength: 12)
+                Spacer()
 
                 testimonial
                     .padding(.horizontal, 24)
@@ -134,46 +145,26 @@ struct PaywallPreviewStepView: View {
 
     private var blurredAnalysis: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("FACELIFT")
-                .font(FLFont.sans(13))
-                .tracking(3)
-                .foregroundStyle(Palette.rose.opacity(0.5))
-                .padding(.top, 28)
-            VStack(alignment: .leading, spacing: 14) {
-                Text("TONE & CLARITY")
-                    .font(FLFont.sans(12, .semibold))
-                    .tracking(2.6)
-                    .foregroundStyle(Palette.rose)
-                HStack(alignment: .bottom, spacing: 12) {
-                    Text("81")
-                        .font(FLFont.serif(64))
-                        .foregroundStyle(Palette.body)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("/ 100")
-                            .font(FLFont.sans(11))
-                            .foregroundStyle(Palette.faint)
-                        Text("Very Good")
-                            .font(FLFont.serifItalic(18))
-                            .foregroundStyle(Palette.rose)
-                    }
-                    .padding(.bottom, 12)
-                }
-                ForEach(0..<3, id: \.self) { _ in
-                    VStack(alignment: .leading, spacing: 5) {
-                        Capsule().fill(Palette.rose.opacity(0.35)).frame(width: 240, height: 12)
-                        Capsule().fill(Palette.rose.opacity(0.25)).frame(height: 5)
-                    }
+            BrandHeader(subtitle: "Your Skin Analysis.")
+
+            SectionLabel("YOUR ANALYSIS")
+                .padding(.top, 22)
+                .padding(.horizontal, 24)
+
+            VStack(spacing: 12) {
+                ForEach(SampleData.categories()) { category in
+                    AnalysisCardView(category: category) {}
                 }
             }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AccentEdgeBackground(accent: Palette.rose, radius: 24))
-            .padding(.top, 20)
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
-                .frame(height: 260)
-                .padding(.top, 14)
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+
+            VStack(alignment: .leading, spacing: 26) {
+                ForEach(SampleData.recommendations) { recommendation in
+                    RecommendationSectionView(recommendation: recommendation) { _ in }
+                }
+            }
+            .padding(.top, 32)
         }
-        .padding(.horizontal, 24)
     }
 }

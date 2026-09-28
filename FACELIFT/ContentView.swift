@@ -27,6 +27,16 @@ struct ContentView: View {
         }
     }
 
+    /// Hidden on the Scan landing and whenever a scan's results are open, so the results
+    /// (and their Continue button) get the full screen.
+    private var showsTabBar: Bool {
+        switch store.selectedTab {
+        case .scan: false
+        case .mySkin: store.mySkinPath.isEmpty
+        default: true
+        }
+    }
+
     private var mainApp: some View {
         // Every tab stays alive so switching tabs keeps each one's scroll position
         // and navigation stack instead of rebuilding the screen from scratch.
@@ -42,10 +52,12 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: store.selectedTab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if store.selectedTab != .scan {
+            if showsTabBar {
                 FLTabBar()
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: showsTabBar)
         .preferredColorScheme(.light)
         .task { await store.refreshReminderPermission() }
         // Keeps the tab bar from riding up with the keyboard. Onboarding is left alone

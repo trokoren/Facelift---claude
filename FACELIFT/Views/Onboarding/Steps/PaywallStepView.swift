@@ -27,32 +27,37 @@ struct PaywallStepView: View {
                         PaywallPhoto(imageName: "onb_before", label: "BEFORE", labelFill: Color(hex: 0x6E6866))
                         PaywallPhoto(imageName: "onb_after", label: "AFTER", labelFill: Palette.rose)
                     }
-                    .padding(.top, 12)
+                    .padding(.top, 8)
 
                     Text("Improve your skin\nin 4 weeks.")
-                        .font(FLFont.serif(34))
+                        .font(FLFont.serif(30))
                         .foregroundStyle(Palette.ink)
                         .multilineTextAlignment(.center)
                         .lineSpacing(-2)
-                        .padding(.top, 18)
+                        .padding(.top, 12)
                     Text("Get 40% off FACELIFT")
                         .font(FLFont.sans(15.5))
                         .foregroundStyle(Palette.body)
-                        .padding(.top, 8)
+                        .padding(.top, 4)
 
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         ForEach(plans) { plan in
                             planRow(plan)
                         }
                     }
-                    .padding(.top, 20)
+                    .padding(.top, 14)
 
-                    (Text("What you'll have: ").font(FLFont.sans(14, .semibold)).foregroundStyle(Palette.ink)
-                     + Text("personalized skin analysis, curated recommendations and weekly progress tracking.").font(FLFont.sans(14)).foregroundStyle(Palette.body))
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(3)
-                        .padding(.top, 18)
-                        .padding(.horizontal, 8)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("What you'll get")
+                            .font(FLFont.sans(14, .semibold))
+                            .foregroundStyle(Palette.ink)
+                        benefit("Your full skin analysis: 14 scores")
+                        benefit("Products matched to your skin and budget")
+                        benefit("Weekly scans to track your progress")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 16)
+                    .padding(.horizontal, 6)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
@@ -74,6 +79,17 @@ struct PaywallStepView: View {
         }
         .background(Palette.canvas.ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: flow.answers.selectedPlan)
+    }
+
+    private func benefit(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.rose)
+            Text(text)
+                .font(FLFont.sans(14))
+                .foregroundStyle(Palette.body)
+        }
     }
 
     private func planRow(_ plan: Plan) -> some View {
@@ -117,8 +133,8 @@ struct PaywallStepView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .frame(minHeight: 76)
+            .padding(.vertical, 11)
+            .frame(minHeight: 68)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(isSelected ? Color(hex: 0xFBF1EF) : Color.white)
@@ -141,7 +157,7 @@ private struct PaywallPhoto: View {
 
     var body: some View {
         Color(hex: 0xE9E4E0)
-            .aspectRatio(1.15, contentMode: .fit)
+            .aspectRatio(1.5, contentMode: .fit)
             .overlay {
                 Image(imageName)
                     .resizable()
