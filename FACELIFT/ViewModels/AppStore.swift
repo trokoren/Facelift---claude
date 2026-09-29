@@ -114,7 +114,9 @@ final class AppStore {
             lastCaptures = []
             return nil
         }
-        guard let photo = lastCaptures.first else { return SkinAnalysisError.generic.message }
+        guard let photo = lastCaptures.first else {
+            return "Let's take a quick scan so we can read your skin."
+        }
         let mode = ScanLab.shared.mode
         let context: [String: Any] = ["skin_type": skinType, "skin_goals": skinGoals]
 
@@ -239,7 +241,7 @@ final class AppStore {
             if let first = scans.first {
                 scans[0] = Scan(
                     id: first.id,
-                    date: first.date,
+                    date: latestReport == nil ? first.date : Date(),
                     portraitName: first.portraitName,
                     concerns: latestReport?.topConcerns ?? answers.topConcerns,
                     productsShopped: first.productsShopped,
@@ -250,7 +252,12 @@ final class AppStore {
         }
         latestReport = nil
         UserDefaults.standard.set(true, forKey: Self.onboardingKey)
-        mySkinPath = []
+        // A new member lands straight on the results of the scan she just took.
+        if !signIn, let first = scans.first {
+            mySkinPath = [.scan(id: first.id, isFresh: true)]
+        } else {
+            mySkinPath = []
+        }
         selectedTab = signIn ? .scan : .mySkin
         withAnimation(.easeInOut(duration: 0.5)) {
             hasCompletedOnboarding = true

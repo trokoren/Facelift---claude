@@ -4,6 +4,7 @@ import SwiftUI
 struct PaywallStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
+    @State private var isReading = false
 
     private struct Plan: Identifiable {
         let name: String
@@ -67,7 +68,10 @@ struct PaywallStepView: View {
 
             VStack(spacing: 12) {
                 OnboardingCTA(title: "Start My Skin Journey") {
-                    store.completeOnboarding(with: flow.answers, signIn: false)
+                    // Her scan is read now, right after she subscribes, using her answers.
+                    store.skinType = flow.answers.resolvedSkinType
+                    store.skinGoals = flow.answers.skinGoals
+                    isReading = true
                 }
                 Text("cancel anytime")
                     .font(FLFont.sans(13.5))
@@ -79,6 +83,13 @@ struct PaywallStepView: View {
         }
         .background(Palette.canvas.ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: flow.answers.selectedPlan)
+        .fullScreenCover(isPresented: $isReading) {
+            FirstReadView {
+                isReading = false
+                store.completeOnboarding(with: flow.answers, signIn: false)
+            }
+            .environment(store)
+        }
     }
 
     private func benefit(_ text: String) -> some View {

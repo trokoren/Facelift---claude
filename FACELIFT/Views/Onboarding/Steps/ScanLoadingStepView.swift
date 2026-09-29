@@ -19,9 +19,8 @@ struct ScanLoadingStepView: View {
     var body: some View {
         if FaceScanController.isSupported {
             if didCapture {
-                SkinAnalyzingView(onFinished: { flow.next() }, onRetry: {
-                    withAnimation(.easeInOut(duration: 0.4)) { didCapture = false }
-                })
+                // The photo is read after she subscribes, not here.
+                ScanCompleteView { flow.next() }
                     .transition(.opacity)
             } else {
                 CircleScanView(onComplete: { images in
