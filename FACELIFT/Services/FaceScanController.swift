@@ -184,8 +184,17 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         // Skip frames where the direction can't be measured (for example the very first
         // frames, before the preview has its size). One bad value would otherwise stick
         // forever through the smoothing and the scan could never start.
-        let raw = headDirection(face: face, camera: frame.camera)
-        guard raw.x.isFinite, raw.y.isFinite else { return }
+        var raw = headDirection(face: face, camera: frame.camera, useView: true)
+        if !(raw.x.isFinite && raw.y.isFinite) {
+            // The preview couldn't place the point yet: measure from the camera instead.
+            raw = headDirection(face: face, camera: frame.camera, useView: false)
+        }
+        guard raw.x.isFinite, raw.y.isFinite else {
+            #if DEBUG
+            debugStatus = "direction unavailable"
+            #endif
+            return
+        }
         if let previous = smoothed, !(previous.x.isFinite && previous.y.isFinite) { smoothed = nil }
         if !(steadyReference.x.isFinite && steadyReference.y.isFinite) { steadyReference = raw }
         let current = smoothed.map { $0 + (raw - $0) * smoothing } ?? raw
@@ -292,13 +301,13 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// Where the nose is pointing on screen: x > 0 toward the right edge, y > 0 toward the
     /// bottom, roughly sin(angle). Measured by projecting a point 10 cm out from the face
     /// (along the nose) into the preview view, so it matches what she sees.
-    private func headDirection(face: ARFaceAnchor, camera: ARCamera) -> SIMD2<Double> {
+    private func headDirection(face: ARFaceAnchor, camera: ARCamera, useView: Bool) -> SIMD2<Double> {
         let facePosition = simd_make_float3(face.transform.columns.3)
         let forward = simd_normalize(simd_make_float3(face.transform.columns.2))
         let sideways = simd_normalize(simd_make_float3(face.transform.columns.0))
 
         func onScreen(_ point: simd_float3) -> CGPoint {
-            if let view = sceneView {
+            if useView, let view = sceneView {
                 let projected = view.projectPoint(SCNVector3(point.x, point.y, point.z))
                 return CGPoint(x: CGFloat(projected.x), y: CGFloat(projected.y))
             }
