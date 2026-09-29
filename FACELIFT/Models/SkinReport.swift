@@ -7,38 +7,21 @@ struct SkinReport: Decodable {
         let raw: Double
     }
 
-    let mode: String?
-    let overall: Double?
-    let skinAge: Double?
-    let concerns: [String: Concern]
-}
-
-extension SkinReport {
-    /// Averages several readings of the same face, marker by marker. Smooths out small
-    /// differences in angle and light between photos.
-    static func averaged(_ reports: [SkinReport]) -> SkinReport? {
-        guard let first = reports.first else { return nil }
-        guard reports.count > 1 else { return first }
-        var concerns: [String: Concern] = [:]
-        let keys = Set(reports.flatMap { $0.concerns.keys })
-        for key in keys {
-            let values = reports.compactMap { $0.concerns[key] }
-            let count = Double(values.count)
-            concerns[key] = Concern(
-                ui: values.map(\.ui).reduce(0, +) / count,
-                raw: values.map(\.raw).reduce(0, +) / count
-            )
-        }
-        func mean(_ values: [Double]) -> Double? {
-            values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
-        }
-        return SkinReport(
-            mode: first.mode,
-            overall: mean(reports.compactMap(\.overall)),
-            skinAge: mean(reports.compactMap(\.skinAge)),
-            concerns: concerns
-        )
+    /// Written by Claude for each card: aging, tone, health.
+    struct Insights: Decodable {
+        let aging: String?
+        let tone: String?
+        let health: String?
     }
+
+    let mode: String?
+    let resolution: String?
+    /// Set when YouCam couldn't run and Claude read every marker instead.
+    let youcamError: String?
+    let concerns: [String: Concern]
+    /// Which system read each marker: "youcam" or "claude".
+    let sources: [String: String]?
+    let insights: Insights?
 }
 
 /// Turns the 14 measured markers into FACELIFT's three cards, insights and top concerns.
@@ -56,7 +39,7 @@ extension SkinReport {
                concern: "Fine Lines", tip: "A retinol a few nights a week plus daily SPF is what moves fine lines the most."),
         Marker(keys: ["firmness"], name: "Firmness & elasticity", detail: "sagging, loss of bounce",
                concern: "Firmness", tip: "Peptides and a nightly retinoid help skin hold its shape, and SPF protects the collagen you have."),
-        Marker(keys: ["droopy_upper_eyelid", "droopy_lower_eyelid"], name: "Eye lift", detail: "upper and lower eyelid lift",
+        Marker(keys: ["eye_lift", "droopy_upper_eyelid", "droopy_lower_eyelid"], name: "Eye lift", detail: "upper and lower eyelid lift",
                concern: "Eye Lift", tip: "A peptide eye cream morning and night is the gentlest way to support the thin skin around your eyes."),
         Marker(keys: ["tear_trough"], name: "Under-eye hollows", detail: "tear trough depth, shadowing",
                concern: "Under-Eye Hollows", tip: "Hydrating the under-eye with a hyaluronic eye cream softens hollows and the shadows they cast.")
@@ -129,8 +112,19 @@ extension SkinReport {
             score: score,
             rating: SampleData.rating(for: score),
             metrics: metrics,
-            insight: insight(score: score, results: results)
+            insight: writtenInsight(for: kind) ?? insight(score: score, results: results)
         )
+    }
+
+    private func writtenInsight(for kind: AnalysisCategory.Kind) -> String? {
+        let text: String?
+        switch kind {
+        case .aging: text = insights?.aging
+        case .tone: text = insights?.tone
+        case .health: text = insights?.health
+        }
+        guard let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return text
     }
 
     private func insight(score: Int, results: [(marker: Marker, score: Int)]) -> String {

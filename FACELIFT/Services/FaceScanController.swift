@@ -68,7 +68,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored private var hold: Double = 0
     @ObservationIgnored private var mappingStart: TimeInterval?
     /// Straight-on photos taken while she holds still, each with how well framed it was
-    /// (lower is better). The best two are analyzed and their scores averaged.
+    /// (lower is better). The best framed one is analyzed.
     @ObservationIgnored private var frontShots: [(photo: UIImage, quality: Double)] = []
     @ObservationIgnored private var lastShotTime: TimeInterval = 0
 
@@ -389,8 +389,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         phase = .done
         // Don't pause here: pausing freezes her last (mid-turn) frame on screen. The view
         // fades the camera out, then stops the session when it goes away.
-        // Best two straight-on photos. Nothing else leaves this screen.
-        let best = frontShots.sorted { $0.quality < $1.quality }.prefix(2).map(\.photo)
+        // The best framed straight-on photo. Nothing else leaves this screen.
+        let best = frontShots.sorted { $0.quality < $1.quality }.prefix(1).map(\.photo)
         onFinish?(Array(best))
     }
 

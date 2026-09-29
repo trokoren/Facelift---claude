@@ -13,12 +13,12 @@ struct SkinAnalysisError: LocalizedError {
 /// it with YouCam's skin analysis and returns a score per marker. The photo is only held in
 /// memory on the phone.
 enum SkinAnalysisService {
-    static func analyze(_ photo: UIImage) async throws -> SkinReport {
+    static func analyze(_ photo: UIImage, mode: ScanLab.Mode, context: [String: Any]) async throws -> SkinReport {
         guard let url = Backend.functionURL("analyze-skin") else { throw SkinAnalysisError.generic }
         guard let prepared = prepare(photo),
               let jpeg = prepared.jpegData(compressionQuality: 0.9) else { throw SkinAnalysisError.generic }
 
-        var request = URLRequest(url: url, timeoutInterval: 75)
+        var request = URLRequest(url: url, timeoutInterval: 90)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(Backend.anonKey)", forHTTPHeaderField: "Authorization")
@@ -26,7 +26,9 @@ enum SkinAnalysisService {
         let body: [String: Any] = [
             "image": jpeg.base64EncodedString(),
             "width": Int(prepared.size.width * prepared.scale),
-            "height": Int(prepared.size.height * prepared.scale)
+            "height": Int(prepared.size.height * prepared.scale),
+            "mode": mode.rawValue,
+            "context": context
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

@@ -114,33 +114,19 @@ final class AppStore {
             lastCaptures = []
             return nil
         }
-        let photos = Array(lastCaptures.prefix(2))
-        guard !photos.isEmpty else { return SkinAnalysisError.generic.message }
+        guard let photo = lastCaptures.first else { return SkinAnalysisError.generic.message }
+        let mode = ScanLab.shared.mode
+        let context: [String: Any] = ["skin_type": skinType, "skin_goals": skinGoals]
 
-        // Read the best two photos at the same time and average them. If one can't be
-        // read, the other still counts.
-        var reports: [SkinReport] = []
-        var firstError: Error?
-        await withTaskGroup(of: Result<SkinReport, Error>.self) { group in
-            for photo in photos {
-                group.addTask { @MainActor in
-                    do { return .success(try await SkinAnalysisService.analyze(photo)) }
-                    catch { return .failure(error) }
-                }
-            }
-            for await result in group {
-                switch result {
-                case .success(let report): reports.append(report)
-                case .failure(let error): if firstError == nil { firstError = error }
-                }
-            }
+        let report: SkinReport
+        do {
+            report = try await SkinAnalysisService.analyze(photo, mode: mode, context: context)
+        } catch {
+            return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic.message
         }
-
-        guard let report = SkinReport.averaged(reports) else {
-            return (firstError as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic.message
-        }
+        ScanLab.shared.record(report, mode: mode)
         #if DEBUG
-        print("Analyzed \(reports.count) of \(photos.count) photos (\(report.mode ?? "?") mode)")
+        print("Scan read with \(mode.title), \(report.resolution ?? "?") photo", report.youcamError.map { "(YouCam unavailable: \($0))" } ?? "")
         #endif
         latestReport = report
         lastCaptures = []

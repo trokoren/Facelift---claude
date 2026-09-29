@@ -85,6 +85,16 @@ struct AccountView: View {
                 .buttonStyle(CardPressStyle())
                 .padding(.top, 14)
 
+                #if DEBUG
+                NavigationLink(value: AccountRoute.scanLab) {
+                    SettingsRow(title: "Scan Lab", value: ScanLab.shared.mode.title)
+                        .padding(.horizontal, 20)
+                        .cardSurface()
+                }
+                .buttonStyle(CardPressStyle())
+                .padding(.top, 14)
+                #endif
+
                 Button {
                     isConfirmingSignOut = true
                 } label: {

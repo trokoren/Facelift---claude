@@ -14,6 +14,8 @@ struct AccountTab: View {
                         HelpFeedbackView()
                     case .privacy:
                         PrivacyDataView()
+                    case .scanLab:
+                        ScanLabView()
                     }
                 }
         }
