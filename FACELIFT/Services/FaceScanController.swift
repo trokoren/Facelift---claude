@@ -107,11 +107,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         guard Self.isSupported else { return }
         let configuration = ARFaceTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
-        // Sharpest photos the front camera offers during face tracking. Prefer the format that
-        // also supports a full-resolution still, so the straight-on photo can be HD.
-        if let recommended = ARFaceTrackingConfiguration.recommendedVideoFormatForHighResolutionFrameCapturing {
-            configuration.videoFormat = recommended
-        } else if let best = ARFaceTrackingConfiguration.supportedVideoFormats.max(by: {
+        // Sharpest photos the front camera offers during face tracking.
+        if let best = ARFaceTrackingConfiguration.supportedVideoFormats.max(by: {
             $0.imageResolution.width * $0.imageResolution.height < $1.imageResolution.width * $1.imageResolution.height
         }) {
             configuration.videoFormat = best
@@ -237,21 +234,11 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             if hold >= 1 {
                 baseline = current
                 takeFrontShot(frame, quality: framing(match: match, direction: current))
-                upgradeFrontPhoto()
                 mappingStart = frame.timestamp
                 phase = .mapping
             }
 
         case .mapping:
-            // She's holding still while the line sweeps: take a couple more straight-on
-            // photos, but only when she's squarely framed and not moving.
-            let match = outlineMatch(face: face, direction: current)
-            let isSteady = simd_length(current - steadyReference) < steadyTolerance
-            steadyReference = current + (steadyReference - current) * 0.8
-            if match.isMatched && isSteady && frontShots.count < 3 && frame.timestamp - lastShotTime > 0.45 {
-                takeFrontShot(frame, quality: framing(match: match, direction: current))
-            }
-
             let elapsed = frame.timestamp - (mappingStart ?? frame.timestamp)
             let progress = min(1, elapsed / Self.mappingDuration)
             sweepProgress = progress
@@ -391,35 +378,13 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     }
 
     private func takeFrontShot(_ frame: ARFrame, quality: Double) {
-        guard let photo = Self.photo(from: frame.capturedImage, maxSide: 2560, context: ciContext) else { return }
+        guard let photo = Self.photo(from: frame.capturedImage, maxSide: 1600, context: ciContext) else { return }
         frontShots.append((photo, quality))
         captures.append(photo)
         lastShotTime = frame.timestamp
         #if DEBUG
         print("Front shot \(frontShots.count): \(Int(photo.size.width))x\(Int(photo.size.height)), framing \(String(format: "%.3f", quality))")
         #endif
-    }
-
-    /// Swaps the straight-on photo for a full-resolution still (sharper skin detail for the
-    /// analysis). If the phone can't take one, the video-frame photo is kept.
-    private func upgradeFrontPhoto() {
-        let context = ciContext
-        session.captureHighResolutionFrame { @Sendable [weak self] frame, error in
-            guard let frame,
-                  let photo = FaceScanController.photo(from: frame.capturedImage, maxSide: 2560, context: context) else {
-                #if DEBUG
-                print("High-res front photo unavailable:", error.map { String(describing: $0) } ?? "no frame")
-                #endif
-                return
-            }
-            DispatchQueue.main.async {
-                guard let self, !self.frontShots.isEmpty else { return }
-                self.frontShots[0].photo = photo
-                #if DEBUG
-                print("High-res front photo: \(Int(photo.size.width))x\(Int(photo.size.height))")
-                #endif
-            }
-        }
     }
 
     nonisolated private static func photo(from buffer: CVPixelBuffer, maxSide: CGFloat, context: CIContext) -> UIImage? {
