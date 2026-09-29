@@ -181,7 +181,6 @@ Rules: never diagnose or name medical conditions (no rosacea, eczema, melasma, e
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 1500,
-      temperature: 0,
       system,
       tools: [tool],
       tool_choice: { type: "tool", name: "skin_report" },

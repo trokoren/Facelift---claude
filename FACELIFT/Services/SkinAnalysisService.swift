@@ -75,11 +75,9 @@ enum SkinAnalysisService {
             let box = face.boundingBox
             let faceWidth = box.width * width
             let center = CGPoint(x: box.midX * width, y: (1 - box.midY) * height)
-            // YouCam wants the face at 60 to 80% of the width, and switches to its detailed
-            // HD model when the short side is 1080 px or more. Aim for 70%, but loosen toward
-            // 60% if that's what it takes to reach HD.
-            var cropWidth = faceWidth / 0.7
-            if cropWidth < 1080 { cropWidth = min(1080, faceWidth / 0.61) }
+            // YouCam wants the face to fill 60 to 80% of the width, measured more tightly than
+            // Vision's box. Aim for about 78% of Vision's box so YouCam sees ~70%.
+            var cropWidth = faceWidth / 0.78
             cropWidth = min(width, cropWidth)
             let cropHeight = min(height, cropWidth * 4 / 3)
             var x = center.x - cropWidth / 2
