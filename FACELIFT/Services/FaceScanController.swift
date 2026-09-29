@@ -181,7 +181,13 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         }
 
         // Smooth out jitter from frame to frame.
+        // Skip frames where the direction can't be measured (for example the very first
+        // frames, before the preview has its size). One bad value would otherwise stick
+        // forever through the smoothing and the scan could never start.
         let raw = headDirection(face: face, camera: frame.camera)
+        guard raw.x.isFinite, raw.y.isFinite else { return }
+        if let previous = smoothed, !(previous.x.isFinite && previous.y.isFinite) { smoothed = nil }
+        if !(steadyReference.x.isFinite && steadyReference.y.isFinite) { steadyReference = raw }
         let current = smoothed.map { $0 + (raw - $0) * smoothing } ?? raw
         smoothed = current
 
