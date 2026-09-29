@@ -90,7 +90,7 @@ async function youcam(key: string, bytes: Uint8Array, hd: boolean, actions: stri
   const taskId = taskJson?.data?.task_id;
   if (!taskId) {
     const code = String(taskJson?.error_code ?? taskJson?.error ?? taskJson?.message ?? "");
-    if (friendlyError(code)) throw new FaceError(code);
+    if (friendlyError(code)) throw new FaceError(`${code} ${JSON.stringify(taskJson)}`);
     throw new Error(`task rejected: ${JSON.stringify(taskJson)}`);
   }
 
@@ -108,7 +108,7 @@ async function youcam(key: string, bytes: Uint8Array, hd: boolean, actions: stri
     }
     if (status === "error") {
       const code = String(poll?.data?.error ?? poll?.data?.error_message ?? poll?.error_code ?? "");
-      if (friendlyError(code)) throw new FaceError(code);
+      if (friendlyError(code)) throw new FaceError(`${code} ${JSON.stringify(poll)}`);
       throw new Error(`task failed: ${JSON.stringify(poll)}`);
     }
   }
@@ -228,9 +228,10 @@ Deno.serve(async (req) => {
   const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
   const hd = Math.min(width ?? 0, height ?? 0) >= 1080;
   const started = Date.now();
+  console.log("request", JSON.stringify({ mode, width, height, bytes: bytes.length }));
 
   // 1. YouCam measures its markers. If it can't run (for example out of units), Claude
-  //    covers everything so the scan still works. Face or light problems go back to her.
+  //    covers everything so the scan still works.
   let measured: Record<string, Concern> = {};
   let youcamError: string | undefined;
   const wanted = YOUCAM_SETS[mode];
@@ -239,10 +240,9 @@ Deno.serve(async (req) => {
       if (!youcamKey) throw new Error("missing PERFECT_CORP_API_KEY");
       measured = await youcam(youcamKey, bytes, hd, wanted);
     } catch (error) {
-      if (error instanceof FaceError) {
-        return json({ error: friendlyError(error.message), code: error.message }, 422);
-      }
-      youcamError = String(error);
+      // Whatever YouCam's reason (out of units, or a photo it won't accept), Claude still
+      // reads the scan. Claude reports back if there's truly no usable face.
+      youcamError = error instanceof FaceError ? `photo rejected: ${error.message}` : String(error);
       console.error("YouCam unavailable, Claude covers all markers:", youcamError);
     }
   }
@@ -257,6 +257,7 @@ Deno.serve(async (req) => {
     return json({ error: "We couldn't finish reading your scan. Please try again." }, 502);
   }
   if (read.face_visible === false) {
+    console.error("Claude: no clear face");
     return json({ error: "We couldn't see your face clearly. Face the camera in bright, even light and try again." }, 422);
   }
 
