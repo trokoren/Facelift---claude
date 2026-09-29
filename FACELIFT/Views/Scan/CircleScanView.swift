@@ -145,6 +145,16 @@ struct CircleScanView: View {
                 header
                 PrivacyNote(tint: Color(hex: 0xD9D1CF))
                     .padding(.top, 6)
+                #if DEBUG
+                if scan.phase == .aligning && !scan.debugStatus.isEmpty {
+                    Text(scan.debugStatus)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .padding(6)
+                        .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.top, 6)
+                }
+                #endif
                 Spacer()
             }
 

@@ -48,6 +48,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// 0...1 through the scan-line sweep while mapping.
     private(set) var sweepProgress: Double = 0
     private(set) var lightLevel: LightLevel = .good
+    /// Test builds only: what the start check is waiting on, shown on screen.
+    private(set) var debugStatus: String = ""
 
     var filledCount: Int { filled.filter { $0 }.count }
     var progress: Double { Double(filledCount) / Double(Self.segmentCount) }
@@ -71,6 +73,10 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// (lower is better). The best framed one is analyzed.
     @ObservationIgnored private var frontShots: [(photo: UIImage, quality: Double)] = []
     @ObservationIgnored private var lastShotTime: TimeInterval = 0
+    /// Seconds her face has been tracked while lining up. The start check gets more
+    /// forgiving the longer she's been trying, so nobody gets stuck.
+    @ObservationIgnored private var aligningTime: Double = 0
+    @ObservationIgnored private var lastDebugUpdate: TimeInterval = 0
 
     // Tuning. Direction values are roughly sin(head angle): 0.28 is about a 16 degree turn.
     @ObservationIgnored private let steadyTolerance: Double = 0.05
@@ -137,6 +143,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
 
         guard let face = frame.anchors.compactMap({ $0 as? ARFaceAnchor }).first, face.isTracked else {
             setHint("Center your face in the circle")
+            #if DEBUG
+            if debugStatus != "no face tracked" { debugStatus = "no face tracked" }
+            #endif
             hold = 0
             if alignment != 0 { alignment = 0 }
             return
@@ -183,9 +192,20 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         case .aligning:
             // She lines her face up with the outline: eyes on the marks, the right size
             // (distance), level, and looking straight ahead. Holding a match starts the scan.
-            let match = outlineMatch(face: face, direction: current)
-            let isSteady = simd_length(current - steadyReference) < steadyTolerance
+            aligningTime += elapsed
+            // 0 = strict, 1 = relaxed (after ~5 s), 2 = anything reasonable (after ~10 s).
+            let leniency = aligningTime > 10 ? 2 : (aligningTime > 5 ? 1 : 0)
+            let match = outlineMatch(face: face, direction: current, leniency: leniency)
+            let motion = simd_length(current - steadyReference)
+            let isSteady = motion < steadyTolerance * (leniency == 0 ? 1 : 2)
             steadyReference = current + (steadyReference - current) * 0.8
+
+            #if DEBUG
+            if frame.timestamp - lastDebugUpdate > 0.25 {
+                lastDebugUpdate = frame.timestamp
+                debugStatus = match.debug + String(format: " move %.2f%@ · %.0fs L%d", motion, isSteady ? "✓" : "✗", aligningTime, leniency)
+            }
+            #endif
 
             if match.isMatched && isSteady {
                 hold = min(1, hold + elapsed / holdDuration)
@@ -287,8 +307,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     }
 
     /// Compares her eyes (as drawn on screen) with the outline's eye marks.
-    private func outlineMatch(face: ARFaceAnchor, direction: SIMD2<Double>) -> (score: Double, isMatched: Bool, hint: String?) {
-        guard let view = sceneView, view.bounds.width > 0 else { return (0, false, nil) }
+    private func outlineMatch(face: ARFaceAnchor, direction: SIMD2<Double>, leniency: Int = 0) -> (score: Double, isMatched: Bool, hint: String?, debug: String) {
+        guard let view = sceneView, view.bounds.width > 0 else { return (0, false, nil, "no view") }
         let bounds = view.bounds
         let diameter = Self.ovalWidth(for: bounds.width)
         let target = CGPoint(x: bounds.midX, y: bounds.midY + Self.eyeOffsetY * diameter)
@@ -310,7 +330,19 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         let facing = simd_length(direction)
 
         let score = max(0, 1 - offset / 0.25) * max(0, 1 - abs(size - 1) / 0.6) * max(0, 1 - facing / 0.5)
-        let isMatched = offset < 0.07 && abs(size - 1) < 0.22 && tilt < 10 && facing < 0.2
+        let limits: (offset: Double, size: Double, tilt: Double, facing: Double) = switch leniency {
+        case 0: (0.07, 0.22, 10, 0.2)
+        case 1: (0.12, 0.35, 15, 0.28)
+        default: (0.2, 0.5, 20, 0.35)
+        }
+        let okOffset = offset < limits.offset
+        let okSize = abs(size - 1) < limits.size
+        let okTilt = tilt < limits.tilt
+        let okFacing = facing < limits.facing
+        let isMatched = okOffset && okSize && okTilt && okFacing
+        func mark(_ ok: Bool) -> String { ok ? "✓" : "✗" }
+        let debug = String(format: "center %.2f%@ size %.2f%@ tilt %.0f%@ face %.2f%@",
+                           offset, mark(okOffset), size, mark(okSize), tilt, mark(okTilt), facing, mark(okFacing))
 
         let hint: String?
         if size < 0.78 {
@@ -324,7 +356,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         } else {
             hint = nil
         }
-        return (score, isMatched, hint)
+        return (score, isMatched, hint, debug)
     }
 
     private func updatePointer(_ relative: SIMD2<Double>) {
@@ -339,7 +371,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
 
     /// How squarely she's framed: 0 is perfect. Looking off-axis and distance changes move
     /// skin scores the most, so they weigh the most.
-    private func framing(match: (score: Double, isMatched: Bool, hint: String?), direction: SIMD2<Double>) -> Double {
+    private func framing(match: (score: Double, isMatched: Bool, hint: String?, debug: String), direction: SIMD2<Double>) -> Double {
         simd_length(direction) + (1 - match.score)
     }
 
