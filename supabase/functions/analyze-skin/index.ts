@@ -38,8 +38,12 @@ const YOUCAM_SETS: Record<string, string[]> = {
   hybrid6: ["wrinkle", "pore", "texture", "age_spot", "redness", "acne"],
 };
 
-/// Claude's 4 levels -> score (higher is healthier). Levels are far more repeatable than 0-100.
-const LEVEL_SCORE: Record<string, number> = { none: 92, mild: 80, moderate: 66, noticeable: 52 };
+/// Claude rates how visible each concern is from 1 (none) to 10 (very pronounced), using the
+/// anchors in the prompt. Score (higher is healthier) = 100 at 1, down to 46 at 10.
+function severityScore(severity: number): number {
+  const s = Math.min(10, Math.max(1, Math.round(severity)));
+  return 100 - (s - 1) * 6;
+}
 
 type Concern = { ui: number; raw: number };
 
@@ -116,7 +120,7 @@ async function youcam(key: string, bytes: Uint8Array, hd: boolean, actions: stri
 }
 
 type ClaudeResult = {
-  ratings: Record<string, string>;
+  ratings: Record<string, number>;
   insights: { aging: string; tone: string; health: string };
   face_visible: boolean;
 };
@@ -131,9 +135,10 @@ async function claude(
   const ratingProps: Record<string, unknown> = {};
   for (const marker of toRate) {
     ratingProps[marker] = {
-      type: "string",
-      enum: ["none", "mild", "moderate", "noticeable"],
-      description: `How much ${MARKERS[marker]} is visible.`,
+      type: "integer",
+      minimum: 1,
+      maximum: 10,
+      description: `Severity of ${MARKERS[marker]}, 1 to 10.`,
     };
   }
 
@@ -166,7 +171,9 @@ async function claude(
 
 You get one straight-on face photo, any scores already measured by our skin-measurement system (0-100, higher is healthier), and a few answers from her onboarding.
 
-1. Rate each requested marker by how visible that concern is in the photo: none, mild, moderate or noticeable. Judge only what you can see. Be consistent and conservative: when between two levels, pick the milder one unless it's clearly visible. Ignore makeup, lighting color casts and camera noise where you can.
+1. Rate each requested marker by how visible that concern is in THIS photo, from 1 to 10:
+   1 = none visible, 2-3 = barely there, 4-5 = mild but clear, 6-7 = moderate, 8-9 = pronounced, 10 = very pronounced.
+   Judge each face on its own; use the whole scale and don't default to the same number across markers or people. Anchor on specific features you can see (for example crow's feet at rest, shine on the nose, visible pores on the cheeks). Ignore makeup, lighting color casts and camera noise where you can.
 2. Write one insight per card, 3 to 4 sentences, speaking to her as "you". Warm, honest and specific, like a knowledgeable friend. Name her strongest area and the one to focus on, and give one or two concrete, ingredient-level steps (for example retinol, vitamin C, SPF, niacinamide, hyaluronic acid, BHA). Use the measured scores and your ratings together.
 
 Rules: never diagnose or name medical conditions (no rosacea, eczema, melasma, etc.; describe what's visible instead). Never mention AI, models, algorithms or photos being analyzed. No em dashes. Hydration can't be seen directly: combine what the skin looks like with her answers. If no face is clearly visible, set face_visible to false.`;
@@ -263,14 +270,15 @@ Deno.serve(async (req) => {
   const concerns: Record<string, Concern> = { ...measured };
   const sources: Record<string, string> = Object.fromEntries(Object.keys(measured).map((k) => [k, "youcam"]));
   for (const marker of toRate) {
-    const level = read.ratings?.[marker];
-    const score = LEVEL_SCORE[level ?? ""];
-    if (score !== undefined) {
+    const severity = Number(read.ratings?.[marker]);
+    if (Number.isFinite(severity)) {
+      const score = severityScore(severity);
       concerns[marker] = { ui: score, raw: score };
       sources[marker] = "claude";
     }
   }
 
+  console.log("ratings", JSON.stringify(read.ratings));
   console.log("scan", JSON.stringify({
     mode, hd, width, height, ms: Date.now() - started,
     youcam: Object.keys(measured).length, claude: toRate.length, youcamError: youcamError ? "yes" : "no",
