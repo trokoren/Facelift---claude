@@ -206,13 +206,13 @@ struct BudgetStepView: View {
 
 struct HealthContextStepView: View {
     @Environment(OnboardingStore.self) private var flow
-    private let options: [String] = ["Pregnant", "Breastfeeding", "Menopause", "Hormonal imbalances", "Autoimmune condition", "None of these"]
+    private let options: [String] = ["Pregnant", "Trying to conceive", "Breastfeeding", "Menopause", "Hormonal imbalances", "Autoimmune condition", "None of these"]
 
     var body: some View {
         OnboardingPage(title: "Anything specific we\nshould know about you?", subtitle: "This helps us keep your recommendations safe and\npersonal.", titleSize: 33, titleTop: 4) {
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 ForEach(options, id: \.self) { option in
-                    OnboardingOption(title: option, isSelected: flow.answers.healthContext.contains(option), alignment: .leading, height: 62) {
+                    OnboardingOption(title: option, isSelected: flow.answers.healthContext.contains(option), alignment: .leading, height: 56) {
                         flow.toggle(option, in: \.healthContext, exclusive: "None of these")
                     }
                 }
