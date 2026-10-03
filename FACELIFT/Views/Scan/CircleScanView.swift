@@ -538,8 +538,9 @@ private struct FaceOutline: View {
     let alignment: Double
 
     var body: some View {
-        let ovalWidth = diameter * 0.56
-        let ovalHeight = diameter * 0.76
+        // Scales with the eye spacing, so a closer target draws a bigger face outline.
+        let ovalWidth = diameter * 0.56 * (FaceScanController.eyeSpacing / 0.24)
+        let ovalHeight = diameter * 0.76 * (FaceScanController.eyeSpacing / 0.24)
         let eyeY = FaceScanController.eyeOffsetY * diameter
         let eyeX = FaceScanController.eyeSpacing * diameter / 2
         let isMatched = alignment >= 1
@@ -549,7 +550,7 @@ private struct FaceOutline: View {
             Ellipse()
                 .stroke(color, style: StrokeStyle(lineWidth: isMatched ? 2.5 : 1.5, lineCap: .round, dash: isMatched ? [] : [2, 7]))
                 .frame(width: ovalWidth, height: ovalHeight)
-                .offset(y: diameter * 0.05)
+                .offset(y: diameter * 0.05 * (FaceScanController.eyeSpacing / 0.24))
                 .shadow(color: Palette.rose.opacity(isMatched ? 0.8 : 0), radius: 10)
 
             ForEach([-1.0, 1.0], id: \.self) { side in

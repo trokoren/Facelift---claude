@@ -84,8 +84,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored private let holdDuration: Double = 0.5
 
     // Face outline geometry, as fractions of the circle's diameter. Shared with the view.
-    /// Target distance between her eyes on screen (about 30 to 45 cm from the phone).
-    static let eyeSpacing: CGFloat = 0.24
+    /// Target distance between her eyes on screen (about 25 to 35 cm from the phone). Close
+    /// enough that pores and texture get plenty of pixels, far enough for the camera to focus.
+    static let eyeSpacing: CGFloat = 0.29
     /// Target height of her eyes relative to the oval's center (negative is up). Eyes sit
     /// a little above the middle of the face outline, like on a real face.
     static let eyeOffsetY: CGFloat = 0.0
@@ -169,9 +170,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             setHint("Too dark to read your skin. Face a window or lamp.")
         } else if lightLevel == .dim && phase == .aligning {
             setHint("Brighter light gives a more accurate scan")
-        } else if phase == .circling && distance > 0.55 {
+        } else if phase == .circling && distance > 0.45 {
             setHint("Bring your phone a little closer")
-        } else if phase == .circling && distance < 0.26 {
+        } else if phase == .circling && distance < 0.2 {
             setHint("Hold your phone a little farther away")
         } else {
             setHint(nil)
