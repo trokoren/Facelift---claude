@@ -66,6 +66,11 @@ struct Consult: Codable, Hashable {
         let title: String
         let detail: String
 
+        init(title: String, detail: String) {
+            self.title = title
+            self.detail = detail
+        }
+
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
@@ -105,8 +110,12 @@ struct Consult: Codable, Hashable {
         skinType = try c.decode(SkinType.self, forKey: .skinType)
         strengths = ((try? c.decodeIfPresent([Strength].self, forKey: .strengths)) ?? []).filter { !$0.title.isEmpty }
         concerns = ((try? c.decodeIfPresent([Concern].self, forKey: .concerns)) ?? []).filter { !$0.title.isEmpty }
-        let note = (try? c.decodeIfPresent(Note.self, forKey: .watch)) ?? nil
-        watch = (note?.title.isEmpty == false) ? note : nil
+        // Usually {title, detail}; sometimes written as one plain sentence.
+        var note = (try? c.decodeIfPresent(Note.self, forKey: .watch)) ?? nil
+        if note == nil, let text = (try? c.decodeIfPresent(String.self, forKey: .watch)) ?? nil {
+            note = Note(title: "", detail: text)
+        }
+        watch = (note?.title.isEmpty == false || note?.detail.isEmpty == false) ? note : nil
         plan = (try? c.decodeIfPresent(Plan.self, forKey: .plan)) ?? Plan()
     }
 }

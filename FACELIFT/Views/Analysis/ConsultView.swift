@@ -68,9 +68,11 @@ struct ConsultView: View {
             if let watch = consult.watch {
                 section("KEEP AN EYE ON") {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(watch.title)
-                            .font(FLFont.sans(14.5, .semibold))
-                            .foregroundStyle(Palette.ink)
+                        if !watch.title.isEmpty {
+                            Text(watch.title)
+                                .font(FLFont.sans(14.5, .semibold))
+                                .foregroundStyle(Palette.ink)
+                        }
                         Text(watch.detail)
                             .font(FLFont.sans(13.5))
                             .foregroundStyle(Palette.body)

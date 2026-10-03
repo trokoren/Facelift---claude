@@ -71,6 +71,7 @@ struct PaywallStepView: View {
                     // Her scan is read now, right after she subscribes, using her answers.
                     store.skinType = flow.answers.resolvedSkinType
                     store.skinGoals = flow.answers.skinGoals
+                    store.saveProfile(flow.answers)
                     isReading = true
                 }
                 Text("cancel anytime")

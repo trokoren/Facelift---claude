@@ -31,6 +31,11 @@ let messy = """
 {"intro":"Hi","skinType":{"label":"combination"},
 "strengths":[{"title":"Glow"}],
 "concerns":[{"key":"pore","title":"Pores","severity":"notable","summary":"x"},{"key":"texture"}],
+"watch":"Keep pores clear in summer.",
 "plan":"use spf"}
 """
 check("messy response", messy, expectConcerns: 1)
+if (try? JSONDecoder().decode(Consult.self, from: Data(messy.utf8)))?.watch?.detail != "Keep pores clear in summer." {
+    print("FAIL watch as plain text was dropped"); exit(1)
+}
+print("ok   watch as plain text kept")

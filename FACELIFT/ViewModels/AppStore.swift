@@ -16,6 +16,8 @@ final class AppStore {
     var lastCaptures: [UIImage] = []
     /// Real results from the most recent scan, until they're saved into a Scan.
     var latestReport: SkinReport?
+    /// Her onboarding answers, used to personalize every consultation.
+    var profile: SkinProfile? = SkinProfile.load()
 
     var scans: [Scan] = SampleData.scans
     var usedProducts: [UsedProduct] = SampleData.usedProducts
@@ -118,7 +120,14 @@ final class AppStore {
             return "Let's take a quick scan so we can read your skin."
         }
         let mode = ScanLab.shared.mode
-        let context: [String: Any] = ["skin_type": skinType, "skin_goals": skinGoals]
+        var context: [String: Any] = profile?.context ?? [:]
+        if profile == nil { context["skin_type_she_chose"] = skinType }
+        context["skin_goals"] = skinGoals
+        let products = usedProducts.map { "\($0.brand) \($0.name)".trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if !products.isEmpty { context["products_she_uses"] = products }
+        // Her city and weather get named only in her first consultation, never again.
+        let consultsKey = "facelift.consultCount"
+        context["first_consult"] = UserDefaults.standard.integer(forKey: consultsKey) == 0
 
         let report: SkinReport
         do {
@@ -127,6 +136,9 @@ final class AppStore {
             return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic(String(describing: error)).message
         }
         ScanLab.shared.record(report, mode: mode)
+        if report.consult != nil {
+            UserDefaults.standard.set(UserDefaults.standard.integer(forKey: consultsKey) + 1, forKey: consultsKey)
+        }
         #if DEBUG
         print("Scan read with \(mode.title), \(report.resolution ?? "?") photo", report.youcamError.map { "(YouCam unavailable: \($0))" } ?? "")
         #endif
@@ -235,8 +247,16 @@ final class AppStore {
     }
 
     /// Applies the onboarding answers to the profile and enters the main app.
+    /// Keeps her onboarding answers for every future consultation.
+    func saveProfile(_ answers: OnboardingAnswers) {
+        let profile = SkinProfile(answers)
+        profile.save()
+        self.profile = profile
+    }
+
     func completeOnboarding(with answers: OnboardingAnswers, signIn: Bool) {
         if !signIn {
+            saveProfile(answers)
             skinType = answers.resolvedSkinType
             skinGoals = answers.skinGoals
             remindersOn = answers.notificationsRequested
