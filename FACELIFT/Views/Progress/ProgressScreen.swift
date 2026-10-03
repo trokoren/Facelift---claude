@@ -6,6 +6,7 @@ struct ProgressScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var insight: InsightContent?
     @State private var isEditingProducts: Bool = false
+    @State private var range: ChartRange = .all
 
     var body: some View {
         ScrollView {
@@ -68,19 +69,63 @@ struct ProgressScreen: View {
     }
 
     private var chartCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let points = chartPoints
+        return VStack(alignment: .leading, spacing: 0) {
             Text("SKIN HEALTH OVER TIME")
                 .font(FLFont.sans(9.5, .semibold))
                 .tracking(1.4)
                 .foregroundStyle(Palette.stone)
-            SkinHealthChart(points: store.visibleChartPoints)
-                .padding(.top, 20)
+
+            if store.hasRealScans {
+                HStack(spacing: 6) {
+                    ForEach(ChartRange.allCases, id: \.self) { option in
+                        Button {
+                            withAnimation(.snappy) { range = option }
+                        } label: {
+                            Text(option.rawValue)
+                                .font(FLFont.sans(11.5, range == option ? .semibold : .medium))
+                                .foregroundStyle(range == option ? Color.white : Palette.stone)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 30)
+                                .background(Capsule().fill(range == option ? Palette.rose : Palette.blush.opacity(0.6)))
+                        }
+                        .buttonStyle(PressableStyle(scale: 0.95))
+                    }
+                }
+                .padding(.top, 14)
+                .sensoryFeedback(.selection, trigger: range)
+            }
+
+            if points.isEmpty {
+                Text("No scans in this period yet. Try a longer range.")
+                    .font(FLFont.sans(12.5))
+                    .foregroundStyle(Palette.pebble)
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                SkinHealthChart(points: points) { id in store.openScan(id) }
+                    .id(range)
+                    .padding(.top, 20)
+            }
+
+            Text(store.hasRealScans
+                 ? "Each dot is a scan. The rose line is your trend. Tap a dot to see that consultation."
+                 : "An example. Your own scores appear here after your first scan.")
+                .font(FLFont.sans(11))
+                .foregroundStyle(Palette.pebble)
+                .padding(.top, 14)
         }
         .padding(.horizontal, 20)
         .padding(.top, 22)
         .padding(.bottom, 18)
         .cardSurface()
         .padding(.horizontal, 24)
+    }
+
+    /// The points inside the chosen range (placeholders until she has a real scan).
+    private var chartPoints: [ChartPoint] {
+        guard store.hasRealScans, let days = range.days else { return store.chartPoints }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? .distantPast
+        return store.chartPoints.filter { ($0.date ?? .distantPast) >= cutoff }
     }
 
     private var usingCard: some View {
@@ -174,6 +219,25 @@ struct ProgressScreen: View {
             } label: {
                 Label("Remove from my routine", systemImage: "trash")
             }
+        }
+    }
+}
+
+/// Time ranges for the skin health chart.
+enum ChartRange: String, CaseIterable {
+    case week = "7D"
+    case month = "30D"
+    case quarter = "90D"
+    case year = "1Y"
+    case all = "All"
+
+    var days: Int? {
+        switch self {
+        case .week: 7
+        case .month: 30
+        case .quarter: 90
+        case .year: 365
+        case .all: nil
         }
     }
 }

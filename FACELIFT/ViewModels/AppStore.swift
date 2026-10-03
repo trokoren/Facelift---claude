@@ -36,7 +36,8 @@ final class AppStore {
             ChartPoint(id: scan.id,
                        label: scan.date.formatted(.dateTime.month(.abbreviated).day()),
                        value: scan.overallScore,
-                       color: colors[index % colors.count])
+                       color: colors[index % colors.count],
+                       date: scan.date)
         }
     }
 
@@ -101,8 +102,16 @@ final class AppStore {
         return date.formatted(.dateTime.month(.abbreviated).day())
     }
 
-    var visibleChartPoints: [ChartPoint] {
-        Array(chartPoints.suffix(4))
+    /// True once she has at least one real scan (the chart stops showing placeholders).
+    var hasRealScans: Bool {
+        scans.contains { !$0.isSample }
+    }
+
+    /// Opens a past consultation from the progress chart.
+    func openScan(_ id: UUID) {
+        guard scan(with: id) != nil else { return }
+        mySkinPath = [.scan(id: id, isFresh: false)]
+        selectedTab = .mySkin
     }
 
     func scan(with id: UUID) -> Scan? {
