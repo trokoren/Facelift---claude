@@ -17,12 +17,12 @@ struct SkinAnalyzingView: View {
 
     private let stages: [String] = [
         "Mapping your face",
-        "Reading 14 skin markers",
-        "Scoring your results",
-        "Matching products to your skin"
+        "Measuring your skin",
+        "Reading your skin type",
+        "Writing your consultation"
     ]
-    /// Seconds each step stays on screen.
-    private let stageDuration: Double = 2.0
+    /// Seconds for each of the first three steps. The last one lasts as long as the read does.
+    private let stageDuration: Double = 3.0
 
     var body: some View {
         ZStack {
@@ -101,7 +101,7 @@ struct SkinAnalyzingView: View {
                 Text("Reading your skin")
                     .font(FLFont.serif(38))
                     .foregroundStyle(.white)
-                Text("This takes a few seconds.")
+                Text("This takes about 20 seconds.")
                     .font(FLFont.sans(15))
                     .foregroundStyle(Palette.nightBody)
                     .padding(.top, 8)
@@ -155,12 +155,22 @@ struct SkinAnalyzingView: View {
         await animate(from: 0, to: (count - 1) / count, duration: (count - 1) * stageDuration)
         if Task.isCancelled { return }
 
-        // ...then wait for the results before ticking off the last one.
-        if let message = await analysis.value {
+        // ...then the last step stays alive while the consultation is written: the bar keeps
+        // creeping toward the end (never quite reaching it) so it never looks frozen.
+        let creep = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                if Task.isCancelled { break }
+                withAnimation(.linear(duration: 0.25)) { progress += (0.97 - progress) * 0.025 }
+            }
+        }
+        let outcome = await analysis.value
+        creep.cancel()
+        if let message = outcome {
             withAnimation(.easeInOut(duration: 0.4)) { failure = message }
             return
         }
-        await animate(from: (count - 1) / count, to: 1, duration: stageDuration)
+        await animate(from: progress, to: 1, duration: 0.6)
         try? await Task.sleep(for: .milliseconds(500))
         if Task.isCancelled { return }
         onFinished()
