@@ -380,7 +380,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     }
 
     private func takeFrontShot(_ frame: ARFrame, quality: Double) {
-        guard let photo = Self.photo(from: frame.capturedImage, maxSide: 1600, context: ciContext) else { return }
+        guard let photo = Self.photo(from: frame.capturedImage, maxSide: 4096, context: ciContext) else { return }
         frontShots.append((photo, quality))
         captures.append(photo)
         lastShotTime = frame.timestamp
