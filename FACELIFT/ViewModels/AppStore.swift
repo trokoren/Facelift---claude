@@ -109,6 +109,13 @@ final class AppStore {
         return date.formatted(.dateTime.month(.abbreviated).day())
     }
 
+    /// Skin type for her profile: what her latest consultation found, else what she told us.
+    var profileSkinType: String {
+        if let measured = scans.first(where: { !$0.isSample })?.measuredSkinType { return measured }
+        if let chosen = profile?.skinType, chosen != "I don't really know" { return chosen }
+        return skinType
+    }
+
     /// True once she has at least one real scan (the chart stops showing placeholders).
     var hasRealScans: Bool {
         scans.contains { !$0.isSample }

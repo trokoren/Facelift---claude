@@ -53,7 +53,7 @@ struct MySkinView: View {
             HStack {
                 profileLabel("Skin Type")
                 Spacer()
-                ProfileChip(text: store.skinType)
+                ProfileChip(text: store.profileSkinType)
             }
             .padding(.bottom, 13)
 
@@ -64,7 +64,7 @@ struct MySkinView: View {
                     .padding(.top, 2)
                 Spacer(minLength: 0)
                 FlowLayout(spacing: 5, lineSpacing: 6, alignTrailing: true) {
-                    ForEach(store.latestScan?.concerns ?? [], id: \.self) { concern in
+                    ForEach(store.latestScan?.shortConcerns ?? [], id: \.self) { concern in
                         ProfileChip(text: concern)
                     }
                 }
@@ -162,8 +162,8 @@ private struct ScanTimelineRow: View {
                 Text(scan.formattedDate)
                     .font(FLFont.serif(19.9))
                     .foregroundStyle(Palette.ink)
-                HStack(spacing: 5) {
-                    ForEach(scan.concerns, id: \.self) { concern in
+                FlowLayout(spacing: 5, lineSpacing: 5) {
+                    ForEach(scan.shortConcerns, id: \.self) { concern in
                         ConcernChip(text: concern)
                     }
                 }

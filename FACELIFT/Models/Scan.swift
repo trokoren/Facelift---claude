@@ -19,7 +19,28 @@ struct Scan: Identifiable, Hashable, Codable {
         date.formatted(.dateTime.month(.wide).day().year())
     }
 
+    /// Short concern names for chips ("Redness", "Pores"). Consult scans use the measured
+    /// areas; older scans keep their saved names.
+    var shortConcerns: [String] {
+        guard let consult, !consult.concerns.isEmpty else { return concerns }
+        var seen = Set<String>()
+        return consult.concerns.map { Measure.name($0.key) }.filter { seen.insert($0).inserted }
+    }
+
+    /// The five-type answer from the consult ("Combination", "Oily"...), if it names one.
+    var measuredSkinType: String? {
+        guard let label = consult?.skinType.label.lowercased() else { return nil }
+        for type in ["combination", "oily", "dry", "sensitive", "normal"] where label.contains(type) {
+            return type.capitalized
+        }
+        return nil
+    }
+
     var metaLine: String {
+        if consult != nil {
+            let shopped = productsShopped > 0 ? " · \(productsShopped) \(productsShopped == 1 ? "product" : "products") shopped" : ""
+            return "Skin Score \(overallScore)" + shopped
+        }
         let recs = recommendations.count
         let recWord = recs == 1 ? "recommendation" : "recommendations"
         let productWord = productsShopped == 1 ? "product" : "products"
