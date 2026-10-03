@@ -5,6 +5,16 @@ struct SkinReport: Decodable {
     struct Concern: Decodable {
         let ui: Double
         let raw: Double
+
+        private enum CodingKeys: String, CodingKey { case ui, raw }
+
+        /// Lenient: a missing or odd raw value falls back to the display score, and an
+        /// unreadable score is marked -1 and dropped, instead of failing the whole scan.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            ui = (try? c.decode(Double.self, forKey: .ui)) ?? -1
+            raw = (try? c.decode(Double.self, forKey: .raw)) ?? ui
+        }
     }
 
     /// Written by Claude for each card: aging, tone, health.
@@ -34,7 +44,7 @@ struct SkinReport: Decodable {
         mode = try? c.decodeIfPresent(String.self, forKey: .mode)
         resolution = try? c.decodeIfPresent(String.self, forKey: .resolution)
         youcamError = try? c.decodeIfPresent(String.self, forKey: .youcamError)
-        concerns = try c.decode([String: Concern].self, forKey: .concerns)
+        concerns = try c.decode([String: Concern].self, forKey: .concerns).filter { $0.value.ui >= 0 }
         sources = try? c.decodeIfPresent([String: String].self, forKey: .sources)
         insights = try? c.decodeIfPresent(Insights.self, forKey: .insights)
         // The written consult is a bonus: if it can't be read, the scores still show.

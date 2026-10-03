@@ -7,6 +7,16 @@ struct SkinAnalysisError: LocalizedError {
 
     static let generic = SkinAnalysisError(message: "We couldn't read that scan. Please try again in bright, even light.")
     static let offline = SkinAnalysisError(message: "We couldn't reach our servers. Check your connection and try again.")
+
+    /// The general message, plus the technical reason in test builds so failures can be
+    /// diagnosed from a screenshot. Customers only ever see the friendly message.
+    static func generic(_ reason: String) -> SkinAnalysisError {
+        #if DEBUG
+        return SkinAnalysisError(message: generic.message + "\n\n[test build] " + reason)
+        #else
+        return generic
+        #endif
+    }
 }
 
 /// Sends the straight-on photo to our server (Supabase function "analyze-skin"), which reads
@@ -14,9 +24,9 @@ struct SkinAnalysisError: LocalizedError {
 /// memory on the phone.
 enum SkinAnalysisService {
     static func analyze(_ photo: UIImage, mode: ScanLab.Mode, context: [String: Any]) async throws -> SkinReport {
-        guard let url = Backend.functionURL("analyze-skin") else { throw SkinAnalysisError.generic }
+        guard let url = Backend.functionURL("analyze-skin") else { throw SkinAnalysisError.generic("no server address") }
         guard let prepared = prepare(photo),
-              let jpeg = prepared.jpegData(compressionQuality: 0.9) else { throw SkinAnalysisError.generic }
+              let jpeg = prepared.jpegData(compressionQuality: 0.9) else { throw SkinAnalysisError.generic("couldn't prepare the photo") }
 
         var request = URLRequest(url: url, timeoutInterval: 90)
         request.httpMethod = "POST"
@@ -36,7 +46,11 @@ enum SkinAnalysisService {
         do {
             result = try await URLSession.shared.data(for: request)
         } catch {
+            #if DEBUG
+            throw SkinAnalysisError(message: SkinAnalysisError.offline.message + "\n\n[test build] " + error.localizedDescription)
+            #else
             throw SkinAnalysisError.offline
+            #endif
         }
         let data = result.0
         let status = (result.1 as? HTTPURLResponse)?.statusCode ?? 0
@@ -51,7 +65,7 @@ enum SkinAnalysisService {
             #if DEBUG
             print("analyze-skin failed (\(status)):", String(data: data, encoding: .utf8) ?? "")
             #endif
-            throw SkinAnalysisError.generic
+            throw SkinAnalysisError.generic("server status \(status): " + String((String(data: data, encoding: .utf8) ?? "").prefix(160)))
         }
 
         let report: SkinReport
@@ -61,13 +75,13 @@ enum SkinAnalysisService {
             #if DEBUG
             print("analyze-skin response couldn't be read:", error)
             #endif
-            throw SkinAnalysisError.generic
+            throw SkinAnalysisError.generic("couldn't read the response: \(String(describing: error).prefix(300))")
         }
         guard report.isUsable else {
             #if DEBUG
             print("analyze-skin response missing markers:", report.concerns.keys.sorted())
             #endif
-            throw SkinAnalysisError.generic
+            throw SkinAnalysisError.generic("missing markers, got: \(report.concerns.keys.sorted().joined(separator: ", "))")
         }
         return report
     }

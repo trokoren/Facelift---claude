@@ -124,7 +124,7 @@ final class AppStore {
         do {
             report = try await SkinAnalysisService.analyze(photo, mode: mode, context: context)
         } catch {
-            return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic.message
+            return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic(String(describing: error)).message
         }
         ScanLab.shared.record(report, mode: mode)
         #if DEBUG
