@@ -24,7 +24,10 @@ struct CheckInCard: View {
                     .foregroundStyle(Palette.rose)
                 Spacer()
                 if answer == nil {
-                    Button(action: onClose) {
+                    Button {
+                        store.snoozeCheckIns()
+                        withAnimation(.snappy) { onClose() }
+                    } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 13, weight: .light))
                             .foregroundStyle(Palette.stone)

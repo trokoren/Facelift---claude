@@ -278,9 +278,10 @@ final class AppStore {
     var dueCheckIn: UsedProduct? {
         let now = Date()
         let day: Double = 86_400
-        #if !DEBUG
-        if let last = checkIns.last, Calendar.current.isDateInToday(last.date) { return nil }
-        #endif
+        // Closed with the X: quiet for about 2.5 weeks.
+        if let snoozed = UserDefaults.standard.object(forKey: Self.checkInSnoozeKey) as? Date, now < snoozed { return nil }
+        // Answered one recently: give her a few days before the next question.
+        if let last = checkIns.last, now.timeIntervalSince(last.date) < 3 * day { return nil }
         let waiting = usedProducts.compactMap { product -> (UsedProduct, Date)? in
             let last = latestCheckIn(for: product)
             #if DEBUG
@@ -292,6 +293,13 @@ final class AppStore {
             return (product, since)
         }
         return waiting.min { $0.1 < $1.1 }?.0
+    }
+
+    private static let checkInSnoozeKey = "facelift.checkInSnoozedUntil"
+
+    /// She closed the question without answering: don't ask again for about 2.5 weeks.
+    func snoozeCheckIns() {
+        UserDefaults.standard.set(Date().addingTimeInterval(18 * 86_400), forKey: Self.checkInSnoozeKey)
     }
 
     func latestCheckIn(for product: UsedProduct) -> ProductCheckIn? {
