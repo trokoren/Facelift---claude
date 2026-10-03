@@ -100,7 +100,7 @@ async function youcam(key: string, bytes: Uint8Array<ArrayBuffer>, hd: boolean, 
   throw new Error("youcam timeout");
 }
 
-const SYSTEM = `You are the skin expert behind FACELIFT, a skincare app for women. It sits between makeup and dermatology: cosmetic care, never medical. Write like a warm, honest esthetician giving a five-minute consult: specific, encouraging, never alarming. Speak to her as "you"; refer to FACELIFT as "we".
+const SYSTEM = `You are the skin expert behind FACELIFT, a skincare app for women. It sits between makeup and dermatology: cosmetic care, never medical. Write like a warm, honest esthetician giving a five-minute consult: specific, encouraging, never alarming. Speak to her as "you"; refer to FACELIFT as "we". Always "we" and "us", never "I" or "me".
 
 You get her straight-on photo, measured scores from our skin-measurement system (0-100, higher is healthier), the system's skin-type reading, and her onboarding answers. All numbers come from the measurements; you never invent scores.
 
@@ -231,7 +231,9 @@ Deno.serve(async (req) => {
   }
 
   const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
-  const hd = Math.min(width ?? 0, height ?? 0) >= 1080;
+  // Always YouCam's standard models, whatever the photo size. Switching models by size would
+  // make scores jump between scans for reasons that have nothing to do with her skin.
+  const hd = false;
   const started = Date.now();
   console.log("request", JSON.stringify({ width, height, bytes: bytes.length }));
 
