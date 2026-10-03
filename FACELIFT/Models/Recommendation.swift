@@ -1,8 +1,8 @@
 import Foundation
 
 /// An issue detected in a scan, the recommended solution, and three product tiers.
-struct Recommendation: Identifiable, Hashable {
-    struct Product: Identifiable, Hashable {
+struct Recommendation: Identifiable, Hashable, Codable {
+    struct Product: Identifiable, Hashable, Codable {
         let tier: String
         let name: String
         let price: Int

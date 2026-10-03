@@ -1,6 +1,6 @@
 import Foundation
 
-struct Scan: Identifiable, Hashable {
+struct Scan: Identifiable, Hashable, Codable {
     let id: UUID
     let date: Date
     let portraitName: String?
@@ -12,6 +12,8 @@ struct Scan: Identifiable, Hashable {
     var consult: Consult? = nil
     /// YouCam measurements behind the consult, 0-100, higher is healthier.
     var measures: [String: Int] = [:]
+    /// Placeholder scans shipped with the app. Never saved and never charted.
+    var isSample: Bool = false
 
     var formattedDate: String {
         date.formatted(.dateTime.month(.wide).day().year())

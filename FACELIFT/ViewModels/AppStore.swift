@@ -19,9 +19,26 @@ final class AppStore {
     /// Her onboarding answers, used to personalize every consultation.
     var profile: SkinProfile? = SkinProfile.load()
 
-    var scans: [Scan] = SampleData.scans
+    /// Her scans, newest first. Saved on this phone after every change; until her first real
+    /// scan, the app shows its placeholder scans (never saved).
+    var scans: [Scan] = ScanArchive.load() ?? SampleData.scans {
+        didSet { ScanArchive.save(scans) }
+    }
     var usedProducts: [UsedProduct] = SampleData.usedProducts
-    var chartPoints: [ChartPoint] = SampleData.chartPoints
+
+    /// The Skin Score over time, oldest first, from her real scans (placeholder points until
+    /// she has one).
+    var chartPoints: [ChartPoint] {
+        let real = scans.filter { !$0.isSample }.reversed()
+        guard !real.isEmpty else { return SampleData.chartPoints }
+        let colors: [Color] = [Palette.sky, Palette.rose, Palette.sage, Palette.gold]
+        return real.enumerated().map { index, scan in
+            ChartPoint(id: scan.id,
+                       label: scan.date.formatted(.dateTime.month(.abbreviated).day()),
+                       value: scan.overallScore,
+                       color: colors[index % colors.count])
+        }
+    }
 
     var name: String = "Sophia Chen"
     var email: String = "sophia@email.com"
@@ -163,11 +180,8 @@ final class AppStore {
             consult: report?.consult,
             measures: report?.measures ?? [:]
         )
-        scans.insert(scan, at: 0)
-
-        let colors: [Color] = [Palette.sky, Palette.rose, Palette.sage, Palette.gold]
-        let color = colors[chartPoints.count % colors.count]
-        chartPoints.append(ChartPoint(label: scan.date.formatted(.dateTime.month(.abbreviated).day()), value: scan.overallScore, color: color))
+        // Her first real scan replaces the placeholders.
+        scans = [scan] + scans.filter { !$0.isSample }
 
         mySkinPath = [.scan(id: scan.id, isFresh: true)]
         selectedTab = .mySkin
@@ -270,8 +284,12 @@ final class AppStore {
                     categories: latestReport?.categories ?? first.categories,
                     recommendations: first.recommendations,
                     consult: latestReport?.consult ?? first.consult,
-                    measures: latestReport?.measures ?? first.measures
+                    measures: latestReport?.measures ?? first.measures,
+                    isSample: latestReport == nil && first.isSample
                 )
+                if !scans[0].isSample {
+                    scans = [scans[0]] + scans.dropFirst().filter { !$0.isSample }
+                }
             }
         }
         latestReport = nil

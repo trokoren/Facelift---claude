@@ -6,8 +6,8 @@ struct ChartPoint: Identifiable, Hashable {
     let value: Int
     let color: Color
 
-    init(label: String, value: Int, color: Color) {
-        self.id = UUID()
+    init(id: UUID = UUID(), label: String, value: Int, color: Color) {
+        self.id = id
         self.label = label
         self.value = value
         self.color = color

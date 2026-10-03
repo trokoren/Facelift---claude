@@ -1,14 +1,14 @@
 import SwiftUI
 
 /// One of the three analysis groups (Aging & Structure, Tone & Clarity, Skin Health).
-struct AnalysisCategory: Identifiable, Hashable {
-    enum Kind: String {
+struct AnalysisCategory: Identifiable, Hashable, Codable {
+    enum Kind: String, Codable {
         case aging
         case tone
         case health
     }
 
-    struct Metric: Identifiable, Hashable {
+    struct Metric: Identifiable, Hashable, Codable {
         let name: String
         let detail: String
         let score: Int

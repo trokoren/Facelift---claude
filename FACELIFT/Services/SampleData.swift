@@ -92,13 +92,13 @@ enum SampleData {
     static let scans: [Scan] = [
         Scan(id: UUID(), date: date(2026, 8, 28), portraitName: "blonde_woman_smiling_portrait",
              concerns: ["Dehydration", "Fine Lines", "Texture"], productsShopped: 2,
-             categories: categories(), recommendations: recommendations),
+             categories: categories(), recommendations: recommendations, isSample: true),
         Scan(id: UUID(), date: date(2024, 4, 18), portraitName: "woman_touching_hair_portrait",
              concerns: ["Fine Lines", "Texture", "Dullness"], productsShopped: 1,
-             categories: categories(shift: -6), recommendations: recommendations),
+             categories: categories(shift: -6), recommendations: recommendations, isSample: true),
         Scan(id: UUID(), date: date(2024, 3, 2), portraitName: "woman_headshot_bangs",
              concerns: ["Dehydration", "Fine Lines", "Texture"], productsShopped: 0,
-             categories: categories(shift: -14), recommendations: recommendations)
+             categories: categories(shift: -14), recommendations: recommendations, isSample: true)
     ]
 
     static let chartPoints: [ChartPoint] = [
