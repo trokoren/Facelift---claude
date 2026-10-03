@@ -147,7 +147,9 @@ final class AppStore {
             concerns: report?.topConcerns ?? base?.concerns ?? ["Dehydration", "Fine Lines", "Texture"],
             productsShopped: 0,
             categories: report?.categories ?? SampleData.categories(shift: 2),
-            recommendations: SampleData.recommendations
+            recommendations: SampleData.recommendations,
+            consult: report?.consult,
+            measures: report?.measures ?? [:]
         )
         scans.insert(scan, at: 0)
 
@@ -246,7 +248,9 @@ final class AppStore {
                     concerns: latestReport?.topConcerns ?? answers.topConcerns,
                     productsShopped: first.productsShopped,
                     categories: latestReport?.categories ?? first.categories,
-                    recommendations: first.recommendations
+                    recommendations: first.recommendations,
+                    consult: latestReport?.consult ?? first.consult,
+                    measures: latestReport?.measures ?? first.measures
                 )
             }
         }

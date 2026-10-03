@@ -22,6 +22,13 @@ struct SkinReport: Decodable {
     /// Which system read each marker: "youcam" or "claude".
     let sources: [String: String]?
     let insights: Insights?
+    /// The written consult (current server). Nil from older responses.
+    let consult: Consult?
+
+    /// Measurements rounded for display, keyed by marker.
+    var measures: [String: Int] {
+        concerns.mapValues { min(100, max(1, Int($0.ui.rounded()))) }
+    }
 }
 
 /// Turns the 14 measured markers into FACELIFT's three cards, insights and top concerns.
@@ -97,6 +104,9 @@ extension SkinReport {
 
     /// Her three lowest markers, in plain words ("Dehydration", "Fine Lines", ...).
     var topConcerns: [String] {
+        if let consult, !consult.concerns.isEmpty {
+            return consult.concerns.map(\.title)
+        }
         let all = scored(Self.aging) + scored(Self.tone) + scored(Self.health)
         return all.sorted { $0.score < $1.score }.prefix(3).map(\.marker.concern)
     }

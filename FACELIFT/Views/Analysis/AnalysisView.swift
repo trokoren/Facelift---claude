@@ -42,22 +42,28 @@ struct AnalysisView: View {
             // The FACELIFT header scrolls away; on past scans the "Back to My Skin" bar
             // sits just under it and then sticks to the top once it gets there.
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                BrandHeader(subtitle: "Your Skin Analysis.")
+                BrandHeader(subtitle: scan.consult == nil ? "Your Skin Analysis." : "Your Skin Consultation.")
 
                 Section {
-                    SectionLabel("YOUR ANALYSIS")
-                        .padding(.top, 22)
-                        .padding(.horizontal, 24)
+                    if let consult = scan.consult {
+                        // Current scans: the consultation.
+                        ConsultView(scan: scan, consult: consult)
+                    } else {
+                        // Older and sample scans: the category cards.
+                        SectionLabel("YOUR ANALYSIS")
+                            .padding(.top, 22)
+                            .padding(.horizontal, 24)
 
-                    VStack(spacing: 12) {
-                        ForEach(scan.categories) { category in
-                            AnalysisCardView(category: category) {
-                                insight = InsightContent(category: category)
+                        VStack(spacing: 12) {
+                            ForEach(scan.categories) { category in
+                                AnalysisCardView(category: category) {
+                                    insight = InsightContent(category: category)
+                                }
                             }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
 
                     needsBanner
                         .padding(.top, 20)

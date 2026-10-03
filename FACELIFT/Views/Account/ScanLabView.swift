@@ -9,27 +9,6 @@ struct ScanLabView: View {
     var body: some View {
         List {
             Section {
-                Picker("Read scans with", selection: $lab.mode) {
-                    ForEach(ScanLab.Mode.allCases) { mode in
-                        Text("\(mode.title) (\(mode.costNote))").tag(mode)
-                    }
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } header: {
-                Text("Read scans with")
-            } footer: {
-                Text("For the steadiness test: scan 5 times in a row in the same spot and light, without moving. Then check the spread below.")
-            }
-
-            Section {
-                Picker("Show results for", selection: $viewing) {
-                    ForEach(ScanLab.Mode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-
                 let count = lab.runs.filter { $0.mode == viewing }.count
                 let rows = lab.spread(for: viewing)
                 if rows.isEmpty {
@@ -62,7 +41,7 @@ struct ScanLabView: View {
             } header: {
                 Text("Steadiness")
             } footer: {
-                Text("Spread is the highest score minus the lowest across scans. Red means it moved more than 6 points.")
+                Text("Scan 5 times in a row in the same spot and light. Spread is the highest score minus the lowest. Red means it moved more than 6 points.")
             }
 
             if lab.runs.contains(where: \.youcamFailed) {

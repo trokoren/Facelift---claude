@@ -1,10 +1,9 @@
-// FACELIFT skin analysis: YouCam measures, Claude explains.
+// FACELIFT skin analysis, written as a consultation.
 //
-// The app sends one straight-on photo (cropped around the face) plus a little context from
-// onboarding. Depending on `mode`:
-//   "claude"  - Claude rates all 14 markers and writes the insights.
-//   "hybrid4" - YouCam measures 4 markers, Claude rates the rest and writes the insights.
-//   "hybrid6" - YouCam measures 6 markers, Claude rates the rest and writes the insights.
+// The app sends one straight-on photo (cropped around the face) plus her onboarding answers.
+// YouCam measures skin type and 7 concerns; every number she sees comes from YouCam.
+// Claude reads the photo and those numbers and writes the consult: her skin type, what's
+// working, what we're seeing, what to keep an eye on, and her plan. Claude writes words only.
 // The photo is never written anywhere by this function.
 //
 // Secrets (set in Supabase, never in the app or repo):
@@ -13,37 +12,17 @@
 const YOUCAM = "https://yce-api-01.makeupar.com/s2s/v2.0";
 const CLAUDE_MODEL = "claude-sonnet-5";
 
-/// Every marker the app shows, and what "worse" looks like for each one.
-const MARKERS: Record<string, string> = {
-  wrinkle: "fine lines and wrinkles (forehead, crow's feet, smile lines)",
-  firmness: "loss of firmness or elasticity (sagging along the jaw and cheeks)",
-  eye_lift: "drooping of the upper or lower eyelids",
-  tear_trough: "under-eye hollows (tear trough depth and shadowing)",
-  age_spot: "dark spots (sun spots, post-acne marks, uneven pigment)",
-  radiance: "dullness (lack of glow, tired-looking skin)",
-  redness: "redness (flushing, irritation, visible capillaries)",
-  dark_circle: "dark circles under the eyes",
-  eye_bag: "puffiness or bags under the eyes",
-  moisture: "dehydration (tight, flaky or dull-dry looking skin)",
-  oiliness: "excess oil or shine (T-zone, visible sebum)",
-  pore: "visible or enlarged pores and congestion",
-  texture: "uneven texture (roughness, bumps)",
-  acne: "active breakouts or blemishes",
+/// What YouCam measures (SD action names), and what each one is about.
+const MEASURES: Record<string, string> = {
+  wrinkle: "fine lines and wrinkles",
+  dark_circle: "dark circles",
+  age_spot: "dark spots and uneven pigment",
+  redness: "redness",
+  texture: "skin texture",
+  pore: "pores",
+  moisture: "hydration",
 };
-
-/// Which markers YouCam measures in each mode. SD action names.
-const YOUCAM_SETS: Record<string, string[]> = {
-  claude: [],
-  hybrid4: ["wrinkle", "pore", "texture", "age_spot"],
-  hybrid6: ["wrinkle", "pore", "texture", "age_spot", "redness", "acne"],
-};
-
-/// Claude rates how visible each concern is from 1 (none) to 10 (very pronounced), using the
-/// anchors in the prompt. Score (higher is healthier) = 100 at 1, down to 46 at 10.
-function severityScore(severity: number): number {
-  const s = Math.min(10, Math.max(1, Math.round(severity)));
-  return 100 - (s - 1) * 6;
-}
+const ACTIONS = ["skin_type", ...Object.keys(MEASURES)];
 
 type Concern = { ui: number; raw: number };
 
@@ -65,7 +44,7 @@ function normalize(type: string): string {
 class FaceError extends Error {}
 
 /// Measures `actions` with YouCam. Returns scores keyed by marker.
-async function youcam(key: string, bytes: Uint8Array, hd: boolean, actions: string[]): Promise<Record<string, Concern>> {
+async function youcam(key: string, bytes: Uint8Array<ArrayBuffer>, hd: boolean, actions: string[]): Promise<{ scores: Record<string, Concern>; skinType: unknown }> {
   const auth = { Authorization: `Bearer ${key}` };
   const fileRes = await fetch(`${YOUCAM}/file`, {
     method: "POST",
@@ -103,12 +82,14 @@ async function youcam(key: string, bytes: Uint8Array, hd: boolean, actions: stri
     const poll = await (await fetch(`${YOUCAM}/task/skin-analysis/${encodeURIComponent(taskId)}`, { headers: auth })).json();
     const status = poll?.data?.task_status;
     if (status === "success") {
-      const out: Record<string, Concern> = {};
+      const scores: Record<string, Concern> = {};
+      let skinType: unknown = null;
       for (const item of poll?.data?.results?.output ?? []) {
         const type = normalize(String(item.type ?? ""));
-        if (typeof item.ui_score === "number") out[type] = { ui: item.ui_score, raw: Number(item.raw_score ?? item.ui_score) };
+        if (type === "skin_type") skinType = item;
+        else if (typeof item.ui_score === "number") scores[type] = { ui: item.ui_score, raw: Number(item.raw_score ?? item.ui_score) };
       }
-      return out;
+      return { scores, skinType };
     }
     if (status === "error") {
       const code = String(poll?.data?.error ?? poll?.data?.error_message ?? poll?.error_code ?? "");
@@ -119,78 +100,87 @@ async function youcam(key: string, bytes: Uint8Array, hd: boolean, actions: stri
   throw new Error("youcam timeout");
 }
 
-type ClaudeResult = {
-  ratings: Record<string, number>;
-  insights: { aging: string; tone: string; health: string };
-  face_visible: boolean;
-};
+const SYSTEM = `You are the skin expert behind FACELIFT, a skincare app for women. It sits between makeup and dermatology: cosmetic care, never medical. Write like a warm, honest esthetician giving a five-minute consult: specific, encouraging, never alarming. Speak to her as "you"; refer to FACELIFT as "we".
 
-async function claude(
-  key: string,
-  image: string,
-  toRate: string[],
-  measured: Record<string, Concern>,
-  context: Record<string, unknown>,
-): Promise<ClaudeResult> {
-  const ratingProps: Record<string, unknown> = {};
-  for (const marker of toRate) {
-    ratingProps[marker] = {
-      type: "integer",
-      minimum: 1,
-      maximum: 10,
-      description: `Severity of ${MARKERS[marker]}, 1 to 10.`,
-    };
-  }
+You get her straight-on photo, measured scores from our skin-measurement system (0-100, higher is healthier), the system's skin-type reading, and her onboarding answers. All numbers come from the measurements; you never invent scores.
 
-  const tool = {
-    name: "skin_report",
-    description: "Record the skin read for this photo.",
-    input_schema: {
-      type: "object",
-      properties: {
-        face_visible: {
-          type: "boolean",
-          description: "False if no face is clearly visible (too dark, blurry, covered, turned away).",
-        },
-        ratings: { type: "object", properties: ratingProps, required: toRate },
-        insights: {
+Write the consult:
+- intro: 2 sentences summing up her skin today: one genuine positive, then the main focus.
+- skinType: her skin type (normal, dry, oily, combination or sensitive), using the measured reading and her answers, plus 2-3 sentences on what it means for her day to day.
+- strengths: 2 or 3 things that are genuinely good, based on her highest measured scores and what you see. Specific, never generic flattery.
+- concerns: her 2 or 3 lowest measured areas, ranked. Each uses a measured key and gets a severity (mild, moderate or notable), a 1-2 sentence summary, and a deeper read: what we see on her face, why it happens, what to do (ingredients and how often), and what to expect over 3-6 weeks.
+- watch: one gentle prevention note about something fine now that her skin type is prone to.
+- plan: the one focus, then a short morning and evening routine (3-4 steps each, ingredient level, no brand names).
+
+Rules: never diagnose or name medical conditions (no rosacea, eczema, melasma, acne vulgaris and so on; describe what's visible). Never mention AI, models, algorithms, scans being analyzed or photos. No em dashes. Plain, warm language a friend would use.`;
+
+const TOOL = {
+  name: "consult",
+  description: "Record her skin consultation.",
+  input_schema: {
+    type: "object",
+    properties: {
+      face_visible: { type: "boolean", description: "False if no face is clearly visible." },
+      intro: { type: "string" },
+      skinType: {
+        type: "object",
+        properties: { label: { type: "string" }, explanation: { type: "string" } },
+        required: ["label", "explanation"],
+      },
+      strengths: {
+        type: "array", minItems: 2, maxItems: 3,
+        items: {
           type: "object",
-          properties: {
-            aging: { type: "string", description: "Aging & Structure card: wrinkles, firmness, eye lift, under-eye hollows." },
-            tone: { type: "string", description: "Tone & Clarity card: dark spots, radiance, redness, dark circles, puffiness." },
-            health: { type: "string", description: "Skin Health card: hydration, oil, pores, texture, breakouts." },
-          },
-          required: ["aging", "tone", "health"],
+          properties: { title: { type: "string" }, detail: { type: "string" } },
+          required: ["title", "detail"],
         },
       },
-      required: ["face_visible", "ratings", "insights"],
+      concerns: {
+        type: "array", minItems: 2, maxItems: 3,
+        items: {
+          type: "object",
+          properties: {
+            key: { type: "string", enum: Object.keys(MEASURES) },
+            title: { type: "string" },
+            severity: { type: "string", enum: ["mild", "moderate", "notable"] },
+            summary: { type: "string" },
+            seen: { type: "string", description: "What we see on her face." },
+            why: { type: "string", description: "Why it happens." },
+            todo: { type: "string", description: "What to do: ingredients and how often." },
+            expect: { type: "string", description: "What to expect over 3-6 weeks." },
+          },
+          required: ["key", "title", "severity", "summary", "seen", "why", "todo", "expect"],
+        },
+      },
+      watch: {
+        type: "object",
+        properties: { title: { type: "string" }, detail: { type: "string" } },
+        required: ["title", "detail"],
+      },
+      plan: {
+        type: "object",
+        properties: {
+          focus: { type: "string" },
+          morning: { type: "array", items: { type: "string" } },
+          evening: { type: "array", items: { type: "string" } },
+        },
+        required: ["focus", "morning", "evening"],
+      },
     },
-  };
+    required: ["face_visible", "intro", "skinType", "strengths", "concerns", "watch", "plan"],
+  },
+};
 
-  const system = `You are the skin expert inside FACELIFT, a skincare app for women. It sits between makeup and dermatology: cosmetic care, never medical.
-
-You get one straight-on face photo, any scores already measured by our skin-measurement system (0-100, higher is healthier), and a few answers from her onboarding.
-
-1. Rate each requested marker by how visible that concern is in THIS photo, from 1 to 10:
-   1 = none visible, 2-3 = barely there, 4-5 = mild but clear, 6-7 = moderate, 8-9 = pronounced, 10 = very pronounced.
-   Judge each face on its own; use the whole scale and don't default to the same number across markers or people. Anchor on specific features you can see (for example crow's feet at rest, shine on the nose, visible pores on the cheeks). Ignore makeup, lighting color casts and camera noise where you can.
-2. Write one insight per card, 3 to 4 sentences, speaking to her as "you". Warm, honest and specific, like a knowledgeable friend. Name her strongest area and the one to focus on, and give one or two concrete, ingredient-level steps (for example retinol, vitamin C, SPF, niacinamide, hyaluronic acid, BHA). Use the measured scores and your ratings together.
-
-Rules: never diagnose or name medical conditions (no rosacea, eczema, melasma, etc.; describe what's visible instead). Never mention AI, models, algorithms or photos being analyzed. No em dashes. Hydration can't be seen directly: combine what the skin looks like with her answers. If no face is clearly visible, set face_visible to false.`;
-
+async function consult(key: string, image: string, scores: Record<string, Concern>, skinType: unknown, context: unknown) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 1500,
-      system,
-      tools: [tool],
-      tool_choice: { type: "tool", name: "skin_report" },
+      max_tokens: 3000,
+      system: SYSTEM,
+      tools: [TOOL],
+      tool_choice: { type: "tool", name: "consult" },
       messages: [{
         role: "user",
         content: [
@@ -198,8 +188,8 @@ Rules: never diagnose or name medical conditions (no rosacea, eczema, melasma, e
           {
             type: "text",
             text: JSON.stringify({
-              markers_to_rate: Object.fromEntries(toRate.map((m) => [m, MARKERS[m]])),
-              measured_scores: Object.fromEntries(Object.entries(measured).map(([k, v]) => [k, Math.round(v.ui)])),
+              measured_scores: Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, { area: MEASURES[k] ?? k, score: Math.round(v.ui) }])),
+              measured_skin_type: skinType,
               her_answers: context,
             }),
           },
@@ -210,86 +200,65 @@ Rules: never diagnose or name medical conditions (no rosacea, eczema, melasma, e
   const body = await res.json();
   if (!res.ok) throw new Error(`claude ${res.status}: ${JSON.stringify(body)}`);
   const use = (body?.content ?? []).find((c: { type: string }) => c.type === "tool_use");
-  if (!use?.input) throw new Error(`claude: no report ${JSON.stringify(body)}`);
+  if (!use?.input) throw new Error(`claude: no consult ${JSON.stringify(body)}`);
   console.log("claude usage", JSON.stringify(body.usage));
-  return use.input as ClaudeResult;
+  return use.input;
 }
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Use POST" }, 405);
 
-  const youcamKey = Deno.env.get("PERFECT_CORP_API_KEY") ?? "";
+  const youcamKey = Deno.env.get("PERFECT_CORP_API_KEY");
   const claudeKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!claudeKey) return json({ error: "Server is missing ANTHROPIC_API_KEY" }, 500);
+  if (!youcamKey || !claudeKey) return json({ error: "Server is missing an API key" }, 500);
 
-  let image: string, width: number, height: number, mode: string, context: Record<string, unknown>;
+  let image: string, width: number, height: number, context: unknown;
   try {
-    ({ image, width, height, mode = "hybrid6", context = {} } = await req.json());
+    ({ image, width, height, context = {} } = await req.json());
     if (!image) throw new Error("missing image");
   } catch {
-    return json({ error: "Send { image: base64 JPEG, width, height, mode?, context? }" }, 400);
+    return json({ error: "Send { image: base64 JPEG, width, height, context? }" }, 400);
   }
-  if (!(mode in YOUCAM_SETS)) mode = "hybrid6";
 
   const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
   const hd = Math.min(width ?? 0, height ?? 0) >= 1080;
   const started = Date.now();
-  console.log("request", JSON.stringify({ mode, width, height, bytes: bytes.length }));
+  console.log("request", JSON.stringify({ width, height, bytes: bytes.length }));
 
-  // 1. YouCam measures its markers. If it can't run (for example out of units), Claude
-  //    covers everything so the scan still works.
-  let measured: Record<string, Concern> = {};
-  let youcamError: string | undefined;
-  const wanted = YOUCAM_SETS[mode];
-  if (wanted.length > 0) {
-    try {
-      if (!youcamKey) throw new Error("missing PERFECT_CORP_API_KEY");
-      measured = await youcam(youcamKey, bytes, hd, wanted);
-    } catch (error) {
-      // Whatever YouCam's reason (out of units, or a photo it won't accept), Claude still
-      // reads the scan. Claude reports back if there's truly no usable face.
-      youcamError = error instanceof FaceError ? `photo rejected: ${error.message}` : String(error);
-      console.error("YouCam unavailable, Claude covers all markers:", youcamError);
-    }
-  }
-
-  // 2. Claude rates everything YouCam didn't measure and writes the insights.
-  const toRate = Object.keys(MARKERS).filter((m) => !(m in measured));
-  let read: ClaudeResult;
+  // 1. YouCam measures. Every score comes from here, so if it can't read the photo we ask
+  //    her to scan again instead of guessing.
+  let measured: { scores: Record<string, Concern>; skinType: unknown };
   try {
-    read = await claude(claudeKey, image, toRate, measured, context);
+    measured = await youcam(youcamKey, bytes, hd, ACTIONS);
+  } catch (error) {
+    console.error("YouCam failed:", String(error));
+    if (error instanceof FaceError) {
+      return json({ error: friendlyError(error.message) ?? "Please scan again in bright, even light." }, 422);
+    }
+    return json({ error: "We couldn't finish reading your scan. Please try again in a moment." }, 502);
+  }
+  console.log("skin type", JSON.stringify(measured.skinType));
+
+  // 2. Claude writes the consult from the measurements, the photo and her answers.
+  let written: Record<string, unknown>;
+  try {
+    written = await consult(claudeKey, image, measured.scores, measured.skinType, context);
   } catch (error) {
     console.error("Claude failed:", String(error));
     return json({ error: "We couldn't finish reading your scan. Please try again." }, 502);
   }
-  if (read.face_visible === false) {
-    console.error("Claude: no clear face");
+  if (written.face_visible === false) {
     return json({ error: "We couldn't see your face clearly. Face the camera in bright, even light and try again." }, 422);
   }
+  delete written.face_visible;
 
-  const concerns: Record<string, Concern> = { ...measured };
-  const sources: Record<string, string> = Object.fromEntries(Object.keys(measured).map((k) => [k, "youcam"]));
-  for (const marker of toRate) {
-    const severity = Number(read.ratings?.[marker]);
-    if (Number.isFinite(severity)) {
-      const score = severityScore(severity);
-      concerns[marker] = { ui: score, raw: score };
-      sources[marker] = "claude";
-    }
-  }
-
-  console.log("ratings", JSON.stringify(read.ratings));
-  console.log("scan", JSON.stringify({
-    mode, hd, width, height, ms: Date.now() - started,
-    youcam: Object.keys(measured).length, claude: toRate.length, youcamError: youcamError ? "yes" : "no",
-  }));
+  console.log("scan", JSON.stringify({ hd, width, height, ms: Date.now() - started, measured: Object.keys(measured.scores).length }));
 
   return json({
-    mode,
+    mode: "consult",
     resolution: hd ? "hd" : "sd",
-    youcamError,
-    concerns,
-    sources,
-    insights: read.insights,
+    concerns: measured.scores,
+    sources: Object.fromEntries(Object.keys(measured.scores).map((k) => [k, "youcam"])),
+    consult: written,
   });
 });

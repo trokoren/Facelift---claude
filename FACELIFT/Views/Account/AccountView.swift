@@ -87,7 +87,7 @@ struct AccountView: View {
 
                 #if DEBUG
                 NavigationLink(value: AccountRoute.scanLab) {
-                    SettingsRow(title: "Scan Lab", value: ScanLab.shared.mode.title)
+                    SettingsRow(title: "Scan Lab")
                         .padding(.horizontal, 20)
                         .cardSurface()
                 }

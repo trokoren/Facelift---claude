@@ -8,6 +8,10 @@ struct Scan: Identifiable, Hashable {
     var productsShopped: Int
     let categories: [AnalysisCategory]
     let recommendations: [Recommendation]
+    /// Written results (scans made with the consult). Older and sample scans have none.
+    var consult: Consult? = nil
+    /// YouCam measurements behind the consult, 0-100, higher is healthier.
+    var measures: [String: Int] = [:]
 
     var formattedDate: String {
         date.formatted(.dateTime.month(.wide).day().year())
@@ -20,8 +24,13 @@ struct Scan: Identifiable, Hashable {
         return "\(recs) \(recWord) · \(productsShopped) \(productWord) shopped"
     }
 
-    /// Mean of the category scores, used for the progress chart.
+    /// The Skin Score: mean of the measurements (or of the category scores on older scans).
+    /// Used for the results header and the progress chart.
     var overallScore: Int {
+        if !measures.isEmpty {
+            let total = measures.values.reduce(0, +)
+            return Int((Double(total) / Double(measures.count)).rounded())
+        }
         guard !categories.isEmpty else { return 0 }
         let total = categories.map(\.score).reduce(0, +)
         return Int((Double(total) / Double(categories.count)).rounded())
