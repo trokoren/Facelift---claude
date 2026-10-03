@@ -90,12 +90,14 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     /// Target height of her eyes relative to the oval's center (negative is up). Eyes sit
     /// a little above the middle of the face outline, like on a real face.
     static let eyeOffsetY: CGFloat = 0.0
-    @ObservationIgnored private let turnThreshold: Double = 0.24
+    /// How far she has to turn before a tick lights: about 9 degrees. A gentle tilt, not a
+    /// full look up or down (big tilts just film her neck and feel awkward).
+    @ObservationIgnored private let turnThreshold: Double = 0.16
     /// Attention each tick needs before it lights (neighbors share half, so a smooth sweep
     /// lights ticks right under the dot). A full circle takes roughly 6 to 9 seconds.
     @ObservationIgnored private let dwellPerSegment: Double = 0.12
     /// How far a turn reaches the ring for the pointer dot.
-    @ObservationIgnored private let pointerReach: Double = 0.42
+    @ObservationIgnored private let pointerReach: Double = 0.3
     /// 0...1, higher follows faster, lower is steadier.
     @ObservationIgnored private let smoothing: Double = 0.35
 

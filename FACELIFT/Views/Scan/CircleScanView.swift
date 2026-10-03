@@ -273,7 +273,7 @@ struct CircleScanView: View {
         switch scan.phase {
         case .aligning: "Line your face up\nwith the outline"
         case .mapping: "Mapping your face"
-        case .circling: "Now slowly circle\nyour head"
+        case .circling: "Gently circle\nyour head"
         case .done: "Scan complete"
         }
     }
