@@ -18,15 +18,15 @@ struct ProgressScreen: View {
                 updateCard
                     .padding(.top, 18)
 
+                chartCard
+                    .padding(.top, 18)
+
                 if let product = checkInProduct {
                     CheckInCard(product: product) { checkInProduct = nil }
                         .padding(.horizontal, 24)
                         .padding(.top, 18)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-
-                chartCard
-                    .padding(.top, 18)
 
                 usingCard
                     .padding(.top, 18)
@@ -84,30 +84,36 @@ struct ProgressScreen: View {
     private var chartCard: some View {
         let points = chartPoints
         return VStack(alignment: .leading, spacing: 0) {
-            Text("SKIN HEALTH OVER TIME")
-                .font(FLFont.sans(9.5, .semibold))
-                .tracking(1.4)
-                .foregroundStyle(Palette.stone)
-
-            if store.hasRealScans {
-                HStack(spacing: 6) {
-                    ForEach(ChartRange.allCases, id: \.self) { option in
-                        Button {
-                            withAnimation(.snappy) { range = option }
-                        } label: {
-                            Text(option.rawValue)
-                                .font(FLFont.sans(11.5, range == option ? .semibold : .medium))
-                                .foregroundStyle(range == option ? Color.white : Palette.stone)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 30)
-                                .background(Capsule().fill(range == option ? Palette.rose : Palette.blush.opacity(0.6)))
+            HStack {
+                Text("SKIN HEALTH OVER TIME")
+                    .font(FLFont.sans(9.5, .semibold))
+                    .tracking(1.4)
+                    .foregroundStyle(Palette.stone)
+                Spacer()
+                Menu {
+                    Picker("Time range", selection: $range) {
+                        ForEach(ChartRange.allCases, id: \.self) { option in
+                            Text(option.title).tag(option)
                         }
-                        .buttonStyle(PressableStyle(scale: 0.95))
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(range.rawValue)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .font(FLFont.sans(11.5, .semibold))
+                    .foregroundStyle(Palette.rose)
+                    .padding(.horizontal, 12)
+                    .frame(height: 30)
+                    .background(Capsule().fill(Palette.blush.opacity(0.7)))
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .padding(.top, 14)
-                .sensoryFeedback(.selection, trigger: range)
+                .accessibilityLabel("Time range, \(range.title)")
+                .padding(.vertical, -10)
             }
+            .sensoryFeedback(.selection, trigger: range)
 
             if points.isEmpty {
                 Text("No scans in this period yet. Try a longer range.")
@@ -248,6 +254,16 @@ enum ChartRange: String, CaseIterable {
     case quarter = "90D"
     case year = "1Y"
     case all = "All"
+
+    var title: String {
+        switch self {
+        case .week: "Last 7 days"
+        case .month: "Last 30 days"
+        case .quarter: "Last 90 days"
+        case .year: "Last year"
+        case .all: "All time"
+        }
+    }
 
     var days: Int? {
         switch self {

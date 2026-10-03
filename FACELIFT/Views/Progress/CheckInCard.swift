@@ -13,7 +13,7 @@ struct CheckInCard: View {
     @State private var note: String = ""
     @FocusState private var noteFocused: Bool
 
-    private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+    private let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -38,25 +38,25 @@ struct CheckInCard: View {
             }
 
             Text("How's the \(product.shortName) going?")
-                .font(FLFont.serif(24))
+                .font(FLFont.serif(20))
                 .foregroundStyle(Palette.ink)
-                .padding(.top, 8)
+                .padding(.top, 6)
 
             if let answer {
                 Text(reply)
-                    .font(FLFont.sans(13.5))
+                    .font(FLFont.sans(13))
                     .foregroundStyle(Palette.body)
-                    .lineSpacing(4)
-                    .padding(.top, 12)
+                    .lineSpacing(3)
+                    .padding(.top, 8)
                     .transition(.opacity)
 
                 TextField("Add a note (optional)", text: $note, axis: .vertical)
                     .font(FLFont.sans(14))
                     .lineLimit(1...3)
                     .focused($noteFocused)
-                    .padding(12)
+                    .padding(10)
                     .background(Palette.blush.opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.top, 14)
+                    .padding(.top, 10)
 
                 if answer == .stopped || answer == .irritating {
                     Button {
@@ -75,27 +75,27 @@ struct CheckInCard: View {
                 OnboardingCTA(title: "Done") { finish() }
                     .padding(.top, 10)
             } else {
-                LazyVGrid(columns: columns, spacing: 10) {
+                LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(ProductCheckIn.Answer.allCases, id: \.self) { option in
                         Button {
                             choose(option)
                         } label: {
                             Text(option.label)
-                                .font(FLFont.sans(14, .medium))
+                                .font(FLFont.sans(13, .medium))
                                 .foregroundStyle(Palette.ink)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 46)
+                                .frame(height: 36)
                                 .background(Palette.blush.opacity(0.6), in: Capsule())
                         }
                         .buttonStyle(PressableStyle(scale: 0.96))
                     }
                 }
-                .padding(.top, 16)
+                .padding(.top, 12)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 22)
-        .padding(.bottom, 18)
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
         .background(AccentEdgeBackground(accent: Palette.rose))
         .sensoryFeedback(.selection, trigger: answer)
     }
