@@ -86,7 +86,7 @@ struct CircleScanView: View {
                     // Finish: a rose sweep closes the ring, then glows once.
                     Ellipse()
                         .trim(from: 0, to: finishSweep)
-                        .stroke(Palette.rose, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .stroke(Palette.rose, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                         .frame(width: ringSize.width, height: ringSize.height)
                         .shadow(color: Palette.rose.opacity(finishGlow ? 0.95 : 0), radius: finishGlow ? 24 : 0)
                         .position(center)
@@ -210,8 +210,8 @@ struct CircleScanView: View {
         withAnimation(.easeOut(duration: 0.3)) { cameraOpacity = 0 }
         try? await Task.sleep(for: .milliseconds(250))
         scan.stop()
-        withAnimation(.easeInOut(duration: 0.55)) { finishSweep = 1 }
-        try? await Task.sleep(for: .milliseconds(550))
+        withAnimation(.easeInOut(duration: 1.1)) { finishSweep = 1 }
+        try? await Task.sleep(for: .milliseconds(1100))
         withAnimation(.easeOut(duration: 0.35)) { finishGlow = true }
         try? await Task.sleep(for: .milliseconds(650))
     }
@@ -331,7 +331,7 @@ private struct LightChip: View {
     }
 }
 
-/// 48 ticks around the oval, each pointing outward. They light rose where her nose has been.
+/// 48 small diamonds around the oval. They light rose where her nose has been.
 private struct OvalTickRing: View {
     let filled: [Bool]
     let size: CGSize
@@ -351,21 +351,34 @@ private struct OvalTickRing: View {
                 let b = Double(size.height / 2)
                 let normal = atan2(sin(theta) / b, cos(theta) / a)
 
-                Capsule()
-                    .fill(isOn ? Palette.rose : Color.white.opacity(isLive ? 0.3 : 0.08))
-                    .frame(width: 4, height: 20)
+                Diamond()
+                    .fill(isOn ? Palette.rose : Color.white.opacity(isLive ? 0.32 : 0.08))
+                    .frame(width: 7, height: 13)
                     .scaleEffect(y: isOn ? 1 : (isLive ? 0.72 : 0.45), anchor: .center)
                     .shadow(color: Palette.rose.opacity(isOn ? 0.8 : 0), radius: isOn ? 6 : 0)
                     .rotationEffect(.radians(normal + .pi / 2))
                     .offset(x: CGFloat(a * cos(theta)), y: CGFloat(b * sin(theta)))
                     .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isOn)
-                    .animation(.easeOut(duration: 0.25).delay(Double(tick) * 0.012), value: isLive)
+                    .animation(.easeOut(duration: 0.35).delay(Double(tick) * 0.022), value: isLive)
             }
         }
         .frame(width: size.width, height: size.height)
         .accessibilityElement()
         .accessibilityLabel("Scan progress")
         .accessibilityValue("\(filled.filter { $0 }.count) of \(filled.count)")
+    }
+}
+
+/// A slim diamond, longer than it is wide.
+private struct Diamond: Shape {
+    nonisolated func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
+        p.closeSubpath()
+        return p
     }
 }
 
@@ -646,15 +659,19 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
         (0, 1), (1, 2), (2, 12), (3, 4), (4, 5), (5, 12),
         // Eyes: inner corner to outer corner, and down to the under-eye.
         (6, 7), (8, 9), (7, 10), (9, 11),
-        // Forehead to inner brows; bridge down the nose to the lips and chin.
-        (20, 2), (20, 5), (12, 13), (13, 16), (16, 17),
+        // Forehead: top, across the upper forehead, down the middle to the inner brows.
+        (20, 27), (27, 2), (27, 5), (20, 28), (20, 29), (28, 30), (29, 31), (30, 0), (31, 3),
+        // Bridge down the nose to the lips and chin.
+        (12, 13), (13, 16), (16, 17),
         // Face outline: outer brow, temple, by the ear, jaw corner, jaw, chin.
         (0, 21), (21, 23), (23, 25), (25, 18), (18, 17),
         (3, 22), (22, 24), (24, 26), (26, 19), (19, 17),
         // Cheekbones: under-eye to cheekbone, out to the ear, down to the jaw corner.
         (10, 14), (14, 23), (14, 25), (11, 15), (15, 24), (15, 26),
         // Nose tip to cheekbones.
-        (13, 14), (13, 15)
+        (13, 14), (13, 15),
+        // Outer cheeks and the apples of the cheeks.
+        (14, 32), (32, 25), (14, 34), (34, 18), (15, 33), (33, 26), (15, 35), (35, 19)
     ]
 
     private static let lineColor = UIColor(white: 1, alpha: 0.55)
@@ -856,6 +873,8 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
         let tipY = v[noseTip].y
         let chinY = v[chin].y
         let browY = eyeY + 0.024
+        let foreheadY = v[forehead].y
+        let midForeheadY = (browY + foreheadY) / 2
 
         func side(_ s: Float, _ amount: Float) -> Float { s * sign * half * amount }
 
@@ -883,7 +902,15 @@ final class FaceMeshRenderer: NSObject, ARSCNViewDelegate {
             // 23-24 in front of the ears
             nearest(side(1, 2.35), eyeY - 0.03), nearest(side(-1, 2.35), eyeY - 0.03),
             // 25-26 jaw corners
-            nearest(side(1, 2.2), eyeY - 0.068), nearest(side(-1, 2.2), eyeY - 0.068)
+            nearest(side(1, 2.2), eyeY - 0.068), nearest(side(-1, 2.2), eyeY - 0.068),
+            // 27 middle of the forehead
+            nearest(0, midForeheadY),
+            // 28-29 upper forehead, 30-31 outer forehead
+            nearest(side(1, 1.0), foreheadY - 0.01), nearest(side(-1, 1.0), foreheadY - 0.01),
+            nearest(side(1, 1.8), midForeheadY - 0.004), nearest(side(-1, 1.8), midForeheadY - 0.004),
+            // 32-33 outer cheeks, 34-35 apples of the cheeks
+            nearest(side(1, 2.1), eyeY - 0.05), nearest(side(-1, 2.1), eyeY - 0.05),
+            nearest(side(1, 1.2), eyeY - 0.052), nearest(side(-1, 1.2), eyeY - 0.052)
         ]
     }
 
