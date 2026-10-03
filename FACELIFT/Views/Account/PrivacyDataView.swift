@@ -4,7 +4,7 @@ struct PrivacyDataView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingDelete: Bool = false
-    @State private var showsPolicy: Bool = false
+    @State private var openLink: URL?
 
     var body: some View {
         ScrollView {
@@ -16,9 +16,9 @@ struct PrivacyDataView: View {
                     .padding(.top, 22)
 
                 VStack(alignment: .leading, spacing: 14) {
-                    point("Your photos are analyzed, then deleted right away. Never stored, sold, or used for training.")
+                    point("We never store or sell your photo. Our skin-analysis partners read it, then must delete it within 30 days.")
                     point("The 3D map of your face that guides the scan never leaves your phone.")
-                    point("We keep your scores and recommendations so you can see your progress.")
+                    point("Your answers, scores and consultations are saved only on this phone, so you can see your progress.")
                     point("We never sell your data. Your skin is your business.")
                 }
                 .padding(20)
@@ -53,12 +53,13 @@ struct PrivacyDataView: View {
                     .padding(.horizontal, 28)
                     .padding(.top, 22)
 
-                Button {
-                    showsPolicy = true
-                } label: {
-                    SettingsRow(title: "Privacy Policy")
+                VStack(spacing: 0) {
+                    legalRow("Privacy Policy", LegalLinks.privacyPolicy)
+                    RowDivider()
+                    legalRow("Consumer Health Data Privacy Policy", LegalLinks.healthPrivacy)
+                    RowDivider()
+                    legalRow("Terms of Service", LegalLinks.terms)
                 }
-                .buttonStyle(CardPressStyle())
                 .padding(.horizontal, 20)
                 .padding(.vertical, 4)
                 .cardSurface()
@@ -71,8 +72,8 @@ struct PrivacyDataView: View {
         .scrollBounceBehavior(.basedOnSize)
         .background(Palette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showsPolicy) {
-            SafariSheet(url: LegalLinks.privacyPolicy)
+        .sheet(item: $openLink) { url in
+            SafariSheet(url: url)
                 .ignoresSafeArea()
         }
         .confirmationDialog("Delete older scans? Your latest scan is kept.", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
@@ -81,6 +82,15 @@ struct PrivacyDataView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+    }
+
+    private func legalRow(_ title: String, _ url: URL) -> some View {
+        Button {
+            openLink = url
+        } label: {
+            SettingsRow(title: title)
+        }
+        .buttonStyle(CardPressStyle())
     }
 
     private func point(_ text: String) -> some View {

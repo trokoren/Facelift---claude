@@ -492,7 +492,8 @@ struct ScanPrivacySheet: View {
                 .sensoryFeedback(.selection, trigger: isChecked)
                 .accessibilityAddTraits(isChecked ? .isSelected : [])
 
-                Text("See our [Privacy Policy](https://faceliftai.app/privacy) and [Terms](https://faceliftai.app/terms).")
+                Text("See our [Privacy Policy](https://faceliftai.app/privacy), [Consumer Health Data Privacy Policy](https://faceliftai.app/health-privacy) and [Terms](https://faceliftai.app/terms).")
+                    .multilineTextAlignment(.center)
                     .font(FLFont.sans(12))
                     .foregroundStyle(Palette.stone)
                     .tint(Palette.rose)
