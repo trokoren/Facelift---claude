@@ -86,7 +86,9 @@ async function youcam(key: string, bytes: Uint8Array<ArrayBuffer>, hd: boolean, 
       let skinType: unknown = null;
       for (const item of poll?.data?.results?.output ?? []) {
         const type = normalize(String(item.type ?? ""));
-        if (type === "skin_type") skinType = item;
+        // Keep only the reading itself. The result-image links (mask_urls) point at pictures
+        // of her skin, so they are never logged or passed on.
+        if (type === "skin_type") skinType = { skin_type: item.skin_type, region: item.region };
         else if (typeof item.ui_score === "number") scores[type] = { ui: item.ui_score, raw: Number(item.raw_score ?? item.ui_score) };
       }
       return { scores, skinType };
