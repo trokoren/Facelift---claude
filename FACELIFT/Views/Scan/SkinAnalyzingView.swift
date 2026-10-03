@@ -17,7 +17,7 @@ struct SkinAnalyzingView: View {
 
     private let stages: [String] = [
         "Mapping your face",
-        "Measuring your skin",
+        "Measuring your skin against 70,000+ clinical references",
         "Reading your skin type",
         "Writing your consultation"
     ]
