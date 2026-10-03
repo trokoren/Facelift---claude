@@ -367,6 +367,10 @@ final class AppStore {
         }
     }
 
+    func deleteScan(_ id: UUID) {
+        scans.removeAll { $0.id == id }
+    }
+
     func deleteHistory() {
         scans = Array(scans.prefix(1))
     }

@@ -3,6 +3,8 @@ import SwiftUI
 /// Skin profile summary and a timeline of past scans.
 struct MySkinView: View {
     @Environment(AppStore.self) private var store
+    @State private var sharing: Scan?
+    @State private var deleting: Scan?
 
     var body: some View {
         ScrollView {
@@ -32,6 +34,21 @@ struct MySkinView: View {
                             isFirst: offset == 0,
                             isLast: offset == store.scans.count - 1
                         )
+                        // Long-press a scan to share it as a picture or delete it.
+                        .contextMenu {
+                            if !scan.isSample {
+                                Button {
+                                    sharing = scan
+                                } label: {
+                                    Label("Share", systemImage: "square.and.arrow.up")
+                                }
+                            }
+                            Button(role: .destructive) {
+                                deleting = scan
+                            } label: {
+                                Label("Delete scan", systemImage: "trash")
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 24)
@@ -43,6 +60,22 @@ struct MySkinView: View {
         .scrollBounceBehavior(.basedOnSize)
         .background(Palette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(item: $sharing) { scan in
+            ShareScanSheet(scan: scan)
+                .presentationDetents([.large])
+                .presentationCornerRadius(32)
+        }
+        .confirmationDialog(
+            "Delete this scan? This can't be undone.",
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            titleVisibility: .visible,
+            presenting: deleting
+        ) { scan in
+            Button("Delete scan", role: .destructive) {
+                withAnimation(.snappy) { store.deleteScan(scan.id) }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     private var profileCard: some View {
