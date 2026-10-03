@@ -203,8 +203,8 @@ struct CircleScanView: View {
         withAnimation(.easeOut(duration: 0.3)) { cameraOpacity = 0 }
         try? await Task.sleep(for: .milliseconds(250))
         scan.stop()
-        finishSweep = 1   // starts the sparkle wave (about 0.9 s around the ring)
-        try? await Task.sleep(for: .milliseconds(950))
+        finishSweep = 1   // starts the sparkle wave (about 0.65 s around the ring)
+        try? await Task.sleep(for: .milliseconds(660))
         withAnimation(.easeOut(duration: 0.3)) { finishGlow = true }
         try? await Task.sleep(for: .milliseconds(300))
     }
@@ -355,7 +355,8 @@ private struct OvalTickRing: View {
                     .offset(x: CGFloat(a * cos(theta)), y: CGFloat(b * sin(theta)))
                     .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isOn)
                     .animation(.easeOut(duration: 0.35).delay(Double(tick) * 0.022), value: isLive)
-                    .animation(.easeOut(duration: 0.28).delay(Double(tick) * 0.018), value: celebrate)
+                    // Around the ring in about 0.65 s: 20% slower than the original sweep (0.55 s).
+                    .animation(.easeOut(duration: 0.22).delay(Double(tick) * 0.0092), value: celebrate)
             }
         }
         .frame(width: size.width, height: size.height)
