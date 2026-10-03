@@ -425,18 +425,25 @@ private struct ScanHelpSheet: View {
     }
 }
 
-/// One-time consent before the first scan. States exactly what happens to her photos.
+/// One-time consent before the first scan: what we scan, where the photo goes, and an
+/// explicit checkbox (face scans and health answers both need clear, recorded consent).
 struct ScanPrivacySheet: View {
     let onAgree: () -> Void
     let onDecline: () -> Void
 
-    private static let key = "facelift.scanPrivacyAgreed"
+    /// Bump the version when the consent wording changes, so everyone agrees to the new text.
+    private static let key = "facelift.scanConsent.v2"
+    private static let dateKey = "facelift.scanConsent.v2.date"
     static var hasAgreed: Bool {
         get { UserDefaults.standard.bool(forKey: key) }
-        set { UserDefaults.standard.set(newValue, forKey: key) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: key)
+            if newValue { UserDefaults.standard.set(Date(), forKey: dateKey) }
+        }
     }
 
-    @State private var showsPolicy: Bool = false
+    @State private var isChecked: Bool = false
+    @State private var openLink: URL?
 
     var body: some View {
         VStack {
@@ -453,15 +460,46 @@ struct ScanPrivacySheet: View {
                     .foregroundStyle(Palette.ink)
                     .padding(.top, 14)
 
-                Text("Your photos are used only to analyze your skin, then deleted right away. We never store them, sell them, or use them to train anything.")
+                Text("To read your skin, we map your face to guide the scan and analyze one photo. It's sent securely to our skin-analysis partners to create your consultation. We never store your photo and never sell it.")
                     .font(FLFont.sans(15))
                     .foregroundStyle(Palette.body)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .padding(.top, 10)
 
-                OnboardingCTA(title: "Start my scan") { onAgree() }
-                    .padding(.top, 24)
+                // The whole row toggles the box. Policy links sit on their own line below,
+                // outside the button, so tapping them opens the policy instead of toggling.
+                Button {
+                    isChecked.toggle()
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 20, weight: .regular))
+                            .foregroundStyle(isChecked ? Palette.rose : Palette.stone)
+                        Text("I agree to FACELIFT scanning my face and using my photo and my answers, including any health details I share, to create my skin consultation.")
+                            .font(FLFont.sans(13))
+                            .foregroundStyle(Palette.body)
+                            .multilineTextAlignment(.leading)
+                            .lineSpacing(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(14)
+                    .background(Palette.blush.opacity(0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 18)
+                .sensoryFeedback(.selection, trigger: isChecked)
+                .accessibilityAddTraits(isChecked ? .isSelected : [])
+
+                Text("See our [Privacy Policy](https://faceliftai.app/privacy) and [Terms](https://faceliftai.app/terms).")
+                    .font(FLFont.sans(12))
+                    .foregroundStyle(Palette.stone)
+                    .tint(Palette.rose)
+                    .padding(.top, 10)
+
+                OnboardingCTA(title: "Start my scan", isEnabled: isChecked) { onAgree() }
+                    .padding(.top, 18)
 
                 Button(action: onDecline) {
                     Text("Not now")
@@ -472,19 +510,6 @@ struct ScanPrivacySheet: View {
                 }
                 .buttonStyle(PressableStyle())
                 .padding(.top, 4)
-
-                Button {
-                    showsPolicy = true
-                } label: {
-                    (Text("By continuing, you agree to FACELIFT analyzing your photos as described in our ")
-                     + Text("Privacy Policy").underline()
-                     + Text("."))
-                        .font(FLFont.sans(12))
-                        .foregroundStyle(Palette.stone)
-                        .multilineTextAlignment(.center)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 6)
             }
             .padding(.horizontal, 24)
             .padding(.top, 28)
@@ -494,8 +519,13 @@ struct ScanPrivacySheet: View {
         }
         .background(Color.black.opacity(0.35).ignoresSafeArea())
         .preferredColorScheme(.light)
-        .sheet(isPresented: $showsPolicy) {
-            SafariSheet(url: LegalLinks.privacyPolicy)
+        // Policy links open inside the app instead of jumping to Safari.
+        .environment(\.openURL, OpenURLAction { url in
+            openLink = url
+            return .handled
+        })
+        .sheet(item: $openLink) { url in
+            SafariSheet(url: url)
                 .ignoresSafeArea()
         }
     }

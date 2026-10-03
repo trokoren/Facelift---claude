@@ -19,4 +19,10 @@ struct SafariSheet: UIViewControllerRepresentable {
 enum LegalLinks {
     /// Single source of truth for the privacy policy. Update the website, not the app.
     static let privacyPolicy = URL(string: "https://faceliftai.app/privacy")!
+    static let terms = URL(string: "https://faceliftai.app/terms")!
+}
+
+/// Lets a SafariSheet be driven by an optional URL (`.sheet(item:)`).
+extension URL: @retroactive Identifiable {
+    public var id: String { absoluteString }
 }

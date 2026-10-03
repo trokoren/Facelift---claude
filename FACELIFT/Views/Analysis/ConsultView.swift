@@ -96,6 +96,13 @@ struct ConsultView: View {
                 .padding(20)
                 .background(GlassCardBackground(accent: Palette.rose))
             }
+
+            Text("For cosmetic guidance only, not medical advice. Check with your doctor before starting new products if you're pregnant, nursing or have a skin condition.")
+                .font(FLFont.sans(11.5))
+                .foregroundStyle(Palette.stone)
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 20)
         }
         .padding(.horizontal, 24)
         .sheet(item: $openConcern) { concern in
