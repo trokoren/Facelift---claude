@@ -188,7 +188,7 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         }
         guard raw.x.isFinite, raw.y.isFinite else {
             #if DEBUG
-            debugStatus = "direction unavailable"
+            if debugStatus != "direction unavailable" { debugStatus = "direction unavailable" }
             #endif
             return
         }
@@ -213,9 +213,11 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             steadyReference = current + (steadyReference - current) * 0.8
 
             #if DEBUG
-            if frame.timestamp - lastDebugUpdate > 0.25 {
+            // Twice a second, and only when the text changes, so the readout never costs frames.
+            if frame.timestamp - lastDebugUpdate > 0.5 {
                 lastDebugUpdate = frame.timestamp
-                debugStatus = match.debug + String(format: " move %.2f%@ · %.0fs L%d", motion, isSteady ? "✓" : "✗", aligningTime, leniency)
+                let status = match.debug + String(format: " move %.2f%@ · %.0fs L%d", motion, isSteady ? "✓" : "✗", aligningTime, leniency)
+                if status != debugStatus { debugStatus = status }
             }
             #endif
 
