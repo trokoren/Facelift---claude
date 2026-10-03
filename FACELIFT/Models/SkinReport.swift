@@ -25,6 +25,29 @@ struct SkinReport: Decodable {
     /// The written consult (current server). Nil from older responses.
     let consult: Consult?
 
+    private enum CodingKeys: String, CodingKey {
+        case mode, resolution, youcamError, concerns, sources, insights, consult
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try? c.decodeIfPresent(String.self, forKey: .mode)
+        resolution = try? c.decodeIfPresent(String.self, forKey: .resolution)
+        youcamError = try? c.decodeIfPresent(String.self, forKey: .youcamError)
+        concerns = try c.decode([String: Concern].self, forKey: .concerns)
+        sources = try? c.decodeIfPresent([String: String].self, forKey: .sources)
+        insights = try? c.decodeIfPresent(Insights.self, forKey: .insights)
+        // The written consult is a bonus: if it can't be read, the scores still show.
+        do {
+            consult = try c.decodeIfPresent(Consult.self, forKey: .consult)
+        } catch {
+            #if DEBUG
+            print("Consult couldn't be read:", error)
+            #endif
+            consult = nil
+        }
+    }
+
     /// Measurements rounded for display, keyed by marker.
     var measures: [String: Int] {
         concerns.mapValues { min(100, max(1, Int($0.ui.rounded()))) }

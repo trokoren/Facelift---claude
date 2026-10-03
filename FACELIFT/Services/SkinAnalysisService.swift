@@ -54,7 +54,19 @@ enum SkinAnalysisService {
             throw SkinAnalysisError.generic
         }
 
-        guard let report = try? JSONDecoder().decode(SkinReport.self, from: data), report.isUsable else {
+        let report: SkinReport
+        do {
+            report = try JSONDecoder().decode(SkinReport.self, from: data)
+        } catch {
+            #if DEBUG
+            print("analyze-skin response couldn't be read:", error)
+            #endif
+            throw SkinAnalysisError.generic
+        }
+        guard report.isUsable else {
+            #if DEBUG
+            print("analyze-skin response missing markers:", report.concerns.keys.sorted())
+            #endif
             throw SkinAnalysisError.generic
         }
         return report

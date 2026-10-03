@@ -16,6 +16,10 @@ jobs:
           latest=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
           sudo xcode-select -s "$latest"
           xcodebuild -version
+      - name: Check that results can be read
+        run: |
+          swiftc FACELIFT/Models/Consult.swift ci/ConsultDecodeCheck/main.swift -o consultcheck
+          ./consultcheck
       - name: Build for iOS Simulator
         run: |
           set -o pipefail

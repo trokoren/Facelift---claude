@@ -252,6 +252,13 @@ Deno.serve(async (req) => {
   }
   delete written.face_visible;
 
+  // Shape only (no text), to spot missing or odd fields from the writer.
+  const shape = (v: unknown): unknown =>
+    Array.isArray(v) ? v.map(shape) : v && typeof v === "object"
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, shape(x)]))
+      : typeof v;
+  console.log("consult shape", JSON.stringify(shape(written)));
+
   console.log("scan", JSON.stringify({ hd, width, height, ms: Date.now() - started, measured: Object.keys(measured.scores).length }));
 
   return json({
