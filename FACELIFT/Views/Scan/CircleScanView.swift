@@ -83,16 +83,9 @@ struct CircleScanView: View {
                         .position(center)
                         .allowsHitTesting(false)
 
-                    // Finish: a rose sweep closes the ring, then glows once.
-                    Ellipse()
-                        .trim(from: 0, to: finishSweep)
-                        .stroke(Palette.rose, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                        .frame(width: ringSize.width, height: ringSize.height)
-                        .shadow(color: Palette.rose.opacity(finishGlow ? 0.95 : 0), radius: finishGlow ? 24 : 0)
-                        .position(center)
-                        .allowsHitTesting(false)
-
-                    OvalTickRing(filled: scan.filled, size: ringSize, isLive: scan.phase == .circling || scan.phase == .done)
+                    // Finish: a sparkle wave runs around the diamonds, then the ring glows once.
+                    OvalTickRing(filled: scan.filled, size: ringSize, isLive: scan.phase == .circling || scan.phase == .done, celebrate: finishSweep > 0)
+                        .shadow(color: Palette.rose.opacity(finishGlow ? 0.8 : 0), radius: finishGlow ? 18 : 0)
                         .position(center)
 
                     // Dot that follows her nose around the ring once the circle starts.
@@ -210,10 +203,10 @@ struct CircleScanView: View {
         withAnimation(.easeOut(duration: 0.3)) { cameraOpacity = 0 }
         try? await Task.sleep(for: .milliseconds(250))
         scan.stop()
-        withAnimation(.easeInOut(duration: 1.1)) { finishSweep = 1 }
-        try? await Task.sleep(for: .milliseconds(1100))
-        withAnimation(.easeOut(duration: 0.35)) { finishGlow = true }
-        try? await Task.sleep(for: .milliseconds(650))
+        finishSweep = 1   // starts the sparkle wave (about 0.9 s around the ring)
+        try? await Task.sleep(for: .milliseconds(950))
+        withAnimation(.easeOut(duration: 0.3)) { finishGlow = true }
+        try? await Task.sleep(for: .milliseconds(300))
     }
 
     /// Close on the left, light level in the middle, help on the right.
@@ -337,6 +330,8 @@ private struct OvalTickRing: View {
     let size: CGSize
     /// Dim while she lines up; switching on lights the ticks up in a quick sweep.
     var isLive: Bool = true
+    /// At the finish: each diamond brightens and pops in turn, all the way around.
+    var celebrate: Bool = false
 
     private let ticks = 48
 
@@ -352,14 +347,15 @@ private struct OvalTickRing: View {
                 let normal = atan2(sin(theta) / b, cos(theta) / a)
 
                 Diamond()
-                    .fill(isOn ? Palette.rose : Color.white.opacity(isLive ? 0.32 : 0.08))
-                    .frame(width: 7, height: 13)
-                    .scaleEffect(y: isOn ? 1 : (isLive ? 0.72 : 0.45), anchor: .center)
-                    .shadow(color: Palette.rose.opacity(isOn ? 0.8 : 0), radius: isOn ? 6 : 0)
+                    .fill(celebrate ? Color(hex: 0xF6D9D6) : (isOn ? Palette.rose : Color.white.opacity(isLive ? 0.32 : 0.08)))
+                    .frame(width: 9, height: 13)
+                    .scaleEffect(celebrate ? 1.35 : (isOn ? 1 : (isLive ? 0.75 : 0.5)), anchor: .center)
+                    .shadow(color: Palette.rose.opacity(isOn || celebrate ? 0.9 : 0), radius: celebrate ? 9 : (isOn ? 6 : 0))
                     .rotationEffect(.radians(normal + .pi / 2))
                     .offset(x: CGFloat(a * cos(theta)), y: CGFloat(b * sin(theta)))
                     .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isOn)
                     .animation(.easeOut(duration: 0.35).delay(Double(tick) * 0.022), value: isLive)
+                    .animation(.easeOut(duration: 0.28).delay(Double(tick) * 0.018), value: celebrate)
             }
         }
         .frame(width: size.width, height: size.height)
