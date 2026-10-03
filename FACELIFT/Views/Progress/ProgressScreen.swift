@@ -7,6 +7,8 @@ struct ProgressScreen: View {
     @State private var insight: InsightContent?
     @State private var isEditingProducts: Bool = false
     @State private var range: ChartRange = .all
+    /// The product we're asking about this visit (kept steady while she answers).
+    @State private var checkInProduct: UsedProduct?
 
     var body: some View {
         ScrollView {
@@ -15,6 +17,13 @@ struct ProgressScreen: View {
 
                 updateCard
                     .padding(.top, 18)
+
+                if let product = checkInProduct {
+                    CheckInCard(product: product) { checkInProduct = nil }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 18)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
                 chartCard
                     .padding(.top, 18)
@@ -26,7 +35,11 @@ struct ProgressScreen: View {
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
         .background(Palette.canvas.ignoresSafeArea())
+        .onAppear {
+            if checkInProduct == nil { checkInProduct = store.dueCheckIn }
+        }
         .sheet(item: $insight) { item in
             InsightSheet(content: item)
         }
@@ -186,6 +199,11 @@ struct ProgressScreen: View {
             Text(product.name)
                 .font(FLFont.sans(12.9, .bold))
                 .foregroundStyle(Palette.ink)
+            if let last = store.latestCheckIn(for: product) {
+                Text("\(last.answer.label) · \(last.date.formatted(.dateTime.month(.abbreviated).day()))")
+                    .font(FLFont.sans(11))
+                    .foregroundStyle(Palette.pebble)
+            }
             HStack(spacing: 10) {
                 if product.price > 0 {
                     Text("$\(product.price)")

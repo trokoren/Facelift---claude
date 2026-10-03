@@ -24,7 +24,14 @@ final class AppStore {
     var scans: [Scan] = ScanArchive.load() ?? SampleData.scans {
         didSet { ScanArchive.save(scans) }
     }
-    var usedProducts: [UsedProduct] = SampleData.usedProducts
+    /// "What I'm using", saved on this phone.
+    var usedProducts: [UsedProduct] = LocalFile.load([UsedProduct].self, from: "products.json") ?? SampleData.usedProducts {
+        didSet { LocalFile.save(usedProducts, to: "products.json") }
+    }
+    /// Her "How's it going?" answers, newest last, saved on this phone.
+    var checkIns: [ProductCheckIn] = LocalFile.load([ProductCheckIn].self, from: "checkins.json") ?? [] {
+        didSet { LocalFile.save(checkIns, to: "checkins.json") }
+    }
 
     /// The Skin Score over time, oldest first, from her real scans (placeholder points until
     /// she has one).
@@ -151,6 +158,8 @@ final class AppStore {
         context["skin_goals"] = skinGoals
         let products = usedProducts.map { "\($0.brand) \($0.name)".trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         if !products.isEmpty { context["products_she_uses"] = products }
+        let feedback = productFeedback
+        if !feedback.isEmpty { context["product_feedback"] = feedback }
         // Her city and weather get named only in her first consultation, never again.
         let consultsKey = "facelift.consultCount"
         context["first_consult"] = UserDefaults.standard.integer(forKey: consultsKey) == 0
@@ -242,13 +251,97 @@ final class AppStore {
                 name: name,
                 price: Int(draft.price.filter(\.isNumber)) ?? 0,
                 tint: existing?.tint ?? tints[offset % tints.count],
-                url: ProductDraft.cleanURL(draft.url)
+                url: ProductDraft.cleanURL(draft.url),
+                addedAt: existing?.addedAt ?? Date()
             )
         }
     }
 
     func removeUsed(_ product: UsedProduct) {
         usedProducts.removeAll { $0.id == product.id }
+    }
+
+    // MARK: Product check-ins
+
+    /// Days between "How's it going?" questions about the same product.
+    private static let checkInInterval: Double = 10
+
+    /// The product to ask about now, if any: the one waiting longest, once it has been in her
+    /// routine (or since she last answered) for about 10 days. At most one question a day.
+    var dueCheckIn: UsedProduct? {
+        let now = Date()
+        let day: Double = 86_400
+        #if !DEBUG
+        if let last = checkIns.last, Calendar.current.isDateInToday(last.date) { return nil }
+        #endif
+        let waiting = usedProducts.compactMap { product -> (UsedProduct, Date)? in
+            let last = latestCheckIn(for: product)
+            #if DEBUG
+            // Test builds: ask right away about anything never checked in on, so it can be tried.
+            if last == nil { return (product, .distantPast) }
+            #endif
+            let since = last?.date ?? product.addedAt
+            guard now.timeIntervalSince(since) >= Self.checkInInterval * day else { return nil }
+            return (product, since)
+        }
+        return waiting.min { $0.1 < $1.1 }?.0
+    }
+
+    func latestCheckIn(for product: UsedProduct) -> ProductCheckIn? {
+        checkIns.last { $0.productID == product.id }
+    }
+
+    @discardableResult
+    func recordCheckIn(_ product: UsedProduct, answer: ProductCheckIn.Answer) -> UUID {
+        let entry = ProductCheckIn(productID: product.id, productName: "\(product.brand) \(product.name)".trimmingCharacters(in: .whitespaces), answer: answer)
+        checkIns.append(entry)
+        return entry.id
+    }
+
+    func updateCheckInNote(_ id: UUID, note: String) {
+        guard let index = checkIns.firstIndex(where: { $0.id == id }) else { return }
+        checkIns[index].note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A short, warm reply to her answer, plus how her Skin Score moved since she added it.
+    func checkInReply(for product: UsedProduct, answer: ProductCheckIn.Answer) -> String {
+        let base: String
+        switch answer {
+        case .loving:
+            base = "Love that. Keep it steady and we'll keep watching your scans for the change."
+        case .unsure:
+            base = "Totally normal. Most products take 4 to 6 weeks to show what they can do, so give it a little longer and we'll check back."
+        case .irritating:
+            base = "Thanks for telling us. Pause it and let your skin settle for a few days. We'll steer your next consultation around it."
+        case .stopped:
+            base = "Got it. We won't build your routine around it anymore."
+        }
+        guard let change = scoreChange(since: product.addedAt), change != 0 else { return base }
+        let points = abs(change) == 1 ? "point" : "points"
+        let movement = change > 0
+            ? "Your Skin Score is up \(change) \(points) since you added it."
+            : "Your Skin Score is down \(-change) \(points) since you added it, which can happen while skin adjusts."
+        return base + " " + movement
+    }
+
+    /// Skin Score now versus her last scan before a date. Nil without a scan on each side.
+    private func scoreChange(since date: Date) -> Int? {
+        let real = scans.filter { !$0.isSample }
+        guard let before = real.first(where: { $0.date <= date }),
+              let latest = real.first, latest.date > date else { return nil }
+        return latest.overallScore - before.overallScore
+    }
+
+    /// Her latest answer per product (last 90 days), for the next consultation.
+    private var productFeedback: [String] {
+        let cutoff = Date().addingTimeInterval(-90 * 86_400)
+        var seen = Set<UUID>()
+        return checkIns.reversed().compactMap { entry in
+            guard entry.date >= cutoff, !seen.contains(entry.productID) else { return nil }
+            seen.insert(entry.productID)
+            let note = entry.note.isEmpty ? "" : " (\(entry.note))"
+            return "\(entry.productName): \(entry.answer.label.lowercased())\(note)"
+        }
     }
 
     func toggleGoal(_ goal: String) {
