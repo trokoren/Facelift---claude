@@ -70,9 +70,14 @@ final class FaceScanController: NSObject, ARSessionDelegate {
     @ObservationIgnored private var hold: Double = 0
     @ObservationIgnored private var mappingStart: TimeInterval?
     /// Straight-on photos taken while she holds still, each with how well framed it was
-    /// (lower is better). The best framed one is analyzed.
-    @ObservationIgnored private var frontShots: [(photo: UIImage, quality: Double)] = []
+    /// (lower is better) and how sharp it is (higher is better). One is analyzed.
+    @ObservationIgnored private var frontShots: [(photo: UIImage, quality: Double, sharpness: Double)] = []
     @ObservationIgnored private var lastShotTime: TimeInterval = 0
+    /// Front photos started (rendered off the main thread, so the scan never stutters).
+    @ObservationIgnored private var shotsStarted = 0
+    @ObservationIgnored private var shotsPending = 0
+    /// Photos are free on the phone: take a few while she holds still and send the sharpest.
+    @ObservationIgnored private let maxFrontShots = 4
     /// Seconds her face has been tracked while lining up. The start check gets more
     /// forgiving the longer she's been trying, so nobody gets stuck.
     @ObservationIgnored private var aligningTime: Double = 0
@@ -244,6 +249,14 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             }
 
         case .mapping:
+            // She's holding still while the scan line sweeps: a few more straight-on photos,
+            // spaced out, only while she's still facing the camera. Costs no extra time.
+            if shotsStarted < maxFrontShots,
+               frame.timestamp - lastShotTime >= 0.35,
+               simd_length(current - baseline) < 0.08 {
+                let match = outlineMatch(face: face, direction: current, leniency: 2)
+                takeFrontShot(frame, quality: framing(match: match, direction: current))
+            }
             let elapsed = frame.timestamp - (mappingStart ?? frame.timestamp)
             let progress = min(1, elapsed / Self.mappingDuration)
             sweepProgress = progress
@@ -382,14 +395,61 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         simd_length(direction) + (1 - match.score)
     }
 
+    /// Starts a front photo. The full-size render and the sharpness check run off the main
+    /// thread; the result is added when ready.
     private func takeFrontShot(_ frame: ARFrame, quality: Double) {
-        guard let photo = Self.photo(from: frame.capturedImage, maxSide: 4096, context: ciContext) else { return }
-        frontShots.append((photo, quality))
-        captures.append(photo)
+        let buffer = frame.capturedImage
+        let context = ciContext
+        shotsStarted += 1
+        shotsPending += 1
         lastShotTime = frame.timestamp
-        #if DEBUG
-        print("Front shot \(frontShots.count): \(Int(photo.size.width))x\(Int(photo.size.height)), framing \(String(format: "%.3f", quality))")
-        #endif
+        Task.detached(priority: .userInitiated) {
+            let photo = Self.photo(from: buffer, maxSide: 4096, context: context)
+            let sharpness = Self.sharpness(of: buffer, context: context)
+            await MainActor.run {
+                self.shotsPending -= 1
+                guard let photo else { return }
+                self.frontShots.append((photo, quality, sharpness))
+                self.captures.append(photo)
+                #if DEBUG
+                print("Front shot \(self.frontShots.count): \(Int(photo.size.width))x\(Int(photo.size.height)), framing \(String(format: "%.3f", quality)), sharpness \(String(format: "%.1f", sharpness))")
+                #endif
+            }
+        }
+    }
+
+    /// How sharp the middle of the frame (where her face is) looks: the variance of a
+    /// Laplacian over a small grayscale copy. Blur and motion pull it down.
+    nonisolated private static func sharpness(of buffer: CVPixelBuffer, context: CIContext) -> Double {
+        let image = CIImage(cvPixelBuffer: buffer).oriented(.leftMirrored)
+        let e = image.extent
+        let crop = CGRect(x: e.minX + e.width * 0.25, y: e.minY + e.height * 0.3, width: e.width * 0.5, height: e.height * 0.4)
+        let side: CGFloat = 384
+        let scale = side / crop.width
+        let small = image.cropped(to: crop)
+            .transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY))
+            .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let width = Int(side)
+        let height = Int((crop.height * scale).rounded(.down))
+        guard width > 2, height > 2 else { return 0 }
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        context.render(small, toBitmap: &pixels, rowBytes: width,
+                       bounds: CGRect(x: 0, y: 0, width: width, height: height),
+                       format: .L8, colorSpace: CGColorSpaceCreateDeviceGray())
+        var sum = 0.0, sumSquares = 0.0, count = 0.0
+        for y in 1..<(height - 1) {
+            for x in 1..<(width - 1) {
+                let i = y * width + x
+                let lap = 4 * Double(pixels[i]) - Double(pixels[i - 1]) - Double(pixels[i + 1])
+                    - Double(pixels[i - width]) - Double(pixels[i + width])
+                sum += lap
+                sumSquares += lap * lap
+                count += 1
+            }
+        }
+        guard count > 0 else { return 0 }
+        let mean = sum / count
+        return sumSquares / count - mean * mean
     }
 
     nonisolated private static func photo(from buffer: CVPixelBuffer, maxSide: CGFloat, context: CIContext) -> UIImage? {
@@ -406,9 +466,26 @@ final class FaceScanController: NSObject, ARSessionDelegate {
         phase = .done
         // Don't pause here: pausing freezes her last (mid-turn) frame on screen. The view
         // fades the camera out, then stops the session when it goes away.
-        // The best framed straight-on photo. Nothing else leaves this screen.
-        let best = frontShots.sorted { $0.quality < $1.quality }.prefix(1).map(\.photo)
-        onFinish?(Array(best))
+        // Wait briefly for any photo still being prepared (normally all are done long before
+        // the circle ends), then send one: the sharpest of the well-framed ones. Nothing else
+        // leaves this screen.
+        Task { @MainActor in
+            var waited = 0
+            while shotsPending > 0 && waited < 40 {
+                try? await Task.sleep(for: .milliseconds(50))
+                waited += 1
+            }
+            onFinish?(bestFrontShot().map { [$0] } ?? [])
+        }
+    }
+
+    /// Among photos framed nearly as well as the best one, the sharpest.
+    private func bestFrontShot() -> UIImage? {
+        guard let bestFraming = frontShots.map(\.quality).min() else { return nil }
+        return frontShots
+            .filter { $0.quality <= bestFraming + 0.1 }
+            .max { $0.sharpness < $1.sharpness }?
+            .photo
     }
 
     private func setHint(_ text: String?) {
