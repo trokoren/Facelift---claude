@@ -8,6 +8,7 @@ struct ConsultView: View {
 
     @State private var openConcern: Consult.Concern?
     @State private var showsMeasurements = false
+    @State private var showsSkinType = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -15,18 +16,29 @@ struct ConsultView: View {
                 .padding(.top, 18)
 
             section("YOUR SKIN TYPE") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(consult.skinType.label.capitalizedFirst)
-                        .font(FLFont.serif(28))
-                        .foregroundStyle(Palette.ink)
-                    Text(consult.skinType.explanation)
-                        .font(FLFont.sans(14))
-                        .foregroundStyle(Palette.body)
-                        .lineSpacing(5)
+                Button { showsSkinType = true } label: {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(consult.skinType.label.capitalizedFirst)
+                                .font(FLFont.serif(28))
+                                .foregroundStyle(Palette.ink)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: 8)
+                            DiveInLabel()
+                                .padding(.top, 8)
+                        }
+                        Text(consult.skinType.explanation)
+                            .font(FLFont.sans(14))
+                            .foregroundStyle(Palette.body)
+                            .lineSpacing(5)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(GlassCardBackground(accent: Palette.rose))
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(GlassCardBackground(accent: Palette.rose))
+                .buttonStyle(CardPressStyle())
             }
 
             section("WHAT'S WORKING") {
@@ -108,6 +120,9 @@ struct ConsultView: View {
         .sheet(item: $openConcern) { concern in
             ConcernSheet(concern: concern, score: scan.measures[concern.key])
         }
+        .sheet(isPresented: $showsSkinType) {
+            SkinTypeSheet(label: consult.skinType.label, explanation: consult.skinType.explanation)
+        }
         .sheet(isPresented: $showsMeasurements) {
             MeasurementsSheet(measures: scan.measures)
         }
@@ -124,7 +139,7 @@ struct ConsultView: View {
                 if !scan.measures.isEmpty {
                     Button { showsMeasurements = true } label: {
                         HStack(spacing: 4) {
-                            Text("All measurements")
+                            Text("See my scores")
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 10, weight: .regular))
                         }
@@ -207,13 +222,7 @@ private struct ConcernCard: View {
                     .foregroundStyle(Palette.ink)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 8)
-                HStack(spacing: 4) {
-                    Text("Read more")
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 10, weight: .regular))
-                }
-                .font(FLFont.sans(11.4))
-                .foregroundStyle(Palette.rose)
+                DiveInLabel()
             }
             HStack(spacing: 8) {
                 Text(concern.severityLabel)
@@ -240,6 +249,88 @@ private struct ConcernCard: View {
         .padding(20)
         .background(GlassCardBackground(accent: Palette.rose))
         .contentShape(Rectangle())
+    }
+}
+
+/// "Dive in →": the invitation to open a deeper read.
+private struct DiveInLabel: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("Dive in")
+            Image(systemName: "arrow.right")
+                .font(.system(size: 10, weight: .regular))
+        }
+        .font(FLFont.sans(11.4, .medium))
+        .foregroundStyle(Palette.rose)
+        .fixedSize()
+    }
+}
+
+/// Her skin type in depth: what her consultation said, then the general guide to that type.
+private struct SkinTypeSheet: View {
+    let label: String
+    let explanation: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("YOUR SKIN TYPE")
+                .font(FLFont.sans(9.5, .semibold))
+                .tracking(2.4)
+                .foregroundStyle(Palette.rose)
+            Text(label.capitalizedFirst)
+                .font(FLFont.serif(28))
+                .foregroundStyle(Palette.ink)
+                .padding(.top, 10)
+            Rectangle()
+                .fill(Palette.hairline)
+                .frame(height: 1)
+                .padding(.top, 16)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    part("Your skin", explanation)
+                    ForEach(SkinTypeGuide.parts(for: label), id: \.self) { item in
+                        part(item.title, item.text)
+                    }
+                }
+                .padding(.top, 20)
+                .padding(.bottom, 12)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+
+            Button { dismiss() } label: {
+                Text("Got it")
+                    .font(FLFont.sans(14, .medium))
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(Color(hex: 0xF6EAE8), in: Capsule())
+            }
+            .buttonStyle(PressableStyle())
+            .padding(.top, 14)
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 40)
+        .padding(.bottom, 8)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(34)
+        .presentationBackground(Palette.sheet)
+    }
+
+    private func part(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(FLFont.sans(14, .semibold))
+                .foregroundStyle(Palette.ink)
+            Text(text)
+                .font(FLFont.sans(13.9))
+                .foregroundStyle(Palette.body)
+                .lineSpacing(6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

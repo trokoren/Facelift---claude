@@ -110,7 +110,11 @@ Write the consult:
 - intro: 2 sentences summing up her skin today: one genuine positive, then the main focus.
 - skinType: her skin type (normal, dry, oily, combination or sensitive), using the measured reading and her answers, plus 2-3 sentences on what it means for her day to day.
 - strengths: 2 or 3 things that are genuinely good, based on her highest measured scores and what you see. Specific, never generic flattery.
-- concerns: her 2 or 3 lowest measured areas, ranked. Each uses a measured key and gets a severity (mild, moderate or notable), a 1-2 sentence summary, and a deeper read: what we see on her face, why it happens, what to do (ingredients and how often), and what to expect over 3-6 weeks.
+- concerns: her 2 or 3 lowest measured areas, ranked. Each uses a measured key and gets a severity (mild, moderate or notable), a 1-2 sentence summary, and a deeper read she opens when she wants more, so give it real substance:
+  - seen: 2-3 sentences on exactly what we see on her face and where.
+  - why: 3-4 sentences on why it happens, in plain words, including the everyday habits and conditions that make it better or worse.
+  - todo: 3-5 sentences: the key ingredients and why each helps, when and how often to use them, the order to layer them, and one simple habit that helps.
+  - expect: 2-3 sentences with a realistic timeline (what she may notice around week 2, week 4 and week 6) and when to check in with a new scan.
 - watch: one gentle prevention note about something fine now that her skin type is prone to.
 - plan: the one focus, then a short morning and evening routine (3-4 steps each, ingredient level, no brand names).
 
@@ -191,7 +195,7 @@ async function consult(key: string, image: string, scores: Record<string, Concer
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 3000,
+      max_tokens: 4000,
       system: SYSTEM,
       tools: [TOOL],
       tool_choice: { type: "tool", name: "consult" },
