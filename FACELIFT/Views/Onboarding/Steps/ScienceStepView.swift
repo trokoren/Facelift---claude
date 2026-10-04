@@ -7,7 +7,7 @@ struct ScienceStepView: View {
 
     var body: some View {
         OnboardingPage(title: "Built on real\nskin science.", titleSize: 32, titleTop: 0) {
-            Text("Our analysis draws from 14,000+ anonymized skin profiles and decades of peer-reviewed dermatology research.")
+            Text("Your scan is read by dermatologist-verified technology, developed from 70,000+ clinical-grade skin images.")
                 .font(FLFont.sans(14))
                 .foregroundStyle(Palette.stone)
                 .multilineTextAlignment(.center)
@@ -15,9 +15,9 @@ struct ScienceStepView: View {
                 .padding(.top, 6)
 
             HStack(spacing: 10) {
-                statChip("92 studies")
-                statChip("14k+ profiles")
-                statChip("98% accuracy")
+                statChip("70k+ images")
+                statChip("Derm-verified")
+                statChip("95% consistent")
             }
             .padding(.top, 10)
 
@@ -47,7 +47,9 @@ struct ScienceStepView: View {
         Text(text)
             .font(FLFont.sans(13, .medium))
             .foregroundStyle(Palette.ink)
-            .padding(.horizontal, 14)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 12)
             .frame(height: 30)
             .background(Color.white, in: Capsule())
     }

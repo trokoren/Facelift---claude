@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Golden portrait with "You're not alone." and the 14,000+ social proof.
+/// Golden portrait with the 70,000+ clinical-grade images our skin measurement was built on.
 struct NotAloneStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @State private var count: Int = 0
@@ -41,12 +41,10 @@ struct NotAloneStepView: View {
 
                 Spacer()
 
-                Text("You're not alone.")
-                    .font(FLFont.serif(40))
+                Text("Measured, not guessed.")
+                    .font(FLFont.serif(38))
                     .foregroundStyle(.white)
-
-                GoldStars(size: 26, spacing: 12)
-                    .padding(.top, 20)
+                    .multilineTextAlignment(.center)
 
                 Text("\(count.formatted())+")
                     .font(FLFont.serif(44))
@@ -54,11 +52,17 @@ struct NotAloneStepView: View {
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .padding(.top, 24)
-                Text("WOMEN SCANNED")
+                Text("CLINICAL-GRADE SKIN IMAGES")
                     .font(FLFont.sans(14))
                     .tracking(2.2)
                     .foregroundStyle(Color(hex: 0xC8C2BE))
                     .padding(.top, 2)
+                Text("Your scan is read by dermatologist-verified technology built on them.")
+                    .font(FLFont.sans(14.5))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .padding(.top, 14)
 
                 OnboardingCTA(title: "Continue") { flow.next() }
                     .padding(.top, 26)
@@ -71,7 +75,7 @@ struct NotAloneStepView: View {
                 try? await Task.sleep(for: .milliseconds(45))
                 if Task.isCancelled { return }
                 withAnimation(.easeOut(duration: 0.1)) {
-                    count = Int(Double(14_000) * Double(step) / 20)
+                    count = Int(Double(70_000) * Double(step) / 20)
                 }
             }
         }
