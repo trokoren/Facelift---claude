@@ -9,7 +9,7 @@ struct SkinTypeRecord: Codable {
     /// Scans since it was last read.
     var scansSince: Int
 
-    private static let key = "facelift.skinType"
+    private static let key = "facelift.skinType.v2"
 
     static func load() -> SkinTypeRecord? {
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
