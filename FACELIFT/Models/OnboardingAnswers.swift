@@ -6,7 +6,8 @@ struct OnboardingAnswers: Equatable {
     var skinType: String?
     var concerns: [String] = []
     var sensitivity: String?
-    var mainGoal: String?
+    /// How she wants to feel in 28 days (pick any).
+    var feelings: [String] = []
     var budget: String?
     var healthContext: [String] = []
     var spfHabit: String?
@@ -27,19 +28,28 @@ struct OnboardingAnswers: Equatable {
         return picked.isEmpty ? ["Dehydration", "Fine Lines", "Texture"] : picked
     }
 
-    /// Goals for the account screen derived from the 28-day goal.
+    /// Her 28-day feelings as one line for the consult ("Younger, Desired").
+    var mainGoal: String? {
+        feelings.isEmpty ? nil : feelings.joined(separator: ", ")
+    }
+
+    /// Goals for the account screen, from what each feeling depends on in her skin.
     var skinGoals: [String] {
-        switch mainGoal {
-        case "Confident in my own skin": ["Clear skin", "Even tone"]
-        case "Radiant, glowing from within": ["Glow", "Hydration"]
-        case "At peace when I see my reflection": ["Calm sensitivity", "Hydration"]
-        case "Free to go makeup free": ["Even tone", "Clear skin"]
-        case "Youthful and full of energy": ["Anti-aging", "Glow"]
-        case "In control of my skin": ["Clear skin", "Minimize pores"]
-        case "Proud of how I care for myself": ["Hydration", "Glow"]
-        case "Beautiful, exactly as I am": ["Glow", "Even tone"]
-        case "All of the above": ["Anti-aging", "Hydration", "Even tone"]
-        default: ["Anti-aging", "Hydration"]
+        var goals: [String] = []
+        for feeling in feelings {
+            let mapped: [String] = switch feeling {
+            case "Seen as beautiful": ["Even tone", "Glow"]
+            case "Younger, fresher-faced": ["Anti-aging", "Hydration"]
+            case "Desired and attractive": ["Glow", "Clear skin"]
+            case "Glowing, lit from within": ["Glow", "Hydration"]
+            case "Confident with no makeup": ["Even tone", "Minimize pores"]
+            case "Camera-ready from any angle": ["Clear skin", "Minimize pores"]
+            case "Calm, not hiding redness": ["Calm sensitivity", "Even tone"]
+            case "Noticed when I walk in": ["Glow", "Anti-aging"]
+            default: []
+            }
+            for goal in mapped where !goals.contains(goal) { goals.append(goal) }
         }
+        return goals.isEmpty ? ["Anti-aging", "Hydration"] : Array(goals.prefix(4))
     }
 }

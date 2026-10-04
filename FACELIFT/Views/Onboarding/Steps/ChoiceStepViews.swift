@@ -123,30 +123,29 @@ struct SensitivityStepView: View {
 
 struct MainGoalStepView: View {
     @Environment(OnboardingStore.self) private var flow
-    /// Written as if it's already true: the feeling she's moving toward.
+    /// What she really wants from her skin: to be seen, desired, young. Each one ties to
+    /// something the scan measures (tone, lines, hydration, texture, pores, redness).
     private let options: [(String, String, Color)] = [
-        ("Confident in my own skin", "sparkles", Color(hex: 0xD8636B)),
-        ("Radiant, glowing from within", "sun.max", Palette.gold),
-        ("At peace when I see my reflection", "leaf", Palette.sage),
-        ("Free to go makeup free", "face.smiling", Color(hex: 0x8F7BD8)),
-        ("Youthful and full of energy", "bolt.heart", Color(hex: 0xE39A3B)),
-        ("In control of my skin", "hand.raised", Palette.sky),
-        ("Proud of how I care for myself", "heart", Palette.rose),
-        ("Beautiful, exactly as I am", "camera.macro", Color(hex: 0xA88B5A)),
-        ("All of the above", "star", Palette.rose)
+        ("Seen as beautiful", "eye", Color(hex: 0xD8636B)),
+        ("Younger, fresher-faced", "leaf", Palette.sage),
+        ("Desired and attractive", "heart", Palette.rose),
+        ("Glowing, lit from within", "sun.max", Palette.gold),
+        ("Confident with no makeup", "face.smiling", Color(hex: 0x8F7BD8)),
+        ("Camera-ready from any angle", "camera", Palette.sky),
+        ("Calm, not hiding redness", "drop", Color(hex: 0xE39A3B)),
+        ("Noticed when I walk in", "sparkles", Color(hex: 0xA88B5A))
     ]
 
     var body: some View {
-        OnboardingPage(title: "How do you want to feel in\n28 days?", subtitle: "Picture it as if it's already true.", titleSize: 33, titleTop: 4) {
+        OnboardingPage(title: "How do you want to feel in\n28 days?", subtitle: "Pick all that feel true.", titleSize: 33, titleTop: 4) {
             timeline
                 .padding(.top, 26)
                 .padding(.horizontal, 20)
 
             VStack(spacing: 10) {
                 ForEach(options, id: \.0) { option, symbol, color in
-                    // Picks without jumping ahead: with this many options she may want to change her mind.
-                    OnboardingOption(title: option, isSelected: flow.answers.mainGoal == option, alignment: .leading, height: 56) {
-                        flow.answers.mainGoal = option
+                    OnboardingOption(title: option, isSelected: flow.answers.feelings.contains(option), alignment: .leading, height: 56) {
+                        flow.toggle(option, in: \.feelings)
                     } leading: {
                         Image(systemName: symbol)
                             .font(.system(size: 18, weight: .light))
@@ -155,9 +154,9 @@ struct MainGoalStepView: View {
                     }
                 }
             }
-            .padding(.top, 30)
+            .padding(.top, 26)
         } footer: {
-            OnboardingCTA(title: "Continue", isEnabled: flow.answers.mainGoal != nil) { flow.next() }
+            OnboardingCTA(title: "Continue", isEnabled: !flow.answers.feelings.isEmpty) { flow.next() }
                 .padding(.top, 8)
                 .padding(.bottom, 10)
         }
