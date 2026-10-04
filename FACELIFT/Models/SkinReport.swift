@@ -33,7 +33,7 @@ struct SkinReport: Decodable {
     let sources: [String: String]?
     let insights: Insights?
     /// The written consult (current server). Nil from older responses.
-    let consult: Consult?
+    var consult: Consult?
 
     private enum CodingKeys: String, CodingKey {
         case mode, resolution, youcamError, concerns, sources, insights, consult

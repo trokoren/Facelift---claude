@@ -185,7 +185,7 @@ final class AppStore {
             context["established_skin_type"] = ["label": skinTypeRecord.label, "explanation": skinTypeRecord.explanation]
         }
 
-        let report: SkinReport
+        var report: SkinReport
         do {
             report = try await SkinAnalysisService.analyze(photo, mode: mode, context: context)
         } catch {
@@ -195,8 +195,18 @@ final class AppStore {
         if let consult = report.consult {
             UserDefaults.standard.set(UserDefaults.standard.integer(forKey: consultsKey) + 1, forKey: consultsKey)
             if reassess || skinTypeRecord == nil {
+                // Re-measured: note whether it held or moved since her last reading.
+                if let earlier = skinTypeRecord {
+                    let before = Consult.SkinType.base(earlier.label)
+                    let now = Consult.SkinType.base(consult.skinType.label)
+                    let changed = before != nil && now != nil && before != now
+                    report.consult?.skinType.status = changed ? "changed" : "confirmed"
+                    report.consult?.skinType.previous = changed ? before : nil
+                }
+                report.consult?.skinType.measuredOn = Date()
                 SkinTypeRecord(label: consult.skinType.label, explanation: consult.skinType.explanation, date: Date(), scansSince: 0).save()
             } else if var record = skinTypeRecord {
+                report.consult?.skinType.measuredOn = record.date
                 record.scansSince += 1
                 record.save()
             }

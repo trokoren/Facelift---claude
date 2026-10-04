@@ -10,6 +10,7 @@ struct ConsultView: View {
     @State private var openConcern: Consult.Concern?
     @State private var showsMeasurements = false
     @State private var showsSkinType = false
+    @State private var showsSkinTypeNote = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -28,6 +29,19 @@ struct ConsultView: View {
                             DiveInLabel()
                                 .padding(.top, 8)
                         }
+                        if let pill = skinTypePill {
+                            HStack(spacing: 4) {
+                                Image(systemName: consult.skinType.status == "changed" ? "arrow.triangle.2.circlepath" : "checkmark")
+                                    .font(.system(size: 9.5, weight: .semibold))
+                                Text(pill)
+                                    .font(FLFont.sans(11, .semibold))
+                            }
+                            .foregroundStyle(Palette.rose)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Palette.rose.opacity(0.12), in: Capsule())
+                            .padding(.top, -2)
+                        }
                         Text(consult.skinType.explanation)
                             .font(FLFont.sans(14))
                             .foregroundStyle(Palette.body)
@@ -40,6 +54,35 @@ struct ConsultView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(CardPressStyle())
+
+                if let measuredOn = consult.skinType.measuredOn {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) { showsSkinTypeNote.toggle() }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 5) {
+                                Text("Measured \(measuredOn.formatted(.dateTime.month(.abbreviated).day()))")
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 11, weight: .regular))
+                            }
+                            .font(FLFont.sans(12))
+                            .foregroundStyle(Palette.stone)
+                            if showsSkinTypeNote {
+                                Text("We re-measure your skin type every few scans. It shifts slowly with seasons and routine, so this keeps your read steady and accurate.")
+                                    .font(FLFont.sans(12.5))
+                                    .foregroundStyle(Palette.body)
+                                    .lineSpacing(4)
+                                    .multilineTextAlignment(.leading)
+                                    .transition(.opacity)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, -4)
+                    .padding(.leading, 4)
+                }
             }
 
             section("WHAT'S WORKING") {
@@ -127,6 +170,15 @@ struct ConsultView: View {
         }
         .sheet(isPresented: $showsMeasurements) {
             MeasurementsSheet(measures: scan.measures)
+        }
+    }
+
+    /// "Confirmed" or "Changed from oily" on scans that re-measured her skin type.
+    private var skinTypePill: String? {
+        switch consult.skinType.status {
+        case "confirmed": "Confirmed"
+        case "changed": consult.skinType.previous.map { "Changed from \($0)" } ?? "Changed"
+        default: nil
         }
     }
 

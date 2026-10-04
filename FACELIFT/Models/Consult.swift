@@ -7,11 +7,30 @@ struct Consult: Codable, Hashable {
     struct SkinType: Codable, Hashable {
         let label: String
         let explanation: String
+        /// Set on this phone after the scan. "confirmed" or "changed" when this scan re-measured
+        /// it and she had an earlier reading; nil on her first reading and on scans in between.
+        var status: String?
+        /// Her base type before a change ("oily"), for "Changed from oily".
+        var previous: String?
+        /// When her skin type was last measured, as of this scan.
+        var measuredOn: Date?
 
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             label = (try? c.decodeIfPresent(String.self, forKey: .label)) ?? ""
             explanation = (try? c.decodeIfPresent(String.self, forKey: .explanation)) ?? ""
+            status = (try? c.decodeIfPresent(String.self, forKey: .status)) ?? nil
+            previous = (try? c.decodeIfPresent(String.self, forKey: .previous)) ?? nil
+            measuredOn = (try? c.decodeIfPresent(Date.self, forKey: .measuredOn)) ?? nil
+        }
+
+        /// The base type in a label like "Combination, leaning oily".
+        static func base(_ label: String) -> String? {
+            let lower = label.lowercased()
+            return ["combination", "sensitive", "normal", "oily", "dry"]
+                .map { ($0, lower.range(of: $0)?.lowerBound) }
+                .compactMap { name, at in at.map { (name, $0) } }
+                .min { $0.1 < $1.1 }?.0
         }
     }
 
@@ -101,7 +120,7 @@ struct Consult: Codable, Hashable {
     }
 
     let intro: String
-    let skinType: SkinType
+    var skinType: SkinType
     let strengths: [Strength]
     var concerns: [Concern]
     let watch: Note?
