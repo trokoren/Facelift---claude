@@ -99,7 +99,7 @@ struct ScanHomeView: View {
             Button("Not now", role: .cancel) {}
             Button("Scan anyway") { store.startScan() }
         } message: {
-            Text("Skin changes slowly, so a second scan today won't show much new. For the clearest progress, scan every few days in the same spot and light.")
+            Text("Skin changes slowly, so another scan today won't show much new. For the clearest progress, scan every few days in the same spot and light.")
         }
         .alert("Your next scan unlocks tomorrow", isPresented: $showsUsedUp) {
             Button("Got it", role: .cancel) {}
