@@ -10,7 +10,6 @@ struct ConsultView: View {
     @State private var openConcern: Consult.Concern?
     @State private var showsMeasurements = false
     @State private var showsSkinType = false
-    @State private var showsSkinTypeNote = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -54,35 +53,6 @@ struct ConsultView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(CardPressStyle())
-
-                if let measuredOn = consult.skinType.measuredOn {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.25)) { showsSkinTypeNote.toggle() }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 5) {
-                                Text("Measured \(measuredOn.formatted(.dateTime.month(.abbreviated).day()))")
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 11, weight: .regular))
-                            }
-                            .font(FLFont.sans(12))
-                            .foregroundStyle(Palette.stone)
-                            if showsSkinTypeNote {
-                                Text("We re-measure your skin type every few scans. It shifts slowly with seasons and routine, so this keeps your read steady and accurate.")
-                                    .font(FLFont.sans(12.5))
-                                    .foregroundStyle(Palette.body)
-                                    .lineSpacing(4)
-                                    .multilineTextAlignment(.leading)
-                                    .transition(.opacity)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, -4)
-                    .padding(.leading, 4)
-                }
             }
 
             section("WHAT'S WORKING") {

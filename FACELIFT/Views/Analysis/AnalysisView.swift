@@ -159,7 +159,8 @@ struct AnalysisView: View {
                 store.finishResults()
             }
         } label: {
-            Text("Continue to My Skin")
+            // Her very first results: reassure her they're kept before she moves on.
+            Text(store.scans.filter { !$0.isSample }.count <= 1 ? "Save & Continue" : "Continue to My Skin")
                 .font(FLFont.sans(16.5, .medium))
                 .tracking(0.6)
                 .foregroundStyle(.white)
