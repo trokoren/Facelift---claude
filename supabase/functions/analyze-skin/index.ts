@@ -110,11 +110,7 @@ Write the consult:
 - intro: 2 sentences summing up her skin today: one genuine positive, then the main focus.
 - skinType: her skin type (normal, dry, oily, combination or sensitive), using the measured reading and her answers, plus 2-3 sentences on what it means for her day to day.
 - strengths: 2 or 3 things that are genuinely good, based on her highest measured scores and what you see. Specific, never generic flattery.
-- concerns: her 2 or 3 lowest measured areas, ranked. Each uses a measured key and gets a severity (mild, moderate or notable), a 1-2 sentence summary, and a deeper read she opens when she wants more, so give it real substance:
-  - seen: 2-3 sentences on exactly what we see on her face and where.
-  - why: 3-4 sentences on why it happens, in plain words, including the everyday habits and conditions that make it better or worse.
-  - todo: 3-5 sentences: the key ingredients and why each helps, when and how often to use them, the order to layer them, and one simple habit that helps.
-  - expect: 2-3 sentences with a realistic timeline (what she may notice around week 2, week 4 and week 6) and when to check in with a new scan.
+- concerns: her 2 or 3 lowest measured areas, ranked. Each uses a measured key and gets a severity (mild, moderate or notable), a 1-2 sentence summary, and seen: 2-3 sentences on exactly what we see on her face and where (be specific: this is the only part written while we can see her photo).
 - watch: one gentle prevention note about something fine now that her skin type is prone to.
 - plan: the one focus, then a short morning and evening routine (3-4 steps each, ingredient level, no brand names).
 
@@ -123,7 +119,7 @@ How to use her answers (her_answers): they shape what you recommend; you almost 
 - Age range: quietly calibrate what counts as good for her and which ingredients fit. Never frame age negatively and never say "your age range".
 - Health context (pregnant, trying to conceive, breastfeeding, menopause and so on): apply it invisibly. If pregnant, trying to conceive or breastfeeding, simply leave out retinoids, retinol, high-strength salicylic acid and hydroquinone, and recommend gentle alternatives (azelaic acid, niacinamide, vitamin C, lactic acid, peptides) as if they were your first choice anyway. Never name these ingredients as avoided, never say something "isn't right for you right now" or "at the moment", never mention pregnancy, nursing, hormones, menopause or any phase of life, and never explain why an ingredient was chosen in a way that hints at it. A reader should not be able to guess her health context from the consult.
 - Location: if first_consult is not true, do not mention her city, the weather, altitude, humidity, dry air or climate anywhere. Just let it shape your picks. If first_consult is true, you may name it once.
-- Sun protection: never refer to her SPF habits. Check your own concerns list: if it does NOT include the age_spot key, the words sunscreen, SPF and sun protection must not appear anywhere in the consult, including the plan's morning routine, strengths and watch. If it does include age_spot, you may mention sun protection once, inside that concern's todo, as one option among several, and the morning routine may end with it.
+- Sun protection: never refer to her SPF habits. Check your own concerns list: if it does NOT include the age_spot key, the words sunscreen, SPF and sun protection must not appear anywhere in the consult, including the plan's morning routine, strengths and watch. If it does include age_spot, the morning routine may end with sun protection.
 - Retinoids for everyone else: whenever you recommend retinol or any retinoid, add this short note right after it, in the same field: "Skip retinol if you're pregnant, trying to conceive or nursing." Say it as standard product guidance, the way the label does, never as if it's about her.
 - Her routine and products: build on them silently; don't recommend something she already uses.
 - How her products are going (product_feedback): never recommend a product she marked irritating or stopped, or an ingredient that seems to be the problem, and don't build her routine around it. Quietly keep what she's loving. This counts toward the one-sentence limit if you mention it at all.
@@ -161,12 +157,9 @@ const TOOL = {
             title: { type: "string" },
             severity: { type: "string", enum: ["mild", "moderate", "notable"] },
             summary: { type: "string" },
-            seen: { type: "string", description: "What we see on her face." },
-            why: { type: "string", description: "Why it happens." },
-            todo: { type: "string", description: "What to do: ingredients and how often." },
-            expect: { type: "string", description: "What to expect over 3-6 weeks." },
+            seen: { type: "string", description: "What we see on her face, and where." },
           },
-          required: ["key", "title", "severity", "summary", "seen", "why", "todo", "expect"],
+          required: ["key", "title", "severity", "summary", "seen"],
         },
       },
       watch: {
@@ -195,7 +188,7 @@ async function consult(key: string, image: string, scores: Record<string, Concer
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 4000,
+      max_tokens: 3000,
       system: SYSTEM,
       tools: [TOOL],
       tool_choice: { type: "tool", name: "consult" },

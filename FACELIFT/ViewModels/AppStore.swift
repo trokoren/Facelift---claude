@@ -143,6 +143,54 @@ final class AppStore {
         isScanning = true
     }
 
+    /// Her answers, routine and product feedback, sent with each consultation.
+    private var consultContext: [String: Any] {
+        var context: [String: Any] = profile?.context ?? [:]
+        if profile == nil { context["skin_type_she_chose"] = skinType }
+        context["skin_goals"] = skinGoals
+        let products = usedProducts.map { "\($0.brand) \($0.name)".trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if !products.isEmpty { context["products_she_uses"] = products }
+        let feedback = productFeedback
+        if !feedback.isEmpty { context["product_feedback"] = feedback }
+        return context
+    }
+
+    // MARK: Deep reads
+
+    /// Scans whose deep reads are being written right now, or failed this session.
+    private(set) var deepReadsLoading: Set<UUID> = []
+    private(set) var deepReadsFailed: Set<UUID> = []
+
+    /// Writes the "Dive in" reads for a scan's concerns in the background, if they're missing.
+    func loadDeepReads(for scanID: UUID, retry: Bool = false) async {
+        guard let scan = scan(with: scanID), let consult = scan.consult,
+              consult.concerns.contains(where: { !$0.hasDeepRead }),
+              !deepReadsLoading.contains(scanID),
+              retry || !deepReadsFailed.contains(scanID),
+              Backend.isConfigured else { return }
+        deepReadsLoading.insert(scanID)
+        deepReadsFailed.remove(scanID)
+        defer { deepReadsLoading.remove(scanID) }
+        do {
+            let reads = try await DeepReadService.fetch(consult: consult, measures: scan.measures, context: consultContext)
+            guard let index = scans.firstIndex(where: { $0.id == scanID }), var updated = scans[index].consult else { return }
+            updated.concerns = updated.concerns.map { concern in
+                guard !concern.hasDeepRead, let read = reads.first(where: { $0.key == concern.key }) else { return concern }
+                var filled = concern
+                filled.why = read.why
+                filled.todo = read.todo
+                filled.expect = read.expect
+                return filled
+            }
+            scans[index].consult = updated
+        } catch {
+            #if DEBUG
+            print("Deep reads failed:", error)
+            #endif
+            deepReadsFailed.insert(scanID)
+        }
+    }
+
     func goHome() {
         mySkinPath = []
         selectedTab = .mySkin
@@ -160,13 +208,7 @@ final class AppStore {
             return "Let's take a quick scan so we can read your skin."
         }
         let mode = ScanLab.shared.mode
-        var context: [String: Any] = profile?.context ?? [:]
-        if profile == nil { context["skin_type_she_chose"] = skinType }
-        context["skin_goals"] = skinGoals
-        let products = usedProducts.map { "\($0.brand) \($0.name)".trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        if !products.isEmpty { context["products_she_uses"] = products }
-        let feedback = productFeedback
-        if !feedback.isEmpty { context["product_feedback"] = feedback }
+        var context = consultContext
         // Her city and weather get named only in her first consultation, never again.
         let consultsKey = "facelift.consultCount"
         context["first_consult"] = UserDefaults.standard.integer(forKey: consultsKey) == 0
@@ -207,6 +249,7 @@ final class AppStore {
         )
         // Her first real scan replaces the placeholders.
         scans = [scan] + scans.filter { !$0.isSample }
+        Task { await loadDeepReads(for: scan.id) }
 
         mySkinPath = [.scan(id: scan.id, isFresh: true)]
         selectedTab = .mySkin
@@ -410,6 +453,8 @@ final class AppStore {
                 )
                 if !scans[0].isSample {
                     scans = [scans[0]] + scans.dropFirst().filter { !$0.isSample }
+                    let id = scans[0].id
+                    Task { await loadDeepReads(for: id) }
                 }
             }
         }

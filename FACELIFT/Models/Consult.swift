@@ -35,10 +35,13 @@ struct Consult: Codable, Hashable {
         let severity: String
         let summary: String
         let seen: String
-        let why: String
-        let todo: String
-        let expect: String
+        /// The deeper read. Written in the background after results appear; empty until then.
+        var why: String
+        var todo: String
+        var expect: String
         var id: String { key }
+
+        var hasDeepRead: Bool { !why.isEmpty || !todo.isEmpty || !expect.isEmpty }
 
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -100,7 +103,7 @@ struct Consult: Codable, Hashable {
     let intro: String
     let skinType: SkinType
     let strengths: [Strength]
-    let concerns: [Concern]
+    var concerns: [Concern]
     let watch: Note?
     let plan: Plan
 

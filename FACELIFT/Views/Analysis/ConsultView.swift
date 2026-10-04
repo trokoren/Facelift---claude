@@ -6,6 +6,7 @@ struct ConsultView: View {
     let scan: Scan
     let consult: Consult
 
+    @Environment(AppStore.self) private var store
     @State private var openConcern: Consult.Concern?
     @State private var showsMeasurements = false
     @State private var showsSkinType = false
@@ -118,8 +119,10 @@ struct ConsultView: View {
         }
         .padding(.horizontal, 24)
         .sheet(item: $openConcern) { concern in
-            ConcernSheet(concern: concern, score: scan.measures[concern.key])
+            ConcernSheet(scanID: scan.id, initial: concern, score: scan.measures[concern.key])
         }
+        // Older scans, or a read that didn't finish: write the deep reads now.
+        .task { await store.loadDeepReads(for: scan.id) }
         .sheet(isPresented: $showsSkinType) {
             SkinTypeSheet(label: consult.skinType.label, explanation: consult.skinType.explanation)
         }
@@ -334,11 +337,18 @@ private struct SkinTypeSheet: View {
     }
 }
 
-/// The deeper read on one concern.
+/// The deeper read on one concern. Reads live from the store, so it fills in as soon as the
+/// background writing finishes.
 private struct ConcernSheet: View {
-    let concern: Consult.Concern
+    let scanID: UUID
+    let initial: Consult.Concern
     let score: Int?
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppStore.self) private var store
+
+    private var concern: Consult.Concern {
+        store.scan(with: scanID)?.consult?.concerns.first { $0.key == initial.key } ?? initial
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -362,10 +372,32 @@ private struct ConcernSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     part("What we see", concern.seen)
-                    part("Why it happens", concern.why)
-                    part("What to do", concern.todo)
-                    part("What to expect", concern.expect)
+                    if concern.hasDeepRead {
+                        part("Why it happens", concern.why)
+                        part("What to do", concern.todo)
+                        part("What to expect", concern.expect)
+                    } else if store.deepReadsFailed.contains(scanID) && !store.deepReadsLoading.contains(scanID) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("We couldn't finish your deep dive just now.")
+                                .font(FLFont.sans(13.9))
+                                .foregroundStyle(Palette.body)
+                            Button("Try again") {
+                                Task { await store.loadDeepReads(for: scanID, retry: true) }
+                            }
+                            .font(FLFont.sans(14, .semibold))
+                            .foregroundStyle(Palette.rose)
+                        }
+                    } else {
+                        HStack(spacing: 10) {
+                            ProgressView().tint(Palette.rose)
+                            Text("Writing your deep dive…")
+                                .font(FLFont.sans(13.9))
+                                .foregroundStyle(Palette.pebble)
+                        }
+                        .padding(.top, 4)
+                    }
                 }
+                .animation(.easeOut(duration: 0.3), value: concern.hasDeepRead)
                 .padding(.top, 20)
                 .padding(.bottom, 12)
             }
