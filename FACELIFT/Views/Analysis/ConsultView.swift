@@ -121,8 +121,7 @@ struct ConsultView: View {
         .sheet(item: $openConcern) { concern in
             ConcernSheet(scanID: scan.id, initial: concern, score: scan.measures[concern.key])
         }
-        // Older scans, or a read that didn't finish: write the deep reads now.
-        .task { await store.loadDeepReads(for: scan.id) }
+
         .sheet(isPresented: $showsSkinType) {
             SkinTypeSheet(label: consult.skinType.label, explanation: consult.skinType.explanation)
         }
@@ -255,35 +254,6 @@ private struct ConcernCard: View {
     }
 }
 
-/// Soft shimmering lines where the deep read will appear, while it's being written.
-private struct DeepReadPlaceholder: View {
-    @State private var glow = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            ForEach(0..<3, id: \.self) { block in
-                VStack(alignment: .leading, spacing: 9) {
-                    bar(width: 110, height: 12)
-                    bar(width: nil, height: 9)
-                    bar(width: nil, height: 9)
-                    bar(width: block == 1 ? 150 : 210, height: 9)
-                }
-            }
-        }
-        .opacity(glow ? 1 : 0.45)
-        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: glow)
-        .onAppear { glow = true }
-        .accessibilityLabel("Loading")
-    }
-
-    private func bar(width: CGFloat?, height: CGFloat) -> some View {
-        Capsule()
-            .fill(Palette.blush)
-            .frame(maxWidth: width ?? .infinity, alignment: .leading)
-            .frame(width: width, height: height)
-    }
-}
-
 /// "Dive in →": the invitation to open a deeper read.
 private struct DiveInLabel: View {
     var body: some View {
@@ -401,26 +371,10 @@ private struct ConcernSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     part("What we see", concern.seen)
-                    if concern.hasDeepRead {
-                        part("Why it happens", concern.why)
-                        part("What to do", concern.todo)
-                        part("What to expect", concern.expect)
-                    } else if store.deepReadsFailed.contains(scanID) && !store.deepReadsLoading.contains(scanID) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("We couldn't finish your deep dive just now.")
-                                .font(FLFont.sans(13.9))
-                                .foregroundStyle(Palette.body)
-                            Button("Try again") {
-                                Task { await store.loadDeepReads(for: scanID, retry: true) }
-                            }
-                            .font(FLFont.sans(14, .semibold))
-                            .foregroundStyle(Palette.rose)
-                        }
-                    } else {
-                        DeepReadPlaceholder()
-                    }
+                    if !concern.why.isEmpty { part("Why it happens", concern.why) }
+                    if !concern.todo.isEmpty { part("What to do", concern.todo) }
+                    if !concern.expect.isEmpty { part("What to expect", concern.expect) }
                 }
-                .animation(.easeOut(duration: 0.3), value: concern.hasDeepRead)
                 .padding(.top, 20)
                 .padding(.bottom, 12)
             }
