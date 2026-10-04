@@ -7,7 +7,7 @@ struct ProgressScreen: View {
     @State private var insight: InsightContent?
     @State private var showsReview = false
     @State private var isEditingProducts: Bool = false
-    @State private var range: ChartRange = .all
+    @State private var range: ChartRange = .recent
     /// The product we're asking about this visit (kept steady while she answers).
     @State private var checkInProduct: UsedProduct?
 
@@ -127,7 +127,7 @@ struct ProgressScreen: View {
                     .foregroundStyle(Palette.pebble)
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
-                SkinHealthChart(points: points) { id in store.openScan(id) }
+                SkinHealthChart(points: points, evenlySpaced: range.days == nil) { id in store.openScan(id) }
                     .id(range)
                     .padding(.top, 20)
             }
@@ -148,7 +148,9 @@ struct ProgressScreen: View {
 
     /// The points inside the chosen range (placeholders until she has a real scan).
     private var chartPoints: [ChartPoint] {
-        guard store.hasRealScans, let days = range.days else { return store.chartPoints }
+        guard store.hasRealScans else { return store.chartPoints }
+        if range == .recent { return Array(store.chartPoints.suffix(6)) }
+        guard let days = range.days else { return store.chartPoints }
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? .distantPast
         return store.chartPoints.filter { ($0.date ?? .distantPast) >= cutoff }
     }
@@ -255,6 +257,7 @@ struct ProgressScreen: View {
 
 /// Time ranges for the skin health chart.
 enum ChartRange: String, CaseIterable {
+    case recent = "Recent"
     case week = "7D"
     case month = "30D"
     case quarter = "90D"
@@ -263,6 +266,7 @@ enum ChartRange: String, CaseIterable {
 
     var title: String {
         switch self {
+        case .recent: "Last 6 scans"
         case .week: "Last 7 days"
         case .month: "Last 30 days"
         case .quarter: "Last 90 days"
@@ -273,6 +277,7 @@ enum ChartRange: String, CaseIterable {
 
     var days: Int? {
         switch self {
+        case .recent: nil
         case .week: 7
         case .month: 30
         case .quarter: 90

@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// Skin Score over time: one dot per scan, placed by date, with a soft trend line once there
-/// are enough scans to smooth out day-to-day wobble. Tap a dot to open that consultation.
+/// Skin Score over time: one dot per scan, with a soft trend line once there are enough scans
+/// to smooth out day-to-day wobble. Tap a dot to open that consultation.
+/// Evenly spaced for "Recent" and "All" (every scan gets equal room); placed by date for the
+/// time ranges (so real gaps show).
 struct SkinHealthChart: View {
     let points: [ChartPoint]
+    var evenlySpaced: Bool = false
     var onSelect: ((UUID) -> Void)? = nil
 
     @State private var reveal: CGFloat = 0
@@ -134,6 +137,8 @@ struct SkinHealthChart: View {
     /// Up to four date labels, spread out so they never overlap.
     private var labelIndices: [Int] {
         let count = points.count
+        // Evenly spaced and few enough to fit: a date under every dot.
+        if evenlySpaced && count <= 6 { return Array(0..<count) }
         let candidates = count > 4 ? Array(Set([0, count / 3, (2 * count) / 3, count - 1])).sorted() : Array(0..<count)
         // Several scans on one day share a label: show it once.
         var shown: [Int] = []
@@ -155,7 +160,7 @@ struct SkinHealthChart: View {
         let count = points.count
         let dates = points.compactMap(\.date)
         let span = (dates.max()?.timeIntervalSince1970 ?? 0) - (dates.min()?.timeIntervalSince1970 ?? 0)
-        let byDate = dates.count == count && span > 0
+        let byDate = !evenlySpaced && dates.count == count && span > 0
         let start = dates.min()?.timeIntervalSince1970 ?? 0
         return values.enumerated().map { index, value in
             let x: CGFloat
