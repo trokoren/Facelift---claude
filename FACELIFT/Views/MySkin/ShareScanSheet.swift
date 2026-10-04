@@ -7,6 +7,7 @@ struct ShareScanSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var image: UIImage?
+    @State private var showsShareSheet = false
 
     private let message = "My skin score on FACELIFT. Get yours at https://faceliftai.app"
 
@@ -42,11 +43,9 @@ struct ShareScanSheet: View {
             Spacer(minLength: 16)
 
             if let image {
-                ShareLink(
-                    item: Image(uiImage: image),
-                    message: Text(message),
-                    preview: SharePreview("My FACELIFT Skin Score", image: Image(uiImage: image))
-                ) {
+                Button {
+                    showsShareSheet = true
+                } label: {
                     Text("Share")
                         .font(FLFont.sans(17, .semibold))
                         .foregroundStyle(.white)
@@ -54,8 +53,16 @@ struct ShareScanSheet: View {
                         .frame(height: 56)
                         .background(Capsule().fill(Palette.rose))
                 }
+                .buttonStyle(PressableStyle(scale: 0.98))
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
+                .sheet(isPresented: $showsShareSheet) {
+                    // The standard iPhone share sheet, given the picture itself plus the
+                    // invite text, so Messages, Instagram and Save Image all work.
+                    ActivityView(items: [image, message])
+                        .presentationDetents([.medium, .large])
+                        .ignoresSafeArea()
+                }
             } else {
                 ProgressView()
                     .tint(Palette.rose)
@@ -76,6 +83,17 @@ struct ShareScanSheet: View {
         renderer.scale = 3
         image = renderer.uiImage
     }
+}
+
+/// UIKit's share sheet. More reliable than ShareLink for a picture plus text in Messages.
+struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 /// The card itself, drawn at 360 x 450 points.
