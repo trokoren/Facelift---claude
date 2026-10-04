@@ -65,17 +65,28 @@ struct AnalysisView: View {
                         .padding(.top, 16)
                     }
 
-                    needsBanner
-                        .padding(.top, 20)
+                    if scan.consult != nil || scan.isSample {
+                        needsBanner
+                            .padding(.top, 20)
+                    }
 
-                    VStack(alignment: .leading, spacing: 26) {
-                        ForEach(scan.recommendations) { recommendation in
-                            RecommendationSectionView(recommendation: recommendation) { product in
-                                shop(product, scanID: scan.id)
+                    if let consult = scan.consult, !(consult.plan.morning.isEmpty && consult.plan.evening.isEmpty) {
+                        // Current scans: shop the steps of her own plan.
+                        RoutineShopView(plan: consult.plan) { step in
+                            shopStep(step, scanID: scan.id)
+                        }
+                        .padding(.top, 24)
+                    } else if scan.isSample {
+                        // Placeholder scans only: the illustrative picks.
+                        VStack(alignment: .leading, spacing: 26) {
+                            ForEach(scan.recommendations) { recommendation in
+                                RecommendationSectionView(recommendation: recommendation) { product in
+                                    shop(product, scanID: scan.id)
+                                }
                             }
                         }
+                        .padding(.top, 32)
                     }
-                    .padding(.top, 32)
                 } header: {
                     if !isFresh {
                         backRow(date: scan.formattedDate)
@@ -172,6 +183,16 @@ struct AnalysisView: View {
         .buttonStyle(PressableStyle())
         .padding(.horizontal, 24)
         .sensoryFeedback(.impact(weight: .medium), trigger: store.mySkinPath.isEmpty)
+    }
+
+    /// A plan step ("Hyaluronic acid serum (damp skin)"): search for that kind of product.
+    private func shopStep(_ step: String, scanID: UUID) {
+        shopCount += 1
+        store.recordRoutineShop(scanID: scanID)
+        let query = step.replacingOccurrences(of: #"\s*\(.*?\)"#, with: "", options: .regularExpression)
+        if let url = ShopLink.url(for: query) {
+            openURL(url)
+        }
     }
 
     private func shop(_ product: Recommendation.Product, scanID: UUID) {

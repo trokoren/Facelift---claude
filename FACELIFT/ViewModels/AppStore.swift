@@ -25,7 +25,7 @@ final class AppStore {
         didSet { ScanArchive.save(scans) }
     }
     /// "What I'm using", saved on this phone.
-    var usedProducts: [UsedProduct] = LocalFile.load([UsedProduct].self, from: "products.json") ?? SampleData.usedProducts {
+    var usedProducts: [UsedProduct] = LocalFile.load([UsedProduct].self, from: "products.json") ?? [] {
         didSet { LocalFile.save(usedProducts, to: "products.json") }
     }
     /// Her "How's it going?" answers, newest last, saved on this phone.
@@ -53,8 +53,6 @@ final class AppStore {
         }
     }
 
-    var name: String = "Sophia Chen"
-    var email: String = "sophia@email.com"
     var skinType: String = "Combination"
     var skinGoals: [String] = ["Anti-aging", "Hydration"]
     var remindersOn: Bool = true
@@ -165,10 +163,6 @@ final class AppStore {
             print("progress review failed:", error)
             #endif
         }
-    }
-
-    var initial: String {
-        String(name.prefix(1)).uppercased()
     }
 
     var lastScannedText: String {
@@ -332,6 +326,13 @@ final class AppStore {
         mySkinPath = []
     }
 
+    /// Counts a shop tap on a routine step. Generic steps aren't added to "What I'm using".
+    func recordRoutineShop(scanID: UUID) {
+        if let index = scans.firstIndex(where: { $0.id == scanID }) {
+            scans[index].productsShopped += 1
+        }
+    }
+
     func recordShop(_ product: Recommendation.Product, scanID: UUID) {
         if let index = scans.firstIndex(where: { $0.id == scanID }) {
             scans[index].productsShopped += 1
@@ -480,12 +481,6 @@ final class AppStore {
         progressReview = nil
         LocalFile.remove("progress_review.json")
         SkinTypeRecord.clear()
-    }
-
-    func signOut() {
-        mySkinPath = []
-        accountPath = []
-        selectedTab = .scan
     }
 
     /// Applies the onboarding answers to the profile and enters the main app.
