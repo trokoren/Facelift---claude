@@ -189,15 +189,28 @@ const TOOL = {
   },
 };
 
-async function consult(key: string, image: string, scores: Record<string, Concern>, skinType: unknown, context: unknown) {
+async function consult(
+  key: string, image: string, scores: Record<string, Concern>, skinType: unknown, context: unknown,
+  established: { label?: string; explanation?: string } | null, previous: string | null,
+) {
+  // With an established skin type, the writer doesn't write one: it builds on it.
+  const tool = structuredClone(TOOL) as typeof TOOL;
+  let system = SYSTEM;
+  if (established) {
+    delete (tool.input_schema.properties as Record<string, unknown>).skinType;
+    tool.input_schema.required = tool.input_schema.required.filter((k) => k !== "skinType");
+    system += `\n\nHer skin type is already established as "${established.label}". Do not write a skinType. Write everything else consistent with it.`;
+  } else if (previous) {
+    system += `\n\nHer skin type was previously "${previous}". If her base type (normal, dry, oily, combination or sensitive) now reads differently, add one gentle sentence to the skinType explanation saying it has shifted since last time, which seasons, routine and products can do. If it is the same, don't mention the previous reading.`;
+  }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 4000,
-      system: SYSTEM,
-      tools: [TOOL],
+      system,
+      tools: [tool],
       tool_choice: { type: "tool", name: "consult" },
       messages: [{
         role: "user",
@@ -207,7 +220,7 @@ async function consult(key: string, image: string, scores: Record<string, Concer
             type: "text",
             text: JSON.stringify({
               measured_scores: Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, { area: MEASURES[k] ?? k, score: Math.round(v.ui) }])),
-              measured_skin_type: skinType,
+              ...(established ? {} : { measured_skin_type: skinType }),
               her_answers: context,
             }),
           },
@@ -238,6 +251,15 @@ Deno.serve(async (req) => {
     return json({ error: "Send { image: base64 JPEG, width, height, context? }" }, 400);
   }
 
+  // Skin type changes slowly: the app asks for a fresh read only every few scans. Otherwise we
+  // keep her established type (and skip measuring it, saving a unit).
+  const ctx = (context && typeof context === "object") ? { ...(context as Record<string, unknown>) } : {};
+  const established = ctx.established_skin_type as { label?: string; explanation?: string } | undefined;
+  const reassess = ctx.reassess_skin_type !== false || !established?.label;
+  delete ctx.established_skin_type;
+  delete ctx.reassess_skin_type;
+  context = ctx;
+
   const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
   // Always YouCam's standard models, whatever the photo size. Switching models by size would
   // make scores jump between scans for reasons that have nothing to do with her skin.
@@ -249,7 +271,7 @@ Deno.serve(async (req) => {
   //    her to scan again instead of guessing.
   let measured: { scores: Record<string, Concern>; skinType: unknown };
   try {
-    measured = await youcam(youcamKey, bytes, hd, ACTIONS);
+    measured = await youcam(youcamKey, bytes, hd, reassess ? ACTIONS : Object.keys(MEASURES));
   } catch (error) {
     console.error("YouCam failed:", String(error));
     if (error instanceof FaceError) {
@@ -262,7 +284,7 @@ Deno.serve(async (req) => {
   // 2. Claude writes the consult from the measurements, the photo and her answers.
   let written: Record<string, unknown>;
   try {
-    written = await consult(claudeKey, image, measured.scores, measured.skinType, context);
+    written = await consult(claudeKey, image, measured.scores, measured.skinType, context, reassess ? null : established!, reassess ? established?.label ?? null : null);
   } catch (error) {
     console.error("Claude failed:", String(error));
     return json({ error: "We couldn't finish reading your scan. Please try again." }, 502);
@@ -271,6 +293,9 @@ Deno.serve(async (req) => {
     return json({ error: "We couldn't see your face clearly. Face the camera in bright, even light and try again." }, 422);
   }
   delete written.face_visible;
+  if (!reassess && established) {
+    written.skinType = { label: established.label, explanation: established.explanation ?? "" };
+  }
 
   // Shape only (no text), to spot missing or odd fields from the writer.
   const shape = (v: unknown): unknown =>
@@ -279,7 +304,7 @@ Deno.serve(async (req) => {
       : typeof v;
   console.log("consult shape", JSON.stringify(shape(written)));
 
-  console.log("scan", JSON.stringify({ hd, width, height, ms: Date.now() - started, measured: Object.keys(measured.scores).length }));
+  console.log("scan", JSON.stringify({ hd, width, height, ms: Date.now() - started, measured: Object.keys(measured.scores).length, skinTypeRead: reassess }));
 
   return json({
     mode: "consult",

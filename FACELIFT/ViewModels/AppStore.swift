@@ -177,6 +177,13 @@ final class AppStore {
         // Her city and weather get named only in her first consultation, never again.
         let consultsKey = "facelift.consultCount"
         context["first_consult"] = UserDefaults.standard.integer(forKey: consultsKey) == 0
+        // Skin type stays steady: re-read every 4th scan, otherwise reuse the established one.
+        let skinTypeRecord = SkinTypeRecord.load()
+        let reassess = SkinTypeRecord.isDue
+        context["reassess_skin_type"] = reassess
+        if let skinTypeRecord {
+            context["established_skin_type"] = ["label": skinTypeRecord.label, "explanation": skinTypeRecord.explanation]
+        }
 
         let report: SkinReport
         do {
@@ -185,8 +192,14 @@ final class AppStore {
             return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic(String(describing: error)).message
         }
         ScanLab.shared.record(report, mode: mode)
-        if report.consult != nil {
+        if let consult = report.consult {
             UserDefaults.standard.set(UserDefaults.standard.integer(forKey: consultsKey) + 1, forKey: consultsKey)
+            if reassess || skinTypeRecord == nil {
+                SkinTypeRecord(label: consult.skinType.label, explanation: consult.skinType.explanation, date: Date(), scansSince: 0).save()
+            } else if var record = skinTypeRecord {
+                record.scansSince += 1
+                record.save()
+            }
         }
         #if DEBUG
         print("Scan read with \(mode.title), \(report.resolution ?? "?") photo", report.youcamError.map { "(YouCam unavailable: \($0))" } ?? "")
