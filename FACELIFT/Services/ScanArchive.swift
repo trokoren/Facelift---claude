@@ -9,12 +9,12 @@ enum ScanArchive {
         return folder.appendingPathComponent("scans.json")
     }
 
-    /// Her saved scans, or nil if she has none yet (or the file can't be read).
+    /// Her saved scans, or nil if she has never scanned (or the file can't be read). Empty when
+    /// she deleted them all, so placeholders don't come back.
     static func load() -> [Scan]? {
         guard let url, let data = try? Data(contentsOf: url) else { return nil }
         do {
-            let scans = try JSONDecoder().decode([Scan].self, from: data)
-            return scans.isEmpty ? nil : scans
+            return try JSONDecoder().decode([Scan].self, from: data)
         } catch {
             #if DEBUG
             print("Saved scans couldn't be read:", error)
@@ -27,10 +27,6 @@ enum ScanArchive {
         guard let url else { return }
         let real = scans.filter { !$0.isSample }
         do {
-            if real.isEmpty {
-                try? FileManager.default.removeItem(at: url)
-                return
-            }
             let data = try JSONEncoder().encode(real)
             try data.write(to: url, options: [.atomic, .completeFileProtection])
         } catch {

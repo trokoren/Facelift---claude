@@ -16,6 +16,10 @@ struct SkinTypeRecord: Codable {
         return try? JSONDecoder().decode(SkinTypeRecord.self, from: data)
     }
 
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+
     func save() {
         if let data = try? JSONEncoder().encode(self) { UserDefaults.standard.set(data, forKey: Self.key) }
     }

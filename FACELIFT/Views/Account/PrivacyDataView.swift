@@ -76,8 +76,8 @@ struct PrivacyDataView: View {
             SafariSheet(url: url)
                 .ignoresSafeArea()
         }
-        .confirmationDialog("Delete older scans? Your latest scan is kept.", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
-            Button("Delete history", role: .destructive) {
+        .confirmationDialog("Delete all your scans? This removes every scan and your progress on this phone. It can't be undone.", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+            Button("Delete all scans", role: .destructive) {
                 withAnimation { store.deleteHistory() }
             }
             Button("Cancel", role: .cancel) {}

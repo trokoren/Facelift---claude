@@ -13,6 +13,11 @@ enum LocalFile {
         return try? JSONDecoder().decode(type, from: data)
     }
 
+    static func remove(_ name: String) {
+        guard let url = url(name) else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
     static func save<T: Encodable>(_ value: T, to name: String) {
         guard let url = url(name), let data = try? JSONEncoder().encode(value) else { return }
         try? data.write(to: url, options: [.atomic, .completeFileProtection])

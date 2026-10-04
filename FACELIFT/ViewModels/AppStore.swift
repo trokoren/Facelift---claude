@@ -473,8 +473,13 @@ final class AppStore {
         scans.removeAll { $0.id == id }
     }
 
+    /// Deletes every scan on this phone, plus what was built from them (her progress review
+    /// and stored skin type). Daily scan counts are kept, so deleting doesn't give scans back.
     func deleteHistory() {
-        scans = Array(scans.prefix(1))
+        scans = []
+        progressReview = nil
+        LocalFile.remove("progress_review.json")
+        SkinTypeRecord.clear()
     }
 
     func signOut() {

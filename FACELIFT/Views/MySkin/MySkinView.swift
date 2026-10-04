@@ -27,6 +27,15 @@ struct MySkinView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 32)
 
+                if store.scans.isEmpty {
+                    Text("No scans yet. Your next scan starts a fresh history.")
+                        .font(FLFont.sans(13.5))
+                        .foregroundStyle(Palette.stone)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 24)
+                }
+
                 VStack(spacing: 0) {
                     ForEach(Array(store.scans.enumerated()), id: \.element.id) { offset, scan in
                         ScanTimelineRow(
