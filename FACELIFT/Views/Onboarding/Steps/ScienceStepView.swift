@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// "Built on real skin science." — stats chips, donut, barrier chart and compatibility bars.
+/// "Built on real skin science.": stat chips, the 7 areas we measure, scan-to-scan consistency
+/// and what her plan is built from. Every claim here is one we can back up.
 struct ScienceStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @State private var isRevealed: Bool = false
@@ -21,13 +22,13 @@ struct ScienceStepView: View {
             }
             .padding(.top, 10)
 
-            misidentifyCard
+            measuresCard
                 .padding(.top, 12)
 
-            barrierCard
+            consistencyCard
                 .padding(.top, 8)
 
-            compatibilityCard
+            planCard
                 .padding(.top, 8)
         } footer: {
             OnboardingCTA(title: "Continue") { flow.next() }
@@ -54,225 +55,177 @@ struct ScienceStepView: View {
             .background(Color.white, in: Capsule())
     }
 
-    private var misidentifyCard: some View {
+    // MARK: 7 areas, every scan
+
+    private static let areas = ["Lines", "Dark circles", "Spots", "Redness", "Texture", "Pores", "Hydration"]
+
+    private var measuresCard: some View {
         HStack(alignment: .center, spacing: 18) {
             ZStack {
-                Circle().stroke(Palette.roseLine, lineWidth: 9)
-                Circle()
-                    .trim(from: 0, to: isRevealed ? 0.63 : 0)
-                    .stroke(Palette.rose, style: StrokeStyle(lineWidth: 9, lineCap: .butt))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: -2) {
-                    Text("63%")
-                        .font(FLFont.sans(19, .semibold))
-                        .foregroundStyle(Palette.ink)
-                    Text("wrong")
-                        .font(FLFont.sans(9.5))
-                        .foregroundStyle(Palette.stone)
+                ForEach(0..<7, id: \.self) { index in
+                    let start = Double(index) / 7 + 0.014
+                    let end = Double(index + 1) / 7 - 0.014
+                    Circle()
+                        .trim(from: start, to: end)
+                        .stroke(Palette.roseLine, style: StrokeStyle(lineWidth: 9, lineCap: .butt))
+                        .rotationEffect(.degrees(-90))
+                    Circle()
+                        .trim(from: start, to: isRevealed ? end : start)
+                        .stroke(Palette.rose, style: StrokeStyle(lineWidth: 9, lineCap: .butt))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeOut(duration: 0.35).delay(0.3 + Double(index) * 0.09), value: isRevealed)
                 }
+                Text("7")
+                    .font(FLFont.serif(30))
+                    .foregroundStyle(Palette.ink)
             }
             .frame(width: 76, height: 76)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("of women misidentify their skin type")
+            VStack(alignment: .leading, spacing: 6) {
+                Text("areas measured on every scan")
                     .font(FLFont.sans(15.5, .medium))
                     .foregroundStyle(Palette.ink)
                     .lineSpacing(2)
-                Text("FACELIFT's scan gets it right, instantly.")
-                    .font(FLFont.sans(13.5))
-                    .foregroundStyle(Palette.body)
-                    .lineSpacing(2)
-                Rectangle().fill(Palette.divider).frame(width: 150, height: 1).padding(.top, 4)
-                Text("SOURCE: LABSKIN")
-                    .font(FLFont.sans(10))
-                    .tracking(1.6)
-                    .foregroundStyle(Palette.label)
+                FlowLayout(spacing: 5) {
+                    ForEach(Self.areas, id: \.self) { area in
+                        Text(area)
+                            .font(FLFont.sans(11.5))
+                            .foregroundStyle(Palette.body)
+                            .padding(.horizontal, 8)
+                            .frame(height: 22)
+                            .background(Palette.chip, in: Capsule())
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(radius: 26)
     }
 
-    private var barrierCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("SKIN BARRIER STRENGTH")
-                        .font(FLFont.sans(11))
-                        .tracking(1.8)
-                        .foregroundStyle(Palette.label)
-                    Text("+187%")
-                        .font(FLFont.serifItalic(30))
-                        .foregroundStyle(Palette.ink)
-                        .padding(.top, 4)
-                    Text("over 12 weeks")
-                        .font(FLFont.sans(13))
-                        .foregroundStyle(Palette.stone)
-                }
-                Spacer()
-                VStack(alignment: .leading, spacing: 8) {
-                    legend("Targeted", dashed: false)
-                    legend("Generic", dashed: true)
-                }
-                .padding(.top, 2)
-            }
+    // MARK: Consistency
 
-            barrierChart
-                .frame(height: 88)
-                .padding(.top, 8)
+    private var consistencyCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("SCAN-TO-SCAN CONSISTENCY")
+                .font(FLFont.sans(11))
+                .tracking(1.8)
+                .foregroundStyle(Palette.label)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("95%")
+                    .font(FLFont.serifItalic(30))
+                    .foregroundStyle(Palette.ink)
+                Text("Same face, same read. So when\nyour score moves, your skin did.")
+                    .font(FLFont.sans(13))
+                    .foregroundStyle(Palette.stone)
+                    .lineSpacing(2)
+            }
+            .padding(.top, 4)
+
+            consistencyChart
+                .frame(height: 64)
+                .padding(.top, 10)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(radius: 26)
     }
 
-    private func legend(_ text: String, dashed: Bool) -> some View {
-        HStack(spacing: 8) {
-            Rectangle()
-                .fill(dashed ? Palette.whisper : Palette.rose)
-                .frame(width: 20, height: 2)
-                .mask {
-                    if dashed {
-                        HStack(spacing: 3) {
-                            Rectangle(); Rectangle(); Rectangle()
-                        }
-                    } else {
-                        Rectangle()
-                    }
-                }
-            Text(text)
-                .font(FLFont.sans(13))
-                .foregroundStyle(Palette.stone)
-        }
-    }
-
-    private var barrierChart: some View {
+    /// Five repeat scans of one face, sitting inside a narrow band.
+    private var consistencyChart: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let h = geo.size.height
-            let plotLeft: CGFloat = 40
-            let plotBottom = h - 22
-            let plotTop: CGFloat = 8
-            let points: [CGPoint] = [
-                CGPoint(x: plotLeft, y: plotBottom),
-                CGPoint(x: plotLeft + (w - plotLeft) * 0.5, y: plotBottom - (plotBottom - plotTop) * 0.52),
-                CGPoint(x: w - 6, y: plotTop + 6)
-            ]
+            let bandTop: CGFloat = 10
+            let bandHeight: CGFloat = 26
+            let offsets: [CGFloat] = [0.55, 0.35, 0.5, 0.62, 0.45]
+            let points = offsets.enumerated().map { index, offset in
+                CGPoint(x: 14 + (w - 28) * CGFloat(index) / 4, y: bandTop + bandHeight * offset)
+            }
 
             ZStack(alignment: .topLeading) {
-                ForEach([("100", 0.66), ("50", 0.33), ("0", 0.0)], id: \.0) { label, level in
-                    let y = plotBottom - (plotBottom - plotTop) * level
-                    Path { p in
-                        p.move(to: CGPoint(x: plotLeft, y: y))
-                        p.addLine(to: CGPoint(x: w, y: y))
-                    }
-                    .stroke(Palette.divider, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    Text(label)
-                        .font(FLFont.sans(11))
-                        .foregroundStyle(Palette.faint)
-                        .position(x: 16, y: y)
-                }
-
-                Path { p in
-                    p.move(to: CGPoint(x: plotLeft, y: plotBottom - 4))
-                    p.addLine(to: CGPoint(x: w, y: plotBottom - 10))
-                }
-                .stroke(Palette.whisper, style: StrokeStyle(lineWidth: 1.6, dash: [5, 5]))
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(Palette.rose.opacity(0.09))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Palette.roseLine, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    )
+                    .frame(width: w, height: bandHeight)
+                    .offset(y: bandTop)
 
                 Path { p in
                     p.move(to: points[0])
-                    p.addLine(to: points[1])
-                    p.addLine(to: points[2])
-                    p.addLine(to: CGPoint(x: w - 6, y: plotBottom))
-                    p.closeSubpath()
-                }
-                .fill(LinearGradient(colors: [Palette.rose.opacity(0.14), Palette.rose.opacity(0.02)], startPoint: .top, endPoint: .bottom))
-                .opacity(isRevealed ? 1 : 0)
-
-                Path { p in
-                    p.move(to: points[0])
-                    p.addLine(to: points[1])
-                    p.addLine(to: points[2])
+                    for point in points.dropFirst() { p.addLine(to: point) }
                 }
                 .trim(from: 0, to: isRevealed ? 1 : 0)
-                .stroke(Palette.rose, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .stroke(Palette.rose, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
-                ForEach(0..<2, id: \.self) { i in
+                ForEach(points.indices, id: \.self) { index in
                     Circle()
                         .fill(Color.white)
                         .overlay(Circle().stroke(Palette.rose, lineWidth: 2.5))
-                        .frame(width: 12, height: 12)
-                        .position(points[i])
+                        .frame(width: 11, height: 11)
+                        .position(points[index])
                         .opacity(isRevealed ? 1 : 0)
+                        .animation(.easeOut(duration: 0.3).delay(0.4 + Double(index) * 0.12), value: isRevealed)
                 }
-
-                Text("+187%")
-                    .font(FLFont.sans(12, .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 9)
-                    .frame(height: 24)
-                    .background(Palette.rose, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .position(x: w - 30, y: plotTop + 6)
-                    .opacity(isRevealed ? 1 : 0)
 
                 HStack {
-                    Text("Wk 0")
-                    Spacer()
-                    Text("Wk 6")
-                    Spacer()
-                    Text("Wk 12")
+                    ForEach(1...5, id: \.self) { n in
+                        Text("Scan \(n)")
+                        if n < 5 { Spacer() }
+                    }
                 }
-                .font(FLFont.sans(12))
+                .font(FLFont.sans(11.5))
                 .foregroundStyle(Palette.faint)
-                .frame(width: w - plotLeft)
-                .offset(x: plotLeft, y: h - 14)
+                .frame(width: w)
+                .offset(y: bandTop + bandHeight + 10)
             }
         }
     }
 
-    private var compatibilityCard: some View {
+    // MARK: What shapes her plan
+
+    private var planCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("INGREDIENT COMPATIBILITY")
+            Text("YOUR PLAN IS BUILT FROM")
                 .font(FLFont.sans(11))
                 .tracking(1.8)
                 .foregroundStyle(Palette.label)
 
-            compatibilityRow(title: "Generic routine", value: 0.31, label: "31%", emphasized: false)
-                .padding(.top, 14)
-            compatibilityRow(title: "FACELIFT", value: 0.94, label: "94%", emphasized: true)
-                .padding(.top, 12)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                planItem("viewfinder", "Your 7 measures", index: 0)
+                planItem("drop", "Your skin type", index: 1)
+                planItem("list.bullet", "Your routine", index: 2)
+                planItem("sparkle", "Your goals", index: 3)
+            }
+            .padding(.top, 12)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(radius: 26)
     }
 
-    private func compatibilityRow(title: String, value: Double, label: String, emphasized: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(FLFont.sans(15, emphasized ? .medium : .regular))
-                    .foregroundStyle(emphasized ? Palette.ink : Palette.body)
-                Spacer()
-                Text(label)
-                    .font(FLFont.sans(15, .medium))
-                    .foregroundStyle(emphasized ? Palette.rose : Palette.stone)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.track)
-                    Capsule()
-                        .fill(
-                            emphasized
-                            ? LinearGradient(colors: [Palette.rose, Color(hex: 0xE8BCBA)], startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [Color(hex: 0xE2CFCB), Color(hex: 0xE2CFCB)], startPoint: .leading, endPoint: .trailing)
-                        )
-                        .frame(width: geo.size.width * (isRevealed ? value : 0))
-                }
-            }
-            .frame(height: emphasized ? 8 : 6)
+    private func planItem(_ icon: String, _ text: String, index: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(Palette.rose)
+                .frame(width: 18)
+            Text(text)
+                .font(FLFont.sans(13.5, .medium))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 12)
+        .frame(height: 40)
+        .background(Palette.chipSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .opacity(isRevealed ? 1 : 0)
+        .offset(y: isRevealed ? 0 : 6)
+        .animation(.easeOut(duration: 0.35).delay(0.5 + Double(index) * 0.08), value: isRevealed)
     }
 }
