@@ -32,6 +32,12 @@ final class AppStore {
     var checkIns: [ProductCheckIn] = LocalFile.load([ProductCheckIn].self, from: "checkins.json") ?? [] {
         didSet { LocalFile.save(checkIns, to: "checkins.json") }
     }
+    /// The deeper progress review, rewritten only when one is due.
+    var progressReview: ProgressReview? = LocalFile.load(ProgressReview.self, from: "progress_review.json") {
+        didSet { if let progressReview { LocalFile.save(progressReview, to: "progress_review.json") } }
+    }
+    var isWritingReview: Bool = false
+    }
 
     /// The Skin Score over time, oldest first, from her real scans (placeholder points until
     /// she has one).
@@ -56,45 +62,110 @@ final class AppStore {
 
     var latestScan: Scan? { scans.first }
 
-    /// Plain-language "what changed" summary. Every scan is kept (nothing resets): this compares
-    /// the newest scan with the one right before it, while the chart shows the full history.
+    /// The short "what changed" note on the Progress card (four lines at most). Compares the
+    /// newest scan with the one before it, and is honest about scans taken close together.
     var progressUpdate: String {
         guard let latest = scans.first else {
             return "Scan your skin to start tracking how it changes."
         }
         guard scans.count > 1 else {
-            return "This first scan is your baseline. Scan again in about 10 days and we'll show you exactly what changed."
+            return "This first scan is your baseline. Scan again in a few days and we'll show you what's changing."
         }
         let previous = scans[1]
-        var parts: [String] = []
-
         let now = latest.overallScore
         let before = previous.overallScore
         let delta = now - before
-        if delta > 0 {
-            parts.append("Your overall skin score is up \(delta) \(delta == 1 ? "point" : "points") since your last scan (\(before) to \(now)).")
-        } else if delta < 0 {
-            parts.append("Your overall skin score dipped \(-delta) \(delta == -1 ? "point" : "points") since your last scan (\(before) to \(now)). Small swings are normal with sleep, stress and your cycle.")
-        } else {
-            parts.append("Your overall skin score held steady at \(now) since your last scan.")
-        }
-
-        let changes: [(category: AnalysisCategory, change: Int)] = latest.categories.compactMap { category in
-            guard let old = previous.categories.first(where: { $0.kind == category.kind }) else { return nil }
-            return (category, category.score - old.score)
-        }
+        let close = latest.date.timeIntervalSince(previous.date) < 3 * 86_400
+        let changes = Self.areaChanges(latest, previous)
         let best = changes.max { $0.change < $1.change }
-        let worst = changes.min { $0.change < $1.change }
+        let weakest = changes.min { $0.score < $1.score }
+        let focus = weakest.map { " \($0.name) is your lowest area at \($0.score), so it's the best place to focus." } ?? ""
 
-        if let best, best.change > 0 {
-            parts.append("\(best.category.title) improved the most, up \(best.change).")
+        if abs(delta) <= 2 {
+            return "Your Skin Score is steady at \(now)." + (close ? " Skin changes over weeks, so scans a few days apart show progress more clearly than daily ones." : focus)
         }
-        if let worst, worst.change < 0, worst.category.kind != best?.category.kind {
-            parts.append("\(worst.category.title) slipped \(-worst.change), so that's the area to focus on next.")
-        } else if let weakest = latest.categories.min(by: { $0.score < $1.score }) {
-            parts.append("\(weakest.title) is your lowest area at \(weakest.score), so it's the best place to focus next.")
+        if delta > 0 {
+            if close {
+                return "Your Skin Score is up \(delta) since your last scan (\(before) to \(now)). Readings shift a little day to day, so your next few scans will confirm the trend."
+            }
+            let lead = best.map { $0.change > 0 ? " \($0.name) improved the most, up \($0.change)." : "" } ?? ""
+            return "Your Skin Score is up \(delta) since your last scan (\(before) to \(now))." + lead
         }
-        return parts.joined(separator: " ")
+        return "Your Skin Score dipped \(-delta) since your last scan (\(before) to \(now))." + (close
+            ? " Readings close together move with sleep, hydration and light, so one scan isn't a trend."
+            : " Small swings are normal with sleep, stress and your cycle.")
+    }
+
+    /// Per-area change between two scans: measurements on current scans, categories on older ones.
+    private static func areaChanges(_ latest: Scan, _ previous: Scan) -> [(name: String, change: Int, score: Int)] {
+        if !latest.measures.isEmpty, !previous.measures.isEmpty {
+            return Measure.order.compactMap { key in
+                guard let now = latest.measures[key], let before = previous.measures[key] else { return nil }
+                return (Measure.name(key), now - before, now)
+            }
+        }
+        return latest.categories.compactMap { category in
+            guard let old = previous.categories.first(where: { $0.kind == category.kind }) else { return nil }
+            return (category.title, category.score - old.score, category.score)
+        }
+    }
+
+    // MARK: Progress review (the deeper read behind the card)
+
+    /// Real, measured scans, oldest first.
+    private var reviewableScans: [Scan] {
+        scans.filter { !$0.isSample && !$0.measures.isEmpty }.sorted { $0.date < $1.date }
+    }
+
+    /// Why a new review should be written now, or nil if the current one still stands.
+    /// - first: her first review, once she has two measured scans.
+    /// - five_scans: a check-in every 5 scans, even when little has changed.
+    /// - meaningful_change: the score moved 5+ points (or one area 10+) over at least a week.
+    ///   Big jumps over a few days are treated as day-to-day variation and wait.
+    /// - monthly: 30+ days since the last review, with at least one new scan.
+    var progressReviewReason: String? {
+        let real = reviewableScans
+        guard real.count >= 2, let latest = real.last else { return nil }
+        guard let review = progressReview else { return "first" }
+        guard review.scanID != latest.id else { return nil }
+        let anchor = real.first { $0.id == review.scanID } ?? real[0]
+        let newScans = real.filter { $0.date > anchor.date }.count
+        let days = latest.date.timeIntervalSince(anchor.date) / 86_400
+        let overall = abs(latest.overallScore - anchor.overallScore)
+        let area = Measure.order.compactMap { key -> Int? in
+            guard let now = latest.measures[key], let before = anchor.measures[key] else { return nil }
+            return abs(now - before)
+        }.max() ?? 0
+        if newScans >= 5 { return "five_scans" }
+        if days >= 7 && (overall >= 5 || area >= 10) { return "meaningful_change" }
+        if Date().timeIntervalSince(review.date) >= 30 * 86_400 && newScans >= 1 { return "monthly" }
+        return nil
+    }
+
+    /// Writes a new review in the background when one is due. Safe to call often.
+    func refreshProgressReviewIfDue() async {
+        guard !isWritingReview, let reason = progressReviewReason else { return }
+        let real = reviewableScans
+        guard let latest = real.last else { return }
+        let anchorIndex = progressReview.flatMap { review in real.firstIndex { $0.id == review.scanID } } ?? 0
+        var context: [String: Any] = ["skin_type": profileSkinType]
+        let products = usedProducts.map { "\($0.brand) \($0.name)".trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if !products.isEmpty { context["products"] = products }
+        if !productFeedback.isEmpty { context["product_feedback"] = productFeedback }
+
+        isWritingReview = true
+        defer { isWritingReview = false }
+        do {
+            var review = try await ProgressReviewService.write(scans: real, anchorIndex: anchorIndex, reason: reason, context: context)
+            review.date = Date()
+            review.scanID = latest.id
+            review.scanCount = real.count
+            progressReview = review
+        } catch {
+            #if DEBUG
+            print("progress review failed:", error)
+            #endif
+        }
     }
 
     var initial: String {
@@ -242,6 +313,7 @@ final class AppStore {
         mySkinPath = [.scan(id: scan.id, isFresh: true)]
         selectedTab = .mySkin
         isScanning = false
+        Task { await refreshProgressReviewIfDue() }
     }
 
     /// True right after a scan that beat the previous one: the best moment to ask for a rating.

@@ -5,6 +5,7 @@ struct ProgressScreen: View {
     @Environment(AppStore.self) private var store
     @Environment(\.openURL) private var openURL
     @State private var insight: InsightContent?
+    @State private var showsReview = false
     @State private var isEditingProducts: Bool = false
     @State private var range: ChartRange = .all
     /// The product we're asking about this visit (kept steady while she answers).
@@ -43,6 +44,11 @@ struct ProgressScreen: View {
         .sheet(item: $insight) { item in
             InsightSheet(content: item)
         }
+        .sheet(isPresented: $showsReview) {
+            ProgressReviewSheet()
+        }
+        // Catches up if a review was due but couldn't be written last time.
+        .task { await store.refreshProgressReviewIfDue() }
         .sheet(isPresented: $isEditingProducts) {
             EditProductsSheet()
                 .presentationDetents([.large])
@@ -53,7 +59,7 @@ struct ProgressScreen: View {
 
     private var updateCard: some View {
         Button {
-            insight = InsightContent(label: "YOUR PROGRESS UPDATE", accent: Palette.rose, title: "Since your last scan", text: store.progressUpdate)
+            showsReview = true
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
