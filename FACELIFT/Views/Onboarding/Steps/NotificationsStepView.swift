@@ -36,7 +36,7 @@ struct NotificationsStepView: View {
         .background(Palette.canvas.ignoresSafeArea())
         .overlay(alignment: .bottom) {
             VStack(spacing: 10) {
-                OnboardingCTA(title: isDenied ? "Open Settings" : "Keep me on track", isEnabled: !isRequesting) {
+                OnboardingCTA(title: isDenied ? "Open Settings" : "Remind me to Scan", isEnabled: !isRequesting) {
                     Task { await request() }
                 }
                 Button {
