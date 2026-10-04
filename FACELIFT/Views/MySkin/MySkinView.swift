@@ -31,6 +31,7 @@ struct MySkinView: View {
                     ForEach(Array(store.scans.enumerated()), id: \.element.id) { offset, scan in
                         ScanTimelineRow(
                             scan: scan,
+                            previousScore: store.scans.indices.contains(offset + 1) ? store.scans[offset + 1].overallScore : nil,
                             isFirst: offset == 0,
                             isLast: offset == store.scans.count - 1
                         )
@@ -136,15 +137,17 @@ struct MySkinView: View {
 
 private struct ScanTimelineRow: View {
     let scan: Scan
+    /// The scan before this one, for the change badge.
+    let previousScore: Int?
     let isFirst: Bool
     let isLast: Bool
 
-    private let avatarSize: CGFloat = 47
+    private let avatarSize: CGFloat = 52
 
     var body: some View {
         NavigationLink(value: MySkinRoute.scan(id: scan.id, isFresh: false)) {
             HStack(alignment: .center, spacing: 14) {
-                avatar
+                scoreRing
                 card
             }
             .padding(.vertical, 6)
@@ -155,24 +158,24 @@ private struct ScanTimelineRow: View {
         .buttonStyle(CardPressStyle())
     }
 
-    private var avatar: some View {
-        Circle()
-            .fill(Palette.blush)
-            .overlay {
-                if let name = scan.portraitName {
-                    Image(name)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .allowsHitTesting(false)
-                } else {
-                    FaceLineIcon()
-                        .stroke(Palette.rose, style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round))
-                        .frame(width: 17, height: 23)
-                }
-            }
-            .clipShape(Circle())
-            .overlay(Circle().stroke(Palette.rose, lineWidth: 1.4))
-            .frame(width: avatarSize, height: avatarSize)
+    /// The Skin Score at a glance: the number inside a ring filled to the score.
+    private var scoreRing: some View {
+        let score = scan.overallScore
+        return ZStack {
+            Circle().fill(Color.white)
+            Circle().stroke(Palette.roseLine, lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: CGFloat(min(max(score, 0), 100)) / 100)
+                .stroke(Palette.rose, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(score)")
+                .font(FLFont.serif(21))
+                .foregroundStyle(Palette.ink)
+                .monospacedDigit()
+        }
+        .frame(width: avatarSize, height: avatarSize)
+        .accessibilityElement()
+        .accessibilityLabel("Skin Score \(score)")
     }
 
     private var timeline: some View {
@@ -192,17 +195,23 @@ private struct ScanTimelineRow: View {
     private var card: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(scan.formattedDate)
-                    .font(FLFont.serif(19.9))
-                    .foregroundStyle(Palette.ink)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(scan.formattedDate)
+                        .font(FLFont.serif(19.9))
+                        .foregroundStyle(Palette.ink)
+                    Spacer(minLength: 0)
+                    if let change {
+                        changeBadge(change)
+                    }
+                }
                 FlowLayout(spacing: 5, lineSpacing: 5) {
                     ForEach(scan.shortConcerns, id: \.self) { concern in
                         ConcernChip(text: concern)
                     }
                 }
                 .padding(.top, 5)
-                Text(scan.metaLine)
-                    .font(FLFont.serifItalic(11))
+                Text(ratingLine)
+                    .font(FLFont.serifItalic(12))
                     .foregroundStyle(Palette.faint)
                     .padding(.top, 8)
             }
@@ -216,5 +225,34 @@ private struct ScanTimelineRow: View {
         .padding(.trailing, 18)
         .padding(.vertical, 15)
         .cardSurface(radius: 20)
+    }
+
+    private var change: Int? {
+        previousScore.map { scan.overallScore - $0 }
+    }
+
+    /// "Good · 2 products shopped"
+    private var ratingLine: String {
+        let shopped = scan.productsShopped > 0 ? " · \(scan.productsShopped) \(scan.productsShopped == 1 ? "product" : "products") shopped" : ""
+        return SampleData.rating(for: scan.overallScore) + shopped
+    }
+
+    /// Up, down or steady since the scan before.
+    private func changeBadge(_ change: Int) -> some View {
+        let up = change > 0, down = change < 0
+        return HStack(spacing: 3) {
+            if up || down {
+                Image(systemName: up ? "arrow.up" : "arrow.down")
+                    .font(.system(size: 9, weight: .bold))
+            }
+            Text(up || down ? "\(abs(change))" : "Steady")
+                .font(FLFont.sans(11.5, .semibold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(up ? Palette.sage : Palette.stone)
+        .padding(.horizontal, 8)
+        .frame(height: 22)
+        .background((up ? Palette.sage : Palette.stone).opacity(0.1), in: Capsule())
+        .accessibilityLabel(up ? "Up \(change)" : down ? "Down \(-change)" : "Steady")
     }
 }
