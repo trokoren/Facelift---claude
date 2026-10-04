@@ -264,7 +264,7 @@ struct CircleScanView: View {
 
     private var title: String {
         switch scan.phase {
-        case .aligning: "Line your face up\nwith the outline"
+        case .aligning: scan.lightLevel == .dark ? "Find brighter light\nto begin" : "Line your face up\nwith the outline"
         case .mapping: "Mapping your face"
         case .circling: "Gently circle\nyour head"
         case .done: "Scan complete"

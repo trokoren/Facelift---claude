@@ -173,7 +173,9 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             }
             if level != lightLevel { lightLevel = level }
         }
-        if lightLevel == .dark {
+        if lightLevel == .dark && phase == .aligning {
+            setHint("Face a window or bright bathroom light")
+        } else if lightLevel == .dark {
             setHint("Too dark to read your skin. Face a window or lamp.")
         } else if lightLevel == .dim && phase == .aligning {
             setHint("Brighter light gives a more accurate scan")
@@ -229,7 +231,8 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             }
             #endif
 
-            if match.isMatched && isSteady {
+            // The scan won't begin in the dark: that read would be off, and she'd want to redo it.
+            if match.isMatched && isSteady && lightLevel != .dark {
                 hold = min(1, hold + elapsed / holdDuration)
             } else {
                 hold = max(0, hold - elapsed * 2)
