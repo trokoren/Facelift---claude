@@ -68,8 +68,9 @@ struct ScanInstructionsStepView: View {
             .padding(.top, 22)
 
             VStack(spacing: 12) {
-                InstructionRow(number: 1, image: "onb_step1", title: "Glasses off, face bare", detail: "Soft, even light works best")
-                InstructionRow(number: 2, image: "onb_step2", title: "Look straight ahead", detail: "Start with your face inside the circle")
+                // Light leads: consistent light is what makes scan-to-scan progress real.
+                InstructionRow(number: 1, symbol: "sun.max.fill", title: "Same spot, same light", detail: "Face a window or bright bathroom light, the same place each time")
+                InstructionRow(number: 2, image: "onb_step1", title: "Glasses off, look ahead", detail: "Start with your face inside the circle")
                 InstructionRow(number: 3, image: "onb_step3", title: "Move in a slow circle", detail: "Fill the ring all the way around")
             }
             .padding(.top, 16)
@@ -88,7 +89,9 @@ struct ScanInstructionsStepView: View {
 
 private struct InstructionRow: View {
     let number: Int
-    let image: String
+    var image: String? = nil
+    /// Shown in place of a photo when there is none.
+    var symbol: String? = nil
     let title: String
     let detail: String
 
@@ -103,10 +106,19 @@ private struct InstructionRow: View {
             Color(hex: 0xEAE7E4)
                 .frame(width: 88, height: 88)
                 .overlay {
-                    Image(image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .allowsHitTesting(false)
+                    if let image {
+                        Image(image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .allowsHitTesting(false)
+                    } else if let symbol {
+                        ZStack {
+                            LinearGradient(colors: [Color(hex: 0xFCF1E8), Color(hex: 0xF4DEDA)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            Image(systemName: symbol)
+                                .font(.system(size: 34, weight: .light))
+                                .foregroundStyle(Palette.rose)
+                        }
+                    }
                 }
                 .clipShape(.rect(cornerRadius: 18, style: .continuous))
                 .padding(.leading, 14)
