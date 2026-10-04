@@ -192,6 +192,7 @@ final class AppStore {
             return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic(String(describing: error)).message
         }
         ScanLab.shared.record(report, mode: mode)
+        ScanAllowance.recordScan()
         if let consult = report.consult {
             UserDefaults.standard.set(UserDefaults.standard.integer(forKey: consultsKey) + 1, forKey: consultsKey)
             if reassess || skinTypeRecord == nil {

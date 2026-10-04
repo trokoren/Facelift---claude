@@ -4,6 +4,8 @@ import SwiftUI
 struct ScanHomeView: View {
     @Environment(AppStore.self) private var store
     @State private var hasAppeared: Bool = false
+    @State private var showsAlreadyScanned = false
+    @State private var showsUsedUp = false
 
     var body: some View {
         ZStack {
@@ -58,7 +60,11 @@ struct ScanHomeView: View {
                 .offset(y: hasAppeared ? 0 : 14)
 
                 Button {
-                    store.startScan()
+                    switch ScanAllowance.current {
+                    case .open: store.startScan()
+                    case .alreadyScanned: showsAlreadyScanned = true
+                    case .usedUp: showsUsedUp = true
+                    }
                 } label: {
                     Text("Scan my face")
                         .font(FLFont.sans(15.2))
@@ -89,6 +95,17 @@ struct ScanHomeView: View {
             .padding(.horizontal, 24)
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: store.isScanning)
+        .alert("You've already scanned today", isPresented: $showsAlreadyScanned) {
+            Button("Not now", role: .cancel) {}
+            Button("Scan anyway") { store.startScan() }
+        } message: {
+            Text("Skin changes slowly, so a second scan today won't show much new. For the clearest progress, scan every few days in the same spot and light.")
+        }
+        .alert("Your next scan unlocks tomorrow", isPresented: $showsUsedUp) {
+            Button("Got it", role: .cancel) {}
+        } message: {
+            Text("Skin changes slowly, and a little time between scans makes your progress easier to see.")
+        }
         .onAppear {
             withAnimation(.easeOut(duration: 1.4)) {
                 hasAppeared = true
