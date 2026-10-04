@@ -144,8 +144,9 @@ struct MainGoalStepView: View {
 
             VStack(spacing: 10) {
                 ForEach(options, id: \.0) { option, symbol, color in
+                    // Picks without jumping ahead: with this many options she may want to change her mind.
                     OnboardingOption(title: option, isSelected: flow.answers.mainGoal == option, alignment: .leading, height: 56) {
-                        flow.choose(option, into: \.mainGoal)
+                        flow.answers.mainGoal = option
                     } leading: {
                         Image(systemName: symbol)
                             .font(.system(size: 18, weight: .light))
@@ -155,6 +156,10 @@ struct MainGoalStepView: View {
                 }
             }
             .padding(.top, 30)
+        } footer: {
+            OnboardingCTA(title: "Continue", isEnabled: flow.answers.mainGoal != nil) { flow.next() }
+                .padding(.top, 8)
+                .padding(.bottom, 10)
         }
     }
 
