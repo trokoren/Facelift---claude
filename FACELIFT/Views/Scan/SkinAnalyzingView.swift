@@ -101,7 +101,7 @@ struct SkinAnalyzingView: View {
                 Text("Reading your skin")
                     .font(FLFont.serif(38))
                     .foregroundStyle(.white)
-                Text("This takes about 25 seconds.")
+                Text("This takes about 20 seconds.")
                     .font(FLFont.sans(15))
                     .foregroundStyle(Palette.nightBody)
                     .padding(.top, 8)

@@ -255,6 +255,35 @@ private struct ConcernCard: View {
     }
 }
 
+/// Soft shimmering lines where the deep read will appear, while it's being written.
+private struct DeepReadPlaceholder: View {
+    @State private var glow = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            ForEach(0..<3, id: \.self) { block in
+                VStack(alignment: .leading, spacing: 9) {
+                    bar(width: 110, height: 12)
+                    bar(width: nil, height: 9)
+                    bar(width: nil, height: 9)
+                    bar(width: block == 1 ? 150 : 210, height: 9)
+                }
+            }
+        }
+        .opacity(glow ? 1 : 0.45)
+        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: glow)
+        .onAppear { glow = true }
+        .accessibilityLabel("Loading")
+    }
+
+    private func bar(width: CGFloat?, height: CGFloat) -> some View {
+        Capsule()
+            .fill(Palette.blush)
+            .frame(maxWidth: width ?? .infinity, alignment: .leading)
+            .frame(width: width, height: height)
+    }
+}
+
 /// "Dive in →": the invitation to open a deeper read.
 private struct DiveInLabel: View {
     var body: some View {
@@ -388,13 +417,7 @@ private struct ConcernSheet: View {
                             .foregroundStyle(Palette.rose)
                         }
                     } else {
-                        HStack(spacing: 10) {
-                            ProgressView().tint(Palette.rose)
-                            Text("Writing your deep dive…")
-                                .font(FLFont.sans(13.9))
-                                .foregroundStyle(Palette.pebble)
-                        }
-                        .padding(.top, 4)
+                        DeepReadPlaceholder()
                     }
                 }
                 .animation(.easeOut(duration: 0.3), value: concern.hasDeepRead)
