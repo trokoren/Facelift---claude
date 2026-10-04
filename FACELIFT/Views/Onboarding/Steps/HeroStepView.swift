@@ -1,6 +1,8 @@
 import SwiftUI
+import AppTrackingTransparency
 
-/// First screen: "Your skin, finally understood." The headline and button fade in over the photo.
+/// First screen: "Your skin, finally understood." The tracking prompt appears over this
+/// hero, and the headline + buttons fade in once it is answered.
 struct HeroStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
@@ -49,15 +51,34 @@ struct HeroStepView: View {
 
                 OnboardingCTA(title: "Next") { flow.next() }
                     .padding(.top, 26)
-                    .padding(.bottom, 52)
                     .opacity(hasAppeared ? 1 : 0)
+
+                Button {
+                    store.completeOnboarding(with: flow.answers, signIn: true)
+                } label: {
+                    Text("Already a user? Sign in →")
+                        .font(FLFont.sans(13.5))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .frame(height: 44)
+                        .padding(.horizontal, 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.top, 8)
+                .padding(.bottom, 30)
+                .opacity(hasAppeared ? 1 : 0)
             }
             .padding(.horizontal, 28)
         }
-        .task {
-            // Let the photo land for a beat, then bring in the words.
-            try? await Task.sleep(for: .milliseconds(500))
-            withAnimation(.easeOut(duration: 0.9)) { hasAppeared = true }
+        .task { await requestTrackingThenReveal() }
+    }
+
+    private func requestTrackingThenReveal() async {
+        // Let the photo land for a beat before the system prompt covers it.
+        try? await Task.sleep(for: .milliseconds(700))
+        if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
+            _ = await ATTrackingManager.requestTrackingAuthorization()
         }
+        withAnimation(.easeOut(duration: 0.9)) { hasAppeared = true }
     }
 }

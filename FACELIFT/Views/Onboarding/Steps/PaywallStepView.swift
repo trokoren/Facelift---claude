@@ -53,7 +53,7 @@ struct PaywallStepView: View {
                             .font(FLFont.sans(14, .semibold))
                             .foregroundStyle(Palette.ink)
                         benefit("Your full skin consultation: 7 scores")
-                        benefit("A morning and evening routine matched to your skin")
+                        benefit("Products matched to your skin and budget")
                         benefit("Weekly scans to track your progress")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -5,6 +5,7 @@ struct AccountView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.requestReview) private var requestReview
     @State private var isShowingGoals: Bool = false
+    @State private var isConfirmingSignOut: Bool = false
     @State private var insight: InsightContent?
 
     var body: some View {
@@ -94,6 +95,21 @@ struct AccountView: View {
                 .padding(.top, 14)
                 #endif
 
+                Button {
+                    isConfirmingSignOut = true
+                } label: {
+                    Text("Sign out")
+                        .font(FLFont.sans(13.5))
+                        .tracking(0.3)
+                        .foregroundStyle(Palette.taupe)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .overlay(Capsule().stroke(Palette.roseBorder, lineWidth: 1))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.top, 18)
+
                 Text("Facelift · v1.0.0")
                     .font(FLFont.serifItalic(10))
                     .foregroundStyle(Palette.whisper)
@@ -112,23 +128,26 @@ struct AccountView: View {
         .sheet(item: $insight) { item in
             InsightSheet(content: item)
         }
+        .confirmationDialog("Sign out of FACELIFT?", isPresented: $isConfirmingSignOut, titleVisibility: .visible) {
+            Button("Sign out", role: .destructive) { store.signOut() }
+            Button("Cancel", role: .cancel) {}
+        }
         .sensoryFeedback(.selection, trigger: store.remindersOn)
     }
 
     private var profileHeader: some View {
         VStack(spacing: 0) {
-            // No accounts yet: no name or email to show, so a quiet member badge instead.
-            Image(systemName: "sparkle")
-                .font(.system(size: 26, weight: .light))
+            Text(store.initial)
+                .font(FLFont.serif(30))
                 .foregroundStyle(Palette.rose)
                 .frame(width: 79, height: 79)
                 .background(Palette.blush, in: Circle())
                 .overlay(Circle().stroke(Palette.rose, lineWidth: 1.4))
-            Text("FACELIFT member")
+            Text(store.name)
                 .font(FLFont.serifMedium(21.3))
                 .foregroundStyle(Palette.ink)
                 .padding(.top, 14)
-            Text("Your scans and answers are kept on this iPhone.")
+            Text(store.email)
                 .font(FLFont.sans(12.1))
                 .foregroundStyle(Palette.taupe)
                 .padding(.top, 2)
