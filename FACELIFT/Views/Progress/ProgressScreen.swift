@@ -121,7 +121,10 @@ struct ProgressScreen: View {
             }
             .sensoryFeedback(.selection, trigger: range)
 
-            if points.isEmpty {
+            if !store.hasRealScans {
+                emptyChart
+                    .padding(.top, 20)
+            } else if points.isEmpty {
                 Text("No scans in this period yet. Try a longer range.")
                     .font(FLFont.sans(12.5))
                     .foregroundStyle(Palette.pebble)
@@ -132,18 +135,56 @@ struct ProgressScreen: View {
                     .padding(.top, 20)
             }
 
-            Text(store.hasRealScans
-                 ? "Each dot is a scan. The rose line is your trend. Tap a dot to see that consultation."
-                 : "An example. Your own scores appear here after your first scan.")
-                .font(FLFont.sans(11))
-                .foregroundStyle(Palette.pebble)
-                .padding(.top, 14)
+            if store.hasRealScans {
+                Text("Each dot is a scan. The rose line is your trend. Tap a dot to see that consultation.")
+                    .font(FLFont.sans(11))
+                    .foregroundStyle(Palette.pebble)
+                    .padding(.top, 14)
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 22)
         .padding(.bottom, 18)
         .cardSurface()
         .padding(.horizontal, 24)
+    }
+
+    /// Before any scans: faint gridlines and a dotted line waiting to be filled, no fake numbers.
+    private var emptyChart: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                VStack(spacing: 30) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Rectangle().fill(Palette.divider).frame(height: 1)
+                    }
+                }
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: 52))
+                    p.addCurve(to: CGPoint(x: 300, y: 18), control1: CGPoint(x: 110, y: 60), control2: CGPoint(x: 190, y: 14))
+                }
+                .stroke(Palette.roseLine, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 6]))
+                .frame(width: 300, height: 70)
+            }
+            .frame(height: 70)
+            .frame(maxWidth: .infinity)
+
+            Text("Your Skin Score appears here after your first scan.")
+                .font(FLFont.sans(12.5))
+                .foregroundStyle(Palette.stone)
+                .multilineTextAlignment(.center)
+            Button {
+                store.selectedTab = .scan
+            } label: {
+                Text("Scan my face")
+                    .font(FLFont.sans(13.5, .semibold))
+                    .foregroundStyle(Palette.rose)
+                    .padding(.horizontal, 18)
+                    .frame(height: 36)
+                    .background(Palette.blush.opacity(0.7), in: Capsule())
+            }
+            .buttonStyle(PressableStyle())
+        }
+        .padding(.bottom, 4)
     }
 
     /// The points inside the chosen range (placeholders until she has a real scan).

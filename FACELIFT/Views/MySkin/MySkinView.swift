@@ -28,12 +28,9 @@ struct MySkinView: View {
                 .padding(.top, 32)
 
                 if store.scans.isEmpty {
-                    Text("No scans yet. Your next scan starts a fresh history.")
-                        .font(FLFont.sans(13.5))
-                        .foregroundStyle(Palette.stone)
-                        .frame(maxWidth: .infinity)
+                    emptyScans
                         .padding(.horizontal, 24)
-                        .padding(.top, 24)
+                        .padding(.top, 20)
                 }
 
                 VStack(spacing: 0) {
@@ -88,6 +85,44 @@ struct MySkinView: View {
         }
     }
 
+    /// No scans yet: an empty ring where the first Skin Score will go, and a way to scan.
+    private var emptyScans: some View {
+        HStack(spacing: 16) {
+            Circle()
+                .stroke(Palette.roseLine, style: StrokeStyle(lineWidth: 3, dash: [3, 5]))
+                .frame(width: 52, height: 52)
+                .overlay {
+                    Text("--")
+                        .font(FLFont.serif(19))
+                        .foregroundStyle(Palette.faint)
+                }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("No scans yet")
+                    .font(FLFont.serif(20))
+                    .foregroundStyle(Palette.ink)
+                Text("Each scan adds a Skin Score here, so you can watch your skin change.")
+                    .font(FLFont.sans(12.5))
+                    .foregroundStyle(Palette.stone)
+                    .lineSpacing(3)
+                Button {
+                    store.selectedTab = .scan
+                } label: {
+                    Text("Scan my face")
+                        .font(FLFont.sans(13.5, .semibold))
+                        .foregroundStyle(Palette.rose)
+                        .padding(.horizontal, 16)
+                        .frame(height: 34)
+                        .background(Palette.blush.opacity(0.7), in: Capsule())
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.top, 8)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(18)
+        .cardSurface(radius: 20)
+    }
+
     private var profileCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel("YOUR SKIN PROFILE")
@@ -106,12 +141,19 @@ struct MySkinView: View {
                 profileLabel("Top Concerns")
                     .padding(.top, 2)
                 Spacer(minLength: 0)
-                FlowLayout(spacing: 5, lineSpacing: 6, alignTrailing: true) {
-                    ForEach(store.latestScan?.shortConcerns ?? [], id: \.self) { concern in
-                        ProfileChip(text: concern)
+                if let concerns = store.latestScan?.shortConcerns, !concerns.isEmpty {
+                    FlowLayout(spacing: 5, lineSpacing: 6, alignTrailing: true) {
+                        ForEach(concerns, id: \.self) { concern in
+                            ProfileChip(text: concern)
+                        }
                     }
+                    .frame(maxWidth: 180)
+                } else {
+                    Text("After your first scan")
+                        .font(FLFont.sans(11.7))
+                        .foregroundStyle(Palette.faint)
+                        .padding(.top, 2)
                 }
-                .frame(maxWidth: 180)
             }
             .padding(.vertical, 13)
 
