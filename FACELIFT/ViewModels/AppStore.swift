@@ -37,7 +37,6 @@ final class AppStore {
         didSet { if let progressReview { LocalFile.save(progressReview, to: "progress_review.json") } }
     }
     var isWritingReview: Bool = false
-    }
 
     /// The Skin Score over time, oldest first, from her real scans (placeholder points until
     /// she has one).
