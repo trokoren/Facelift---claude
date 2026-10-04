@@ -48,17 +48,17 @@ struct SkinTypeStepView: View {
 
 struct PainPointsStepView: View {
     @Environment(OnboardingStore.self) private var flow
-    /// (concern key used by the analysis, what she sees, icon, color).
+    /// (concern key sent with her consult, what she sees, icon, color). One for each of the
+    /// 7 areas every scan measures, plus shine, which her skin type reading covers.
     private let options: [(String, String, String, Color)] = [
-        ("Fine Lines", "Lines I didn't have before", "water.waves", Palette.gold),
-        ("Dullness", "I look tired, even when I'm not", "sun.max", Color(hex: 0xE39A3B)),
-        ("Dehydration", "Tight, thirsty skin", "drop", Palette.sky),
-        ("Dark Spots", "Dark spots & uneven tone", "circle.hexagongrid", Color(hex: 0xA88B5A)),
-        ("Firmness", "Skin losing its bounce", "arrow.up.to.line", Color(hex: 0x8F7BD8)),
-        ("Texture", "Rough, bumpy texture", "circle.grid.3x3", Palette.ember),
+        ("Fine Lines", "Fine lines and wrinkles", "water.waves", Palette.gold),
+        ("Dark Circles", "Dark circles under my eyes", "eye", Color(hex: 0x8F7BD8)),
+        ("Dark Spots", "Dark spots and uneven tone", "circle.hexagongrid", Color(hex: 0xA88B5A)),
         ("Redness", "Redness that won't calm down", "flame", Color(hex: 0xD8636B)),
-        ("Breakouts", "Breakouts I thought I'd outgrown", "circle.circle", Palette.sage),
-        ("Large Pores", "Pores I can see in the mirror", "circle.dotted.circle", Palette.sky)
+        ("Texture", "Rough, uneven texture", "circle.grid.3x3", Palette.ember),
+        ("Large Pores", "Pores I can see in the mirror", "circle.dotted.circle", Palette.sky),
+        ("Dehydration", "Dry, tight, thirsty skin", "drop", Palette.sky),
+        ("Oiliness", "Shine and oily patches", "sun.max", Color(hex: 0xE39A3B))
     ]
 
     var body: some View {
@@ -123,23 +123,28 @@ struct SensitivityStepView: View {
 
 struct MainGoalStepView: View {
     @Environment(OnboardingStore.self) private var flow
+    /// Written as if it's already true: the feeling she's moving toward.
     private let options: [(String, String, Color)] = [
-        ("More Confident", "face.smiling", Color(hex: 0xD8636B)),
-        ("Younger", "face.smiling.inverse", Palette.gold),
-        ("Balanced & calm about my skin", "face.smiling", Palette.sage),
-        ("I can go makeup free", "face.smiling.inverse", Color(hex: 0x8F7BD8)),
+        ("Confident in my own skin", "sparkles", Color(hex: 0xD8636B)),
+        ("Radiant, glowing from within", "sun.max", Palette.gold),
+        ("At peace when I see my reflection", "leaf", Palette.sage),
+        ("Free to go makeup free", "face.smiling", Color(hex: 0x8F7BD8)),
+        ("Youthful and full of energy", "bolt.heart", Color(hex: 0xE39A3B)),
+        ("In control of my skin", "hand.raised", Palette.sky),
+        ("Proud of how I care for myself", "heart", Palette.rose),
+        ("Beautiful, exactly as I am", "camera.macro", Color(hex: 0xA88B5A)),
         ("All of the above", "star", Palette.rose)
     ]
 
     var body: some View {
-        OnboardingPage(title: "How do you want to feel in\n28 days?", subtitle: "Your goal shapes everything we recommend.", titleSize: 33, titleTop: 4) {
+        OnboardingPage(title: "How do you want to feel in\n28 days?", subtitle: "Picture it as if it's already true.", titleSize: 33, titleTop: 4) {
             timeline
                 .padding(.top, 26)
                 .padding(.horizontal, 20)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 ForEach(options, id: \.0) { option, symbol, color in
-                    OnboardingOption(title: option, isSelected: flow.answers.mainGoal == option, alignment: .leading, height: 64) {
+                    OnboardingOption(title: option, isSelected: flow.answers.mainGoal == option, alignment: .leading, height: 56) {
                         flow.choose(option, into: \.mainGoal)
                     } leading: {
                         Image(systemName: symbol)

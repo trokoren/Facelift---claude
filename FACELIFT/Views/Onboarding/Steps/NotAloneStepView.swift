@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Golden portrait with the 70,000+ clinical-grade images our skin measurement was built on.
+/// Golden portrait: "You're not alone." with the 70,000+ skin scans our measurement is built on.
 struct NotAloneStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @State private var count: Int = 0
@@ -41,7 +41,7 @@ struct NotAloneStepView: View {
 
                 Spacer()
 
-                Text("Measured, not guessed.")
+                Text("You're not alone.")
                     .font(FLFont.serif(38))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -52,12 +52,12 @@ struct NotAloneStepView: View {
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .padding(.top, 24)
-                Text("CLINICAL-GRADE SKIN IMAGES")
+                Text("SKIN SCANS")
                     .font(FLFont.sans(14))
                     .tracking(2.2)
                     .foregroundStyle(Color(hex: 0xC8C2BE))
                     .padding(.top, 2)
-                Text("Your scan is read by dermatologist-verified technology built on them.")
+                Text("Your scan is read by dermatologist-verified technology.")
                     .font(FLFont.sans(14.5))
                     .foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center)

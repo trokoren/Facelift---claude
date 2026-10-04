@@ -15,21 +15,23 @@ struct Results28StepView: View {
                 BeforeAfterTile(imageName: "onb_after", dayLabel: "Day 28", caption: "AFTER", captionColor: Palette.rose)
             }
             .padding(.top, 16)
-
+        } footer: {
+            // The 93% sits right above the button, the last thing she reads before tapping.
             VStack(spacing: 0) {
                 Text("93%")
-                    .font(FLFont.serif(72))
+                    .font(FLFont.serif(64))
                     .foregroundStyle(Palette.ink)
-                    .frame(height: 70)
+                    .frame(height: 62)
                 Text("of women see visible results.")
                     .font(FLFont.sans(16))
                     .foregroundStyle(Palette.body)
-                    .padding(.top, 6)
+                    .padding(.top, 4)
             }
-            .padding(.top, 24)
-        } footer: {
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+
             OnboardingCTA(title: "Next") { flow.next() }
-                .padding(.top, 8)
+                .padding(.top, 16)
                 .padding(.bottom, 10)
         }
         .onAppear {

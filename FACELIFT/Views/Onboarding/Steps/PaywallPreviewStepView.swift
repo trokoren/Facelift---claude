@@ -144,21 +144,14 @@ struct PaywallPreviewStepView: View {
         .shadow(color: Palette.ink.opacity(0.05), radius: 18, x: 0, y: 6)
     }
 
+    /// The current consultation layout with a realistic sample, blurred.
     private var blurredAnalysis: some View {
         VStack(alignment: .leading, spacing: 0) {
-            BrandHeader(subtitle: "Your Skin Analysis.")
+            BrandHeader(subtitle: "Your Skin Consultation.")
 
-            SectionLabel("YOUR ANALYSIS")
-                .padding(.top, 22)
-                .padding(.horizontal, 24)
-
-            VStack(spacing: 12) {
-                ForEach(store.latestReport?.categories ?? SampleData.categories()) { category in
-                    AnalysisCardView(category: category) {}
-                }
+            if let consult = SampleConsult.consult {
+                ConsultView(scan: SampleConsult.scan, consult: consult)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 16)
 
             VStack(alignment: .leading, spacing: 26) {
                 ForEach(SampleData.recommendations) { recommendation in

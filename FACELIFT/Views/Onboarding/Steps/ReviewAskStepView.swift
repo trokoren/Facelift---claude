@@ -36,6 +36,14 @@ struct ReviewAskStepView: View {
             )
             .ignoresSafeArea()
 
+            HStack {
+                OnboardingBackButton(tint: .white.opacity(0.85)) { flow.back() }
+                    .padding(.leading, 10)
+                Spacer()
+            }
+            .frame(height: 44)
+            .zIndex(1)
+
             VStack(spacing: 0) {
                 Spacer()
 
@@ -55,7 +63,8 @@ struct ReviewAskStepView: View {
                 GoldStars(size: 22, spacing: 10)
                     .padding(.top, 14)
 
-                Text("\"Obsessed with this app. The scans are scary accurate and the recs actually worked. I'm getting compliments on my skin for the first time in years.\"")
+                // A note from us, not a customer quote: real reviews only, once she and others leave them.
+                Text("We're a small team building FACELIFT for women who want better skin, not more makeup. A quick rating helps more women find us.")
                     .font(FLFont.serifItalic(16.5))
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
@@ -63,7 +72,7 @@ struct ReviewAskStepView: View {
                     .padding(.top, 14)
                     .padding(.horizontal, 18)
 
-                Text("SOFIA M., 34")
+                Text("THE FACELIFT TEAM")
                     .font(FLFont.sans(12))
                     .tracking(2)
                     .foregroundStyle(Color(hex: 0x8F8A87))

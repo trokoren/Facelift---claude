@@ -30,9 +30,14 @@ struct OnboardingAnswers: Equatable {
     /// Goals for the account screen derived from the 28-day goal.
     var skinGoals: [String] {
         switch mainGoal {
-        case "Younger": ["Anti-aging", "Firmness"]
-        case "Balanced & calm about my skin": ["Calming", "Hydration"]
-        case "I can go makeup free": ["Even tone", "Texture"]
+        case "Confident in my own skin": ["Clear skin", "Even tone"]
+        case "Radiant, glowing from within": ["Glow", "Hydration"]
+        case "At peace when I see my reflection": ["Calm sensitivity", "Hydration"]
+        case "Free to go makeup free": ["Even tone", "Clear skin"]
+        case "Youthful and full of energy": ["Anti-aging", "Glow"]
+        case "In control of my skin": ["Clear skin", "Minimize pores"]
+        case "Proud of how I care for myself": ["Hydration", "Glow"]
+        case "Beautiful, exactly as I am": ["Glow", "Even tone"]
         case "All of the above": ["Anti-aging", "Hydration", "Even tone"]
         default: ["Anti-aging", "Hydration"]
         }
