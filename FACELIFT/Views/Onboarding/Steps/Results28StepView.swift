@@ -133,7 +133,7 @@ struct BeforeAfterTile: View {
     var body: some View {
         VStack(spacing: 0) {
             Color(hex: 0xE9E4E0)
-                .aspectRatio(1.25, contentMode: .fit)
+                .aspectRatio(0.95, contentMode: .fit)
                 .overlay {
                     Image(imageName)
                         .resizable()

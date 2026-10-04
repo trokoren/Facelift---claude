@@ -28,36 +28,36 @@ struct PaywallStepView: View {
                         PaywallPhoto(imageName: "onb_before", label: "BEFORE", labelFill: Color(hex: 0x6E6866))
                         PaywallPhoto(imageName: "onb_after", label: "AFTER", labelFill: Palette.rose)
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 12)
 
                     Text("Improve your skin\nin 4 weeks.")
                         .font(FLFont.serif(30))
                         .foregroundStyle(Palette.ink)
                         .multilineTextAlignment(.center)
                         .lineSpacing(-2)
-                        .padding(.top, 12)
+                        .padding(.top, 20)
                     Text("Get 40% off FACELIFT")
                         .font(FLFont.sans(15.5))
                         .foregroundStyle(Palette.body)
-                        .padding(.top, 4)
+                        .padding(.top, 6)
 
-                    VStack(spacing: 8) {
+                    VStack(spacing: 12) {
                         ForEach(plans) { plan in
                             planRow(plan)
                         }
                     }
-                    .padding(.top, 14)
+                    .padding(.top, 24)
 
-                    VStack(alignment: .leading, spacing: 7) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("What you'll get")
                             .font(FLFont.sans(14, .semibold))
                             .foregroundStyle(Palette.ink)
-                        benefit("Your full skin analysis: 14 scores")
+                        benefit("Your full skin consultation: 7 scores")
                         benefit("Products matched to your skin and budget")
                         benefit("Weekly scans to track your progress")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 16)
+                    .padding(.top, 26)
                     .padding(.horizontal, 6)
                 }
                 .padding(.horizontal, 24)
@@ -79,7 +79,7 @@ struct PaywallStepView: View {
                     .foregroundStyle(Palette.mist)
             }
             .padding(.horizontal, 24)
-            .padding(.top, 6)
+            .padding(.top, 10)
             .padding(.bottom, 8)
         }
         .background(Palette.canvas.ignoresSafeArea())

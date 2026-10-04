@@ -42,20 +42,20 @@ struct ScanInstructionsStepView: View {
                 .clipShape(.rect(topLeadingRadius: 40, topTrailingRadius: 40, style: .continuous))
         }
         .background(Color.white.ignoresSafeArea())
+        // Same place as every other onboarding screen: top left, under the status bar.
+        .overlay(alignment: .topLeading) {
+            OnboardingBackButton(tint: .white.opacity(0.85)) { flow.back() }
+                .padding(.leading, 10)
+        }
         .onAppear { pulse = true }
     }
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 2) {
-                OnboardingBackButton(tint: Palette.stone) { flow.back() }
-                    .padding(.leading, -14)
-                Text("Before you scan")
-                    .font(FLFont.serif(28))
-                    .foregroundStyle(Palette.ink)
-                Spacer()
-            }
-            .padding(.top, 22)
+            Text("Before you scan")
+                .font(FLFont.serif(28))
+                .foregroundStyle(Palette.ink)
+                .padding(.top, 26)
 
             VStack(spacing: 12) {
                 // Light leads: good, consistent light is what makes scan-to-scan progress real.
