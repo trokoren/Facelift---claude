@@ -1,6 +1,6 @@
 import Foundation
 
-/// Scans per day. Three a day, four on her very first day so she can try it freely. Every scan
+/// Scans per day. Two a day, four on her very first day so she can try it freely. Every scan
 /// after the first of a day gets a gentle "you've already scanned" note; past the limit, the
 /// next scan unlocks tomorrow. Off in test builds run from Xcode. Only finished scans count: a scan that couldn't be read never does, and
 /// deleting a scan doesn't give one back. Saved on this phone.
@@ -34,7 +34,7 @@ enum ScanAllowance {
         return .open
         #else
         let count = countToday
-        let limit = isFirstDay ? 4 : 3
+        let limit = isFirstDay ? 4 : 2
         if count >= limit { return .usedUp }
         if count >= 1 && !isFirstDay { return .alreadyScanned }
         return .open
