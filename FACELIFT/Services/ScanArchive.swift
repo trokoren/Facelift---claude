@@ -27,6 +27,12 @@ enum ScanArchive {
         guard let url else { return }
         let real = scans.filter { !$0.isSample }
         do {
+            // Only placeholders on screen: keep no file, so placeholders show next launch too.
+            // Nothing at all (she deleted everything): save an empty list so they don't return.
+            if real.isEmpty && !scans.isEmpty {
+                try? FileManager.default.removeItem(at: url)
+                return
+            }
             let data = try JSONEncoder().encode(real)
             try data.write(to: url, options: [.atomic, .completeFileProtection])
         } catch {
