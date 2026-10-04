@@ -81,9 +81,9 @@ struct PaywallPreviewStepView: View {
 
             HStack(spacing: 8) {
                 previewChip("Hydration")
-                previewChip("Fine Lines")
-                previewChip("Barrier")
-                Text("+ 11 more")
+                previewChip("Pores")
+                previewChip("Texture")
+                Text("+ 4 more")
                     .font(FLFont.sans(13.5))
                     .foregroundStyle(Palette.rose)
                     .padding(.horizontal, 12)
@@ -98,7 +98,7 @@ struct PaywallPreviewStepView: View {
                 .minimumScaleFactor(0.85)
                 .lineLimit(1)
                 .padding(.top, 20)
-            Text("14 scores · 3 breakdowns · 9 recommendations.")
+            Text("7 scores · Your skin type · Your daily plan.")
                 .font(FLFont.sans(14.5))
                 .foregroundStyle(Palette.body)
                 .padding(.top, 8)
