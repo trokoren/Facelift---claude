@@ -392,19 +392,15 @@ private struct ScanHelpSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            HStack(spacing: 2) {
+                OnboardingBackButton(tint: Palette.stone) { dismiss() }
+                    .padding(.leading, -14)
                 Text("How to get a great scan")
                     .font(FLFont.serif(28))
                     .foregroundStyle(Palette.ink)
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .light))
-                        .foregroundStyle(Palette.stone)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(PressableStyle(scale: 0.9))
-                .padding(.trailing, -12)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 0)
             }
 
             VStack(alignment: .leading, spacing: 18) {

@@ -47,30 +47,20 @@ struct ScanInstructionsStepView: View {
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            HStack(spacing: 2) {
+                OnboardingBackButton(tint: Palette.stone) { flow.back() }
+                    .padding(.leading, -14)
                 Text("Before you scan")
                     .font(FLFont.serif(28))
                     .foregroundStyle(Palette.ink)
                 Spacer()
-                Button {
-                    flow.back()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 17, weight: .light))
-                        .foregroundStyle(Palette.stone)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle(scale: 0.9))
-                .padding(.trailing, -12)
-                .accessibilityLabel("Close")
             }
             .padding(.top, 22)
 
             VStack(spacing: 12) {
-                // Light leads: consistent light is what makes scan-to-scan progress real.
-                InstructionRow(number: 1, symbol: "sun.max.fill", title: "Same spot, same light", detail: "Face a window or bright bathroom light, the same place each time")
-                InstructionRow(number: 2, image: "onb_step1", title: "Glasses off, look ahead", detail: "Start with your face inside the circle")
+                // Light leads: good, consistent light is what makes scan-to-scan progress real.
+                InstructionRow(number: 1, image: "onb_step2", title: "Find a spot with good light", detail: "Never scan in the dark")
+                InstructionRow(number: 2, image: "onb_step1", title: "Glasses off, look ahead", detail: "Keep your face in the circle")
                 InstructionRow(number: 3, image: "onb_step3", title: "Move in a slow circle", detail: "Fill the ring all the way around")
             }
             .padding(.top, 16)
@@ -127,10 +117,12 @@ private struct InstructionRow: View {
                 Text(title)
                     .font(FLFont.sans(16, .medium))
                     .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(FLFont.sans(14.5))
                     .foregroundStyle(Palette.mist)
                     .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.leading, 14)
 

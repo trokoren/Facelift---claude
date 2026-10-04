@@ -7,7 +7,7 @@ struct ScienceStepView: View {
     @State private var isRevealed: Bool = false
 
     var body: some View {
-        OnboardingPage(title: "Built on real\nskin science.", titleSize: 32, titleTop: 0) {
+        OnboardingPage(title: "Built on real\nskin science.", titleSize: 38, titleTop: 0) {
             Text("Your scan is read by dermatologist-verified technology, developed from 70,000+ clinical-grade skin images.")
                 .font(FLFont.sans(14))
                 .foregroundStyle(Palette.stone)
@@ -75,9 +75,11 @@ struct ScienceStepView: View {
                         .rotationEffect(.degrees(-90))
                         .animation(.easeOut(duration: 0.35).delay(0.3 + Double(index) * 0.09), value: isRevealed)
                 }
+                // Cormorant's numerals sit low in their box; nudge up to the ring's true center.
                 Text("7")
                     .font(FLFont.serif(30))
                     .foregroundStyle(Palette.ink)
+                    .offset(y: -4)
             }
             .frame(width: 76, height: 76)
 
