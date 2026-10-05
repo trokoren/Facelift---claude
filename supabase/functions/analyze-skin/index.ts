@@ -283,12 +283,25 @@ Deno.serve(async (req) => {
   console.log("skin type", JSON.stringify(measured.skinType));
 
   // 2. Claude writes the consult from the measurements, the photo and her answers.
-  let written: Record<string, unknown>;
-  try {
-    written = await consult(claudeKey, image, measured.scores, measured.skinType, context, reassess ? null : established!, reassess ? established?.label ?? null : null);
-  } catch (error) {
-    console.error("Claude failed:", String(error));
-    return json({ error: "We couldn't finish reading your scan. Please try again." }, 502);
+  //    YouCam has already been paid for at this point, so a hiccup here never throws the scan
+  //    away: one retry, and if that fails too she still gets her measured scores.
+  let written: Record<string, unknown> | null = null;
+  for (let attempt = 1; attempt <= 2 && !written; attempt++) {
+    try {
+      written = await consult(claudeKey, image, measured.scores, measured.skinType, context, reassess ? null : established!, reassess ? established?.label ?? null : null);
+    } catch (error) {
+      console.error(`Claude failed (attempt ${attempt}):`, String(error));
+    }
+  }
+  if (!written) {
+    console.log("scan", JSON.stringify({ hd, width, height, ms: Date.now() - started, measured: Object.keys(measured.scores).length, skinTypeRead: reassess, consult: false }));
+    return json({
+      mode: "scores",
+      resolution: hd ? "hd" : "sd",
+      concerns: measured.scores,
+      sources: Object.fromEntries(Object.keys(measured.scores).map((k) => [k, "youcam"])),
+      consult: null,
+    });
   }
   if (written.face_visible === false) {
     return json({ error: "We couldn't see your face clearly. Face the camera in bright, even light and try again." }, 422);

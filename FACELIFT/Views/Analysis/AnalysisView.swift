@@ -50,6 +50,15 @@ struct AnalysisView: View {
                         ConsultView(scan: scan, consult: consult)
                     } else {
                         // Older and sample scans: the category cards.
+                        if !scan.isSample && !scan.measures.isEmpty {
+                            // Measured, but the written consultation couldn't be finished.
+                            Text("Your scores are in. We couldn't finish writing your consultation this time; your next scan will include it.")
+                                .font(FLFont.sans(13))
+                                .foregroundStyle(Palette.stone)
+                                .lineSpacing(4)
+                                .padding(.horizontal, 24)
+                                .padding(.top, 18)
+                        }
                         SectionLabel("YOUR ANALYSIS")
                             .padding(.top, 22)
                             .padding(.horizontal, 24)
