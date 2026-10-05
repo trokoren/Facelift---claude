@@ -10,11 +10,14 @@ import SceneKit
 struct CircleScanView: View {
     let onComplete: ([UIImage]) -> Void
     let onCancel: () -> Void
+    /// Called the moment the photos are taken, before the finish animation, so the
+    /// analysis can start while the ring glows.
+    var onCaptured: (([UIImage]) -> Void)? = nil
 
     @State private var scan = FaceScanController()
     @State private var showsQuickOption: Bool = false
     @State private var flash: Double = 0
-    @State private var finishSweep: CGFloat = 0
+    @State private var sweepStart: Date?
     @State private var finishGlow: Bool = false
     @State private var cameraOpacity: Double = 1
     @State private var showsHelp: Bool = false
@@ -84,7 +87,7 @@ struct CircleScanView: View {
                         .allowsHitTesting(false)
 
                     // Finish: a sparkle wave runs around the diamonds, then the ring glows once.
-                    OvalTickRing(filled: scan.filled, size: ringSize, isLive: scan.phase == .circling || scan.phase == .done, celebrate: finishSweep > 0)
+                    OvalTickRing(filled: scan.filled, size: ringSize, isLive: scan.phase == .circling || scan.phase == .done, sweepStart: sweepStart)
                         .shadow(color: Palette.rose.opacity(finishGlow ? 0.8 : 0), radius: finishGlow ? 18 : 0)
                         .position(center)
 
@@ -182,6 +185,7 @@ struct CircleScanView: View {
         .onAppear {
             scan.onFinish = { images in
                 Task { @MainActor in
+                    onCaptured?(images)
                     await playFinish()
                     onComplete(images)
                 }
@@ -203,8 +207,8 @@ struct CircleScanView: View {
         withAnimation(.easeOut(duration: 0.3)) { cameraOpacity = 0 }
         try? await Task.sleep(for: .milliseconds(250))
         scan.stop()
-        finishSweep = 1   // starts the sparkle wave (about 0.65 s around the ring)
-        try? await Task.sleep(for: .milliseconds(660))
+        sweepStart = Date()   // the glow runs once around the ring
+        try? await Task.sleep(for: .milliseconds(Int(OvalTickRing.sweepDuration * 1000)))
         withAnimation(.easeOut(duration: 0.3)) { finishGlow = true }
         try? await Task.sleep(for: .milliseconds(300))
     }
@@ -325,44 +329,113 @@ private struct LightChip: View {
 }
 
 /// 48 small diamonds around the oval. They light rose where her nose has been.
+/// At the finish, a bright glow runs once around the ring, fast, lighting each diamond as it passes.
 private struct OvalTickRing: View {
     let filled: [Bool]
     let size: CGSize
     /// Dim while she lines up; switching on lights the ticks up in a quick sweep.
     var isLive: Bool = true
-    /// At the finish: each diamond brightens and pops in turn, all the way around.
-    var celebrate: Bool = false
+    /// When the finish glow started (nil until the scan is done).
+    var sweepStart: Date? = nil
 
+    /// Seconds for the glow to go once around.
+    static let sweepDuration: Double = 0.7
     private let ticks = 48
 
     var body: some View {
-        ZStack {
-            ForEach(0..<ticks, id: \.self) { tick in
-                let segment = tick * filled.count / ticks
-                let isOn = filled.indices.contains(segment) && filled[segment]
-                // Angle measured clockwise from the right, matching the controller.
-                let theta = (Double(tick) + 0.5) / Double(ticks) * 2 * .pi
-                let a = Double(size.width / 2)
-                let b = Double(size.height / 2)
-                let normal = atan2(sin(theta) / b, cos(theta) / a)
-
-                Diamond()
-                    .fill(celebrate ? Color(hex: 0xF6D9D6) : (isOn ? Palette.rose : Color.white.opacity(isLive ? 0.32 : 0.08)))
-                    .frame(width: 9, height: 13)
-                    .scaleEffect(celebrate ? 1.35 : (isOn ? 1 : (isLive ? 0.75 : 0.5)), anchor: .center)
-                    .shadow(color: Palette.rose.opacity(isOn || celebrate ? 0.9 : 0), radius: celebrate ? 9 : (isOn ? 6 : 0))
-                    .rotationEffect(.radians(normal + .pi / 2))
-                    .offset(x: CGFloat(a * cos(theta)), y: CGFloat(b * sin(theta)))
-                    .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isOn)
-                    .animation(.easeOut(duration: 0.35).delay(Double(tick) * 0.022), value: isLive)
-                    // Around the ring in about 0.65 s: 20% slower than the original sweep (0.55 s).
-                    .animation(.easeOut(duration: 0.22).delay(Double(tick) * 0.0092), value: celebrate)
+        TimelineView(.animation(paused: sweepStart == nil)) { context in
+            let progress = sweepProgress(at: context.date)
+            ZStack {
+                ForEach(0..<ticks, id: \.self) { tick in
+                    diamond(tick, progress: progress)
+                }
+                if let progress, progress < 1.25 {
+                    comet(progress)
+                }
             }
         }
         .frame(width: size.width, height: size.height)
         .accessibilityElement()
         .accessibilityLabel("Scan progress")
         .accessibilityValue("\(filled.filter { $0 }.count) of \(filled.count)")
+    }
+
+    /// 0 at the top when the glow starts, 1 when it's back at the top (runs a little past to fade).
+    private func sweepProgress(at date: Date) -> Double? {
+        guard let sweepStart else { return nil }
+        return max(0, date.timeIntervalSince(sweepStart) / Self.sweepDuration)
+    }
+
+    /// Clockwise from the right, matching the controller.
+    private func theta(_ tick: Int) -> Double {
+        (Double(tick) + 0.5) / Double(ticks) * 2 * .pi
+    }
+
+    /// How far round from the top (0 to 1, clockwise) a tick sits.
+    private func fromTop(_ tick: Int) -> Double {
+        let turned = (theta(tick) + .pi / 2).truncatingRemainder(dividingBy: 2 * .pi)
+        return turned / (2 * .pi)
+    }
+
+    private func point(_ angle: Double) -> CGPoint {
+        CGPoint(x: size.width / 2 * cos(angle), y: size.height / 2 * sin(angle))
+    }
+
+    private func diamond(_ tick: Int, progress: Double?) -> some View {
+        let segment = tick * filled.count / ticks
+        let isOn = filled.indices.contains(segment) && filled[segment]
+        let a = Double(size.width / 2)
+        let b = Double(size.height / 2)
+        let angle = theta(tick)
+        let normal = atan2(sin(angle) / b, cos(angle) / a)
+
+        // Lit once the glow has passed it; brightest right behind the glow.
+        let behind = progress.map { $0 - fromTop(tick) } ?? -1
+        let lit = behind >= 0
+        let glow = lit ? max(0, 1 - behind / 0.12) : 0
+        let base = isOn ? Palette.rose : Color.white.opacity(isLive ? 0.32 : 0.08)
+
+        return Diamond()
+            .fill(lit ? Color(hex: 0xF6D9D6) : base)
+            .frame(width: 9, height: 13)
+            .scaleEffect(lit ? 1.15 + 0.5 * glow : (isOn ? 1 : (isLive ? 0.75 : 0.5)), anchor: .center)
+            .shadow(color: Palette.rose.opacity(isOn || lit ? 0.9 : 0), radius: lit ? 6 + 10 * glow : (isOn ? 6 : 0))
+            .rotationEffect(.radians(normal + .pi / 2))
+            .offset(x: CGFloat(a * cos(angle)), y: CGFloat(b * sin(angle)))
+            .animation(progress == nil ? .spring(response: 0.35, dampingFraction: 0.6) : nil, value: isOn)
+            .animation(.easeOut(duration: 0.35).delay(Double(tick) * 0.022), value: isLive)
+    }
+
+    /// The glow itself: a bright head with a short rose tail, fading out once it's back at the top.
+    private func comet(_ progress: Double) -> some View {
+        let head = -Double.pi / 2 + min(progress, 1) * 2 * .pi
+        let tailLength = 0.16 * 2 * .pi
+        let fade = progress > 1 ? max(0, 1 - (progress - 1) / 0.25) : 1
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+
+        return ZStack {
+            // Tail: soft rose dots fading out behind the head.
+            ForEach(1...14, id: \.self) { step in
+                let share = Double(step) / 14
+                let p = point(head - tailLength * share)
+                Circle()
+                    .fill(Palette.rose)
+                    .frame(width: 8 * (1 - share * 0.5), height: 8 * (1 - share * 0.5))
+                    .opacity(0.85 * (1 - share))
+                    .position(x: center.x + p.x, y: center.y + p.y)
+            }
+            .blur(radius: 3)
+
+            Circle()
+                .fill(RadialGradient(colors: [.white, Color(hex: 0xF6D9D6), Palette.rose.opacity(0)],
+                                     center: .center, startRadius: 0, endRadius: 14))
+                .frame(width: 28, height: 28)
+                .position(x: center.x + point(head).x, y: center.y + point(head).y)
+                .blur(radius: 1)
+        }
+        .frame(width: size.width, height: size.height)
+        .opacity(fade)
+        .allowsHitTesting(false)
     }
 }
 

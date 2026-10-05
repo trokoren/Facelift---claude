@@ -233,6 +233,14 @@ final class AppStore {
 
     /// Reads the straight-on photo from the last scan. Returns nil on success, or a message to
     /// show her. Without a server set up (Backend), it succeeds with sample results.
+    /// An analysis already started (as the scan's finish animation plays). The reading screen
+    /// picks it up instead of starting another.
+    var pendingAnalysis: Task<String?, Never>?
+
+    func startAnalysis() {
+        pendingAnalysis = Task { await analyzeLastScan() }
+    }
+
     func analyzeLastScan() async -> String? {
         latestReport = nil
         guard Backend.isConfigured else {

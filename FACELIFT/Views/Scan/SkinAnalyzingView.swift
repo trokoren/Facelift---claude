@@ -148,7 +148,8 @@ struct SkinAnalyzingView: View {
     }
 
     private func run() async {
-        let analysis = Task { await store.analyzeLastScan() }
+        let analysis = store.pendingAnalysis ?? Task { await store.analyzeLastScan() }
+        store.pendingAnalysis = nil
         let count = Double(stages.count)
 
         // Every step but the last at a steady pace...

@@ -22,10 +22,13 @@ struct ScanCameraView: View {
                 })
                     .transition(.opacity)
             } else {
-                CircleScanView(onComplete: { images in
-                    store.lastCaptures = images
+                CircleScanView(onComplete: { _ in
                     withAnimation(.easeInOut(duration: 0.4)) { didCapture = true }
-                }, onCancel: close)
+                }, onCancel: close, onCaptured: { images in
+                    // Start reading her skin while the ring's finish glow plays.
+                    store.lastCaptures = images
+                    store.startAnalysis()
+                })
                 .transition(.opacity)
             }
         } else {
