@@ -1,11 +1,16 @@
 import SwiftUI
+import RevenueCat
 
-/// Final paywall: before/after, three plan cards and "Start My Skin Journey".
+/// Final paywall: before/after, the plan cards and "Start My Skin Journey".
+/// Plans and prices come live from RevenueCat once it's set up; until then, the built-in plans.
 struct PaywallStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
     @State private var isReading = false
     @State private var openLink: URL?
+    @State private var isPurchasing = false
+    @State private var notice: String?
+    private let subscriptions = Subscriptions.shared
 
     private struct Plan: Identifiable {
         let name: String
@@ -14,10 +19,31 @@ struct PaywallStepView: View {
         var badge: String? = nil
         /// What she'll be charged and when, shown under the button (App Store guideline 3.1.2).
         var renewal: String = ""
-        var id: String { name }
+        /// What's for sale in the App Store (nil for the built-in plans).
+        var package: Package? = nil
+        var id: String { package?.identifier ?? name }
     }
 
-    private let plans: [Plan] = [
+    /// Live plans from RevenueCat when available, else the built-in ones.
+    private var plans: [Plan] {
+        let live = subscriptions.packages.map { package -> Plan in
+            let isAnnual = package.packageType == .annual
+            let intro = package.introLine
+            return Plan(
+                name: package.planName,
+                price: intro.map { "\($0.capitalizedFirst), then \(package.priceLine)" }
+                    ?? (isAnnual ? package.storeProduct.localizedPricePerMonth.map { "\($0)/month" } : nil)
+                    ?? package.priceLine,
+                perMonth: intro == nil && isAnnual ? "\(package.storeProduct.localizedPriceString) billed yearly" : nil,
+                badge: isAnnual ? "BEST VALUE" : nil,
+                renewal: package.renewalLine,
+                package: package
+            )
+        }
+        return live.isEmpty ? fallbackPlans : live
+    }
+
+    private let fallbackPlans: [Plan] = [
         Plan(name: "3-Day Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year",
              renewal: "$3.99 for 3 days, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
         Plan(name: "Weekly", price: "$8.99/week",
@@ -73,14 +99,10 @@ struct PaywallStepView: View {
             .scrollBounceBehavior(.basedOnSize)
 
             VStack(spacing: 12) {
-                OnboardingCTA(title: "Start My Skin Journey") {
-                    // Her scan is read now, right after she subscribes, using her answers.
-                    store.skinType = flow.answers.resolvedSkinType
-                    store.skinGoals = flow.answers.skinGoals
-                    store.saveProfile(flow.answers)
-                    isReading = true
+                OnboardingCTA(title: isPurchasing ? "One moment…" : "Start My Skin Journey", isEnabled: !isPurchasing) {
+                    startTapped()
                 }
-                Text(plans.first { $0.name == flow.answers.selectedPlan }?.renewal ?? "Renews automatically. Cancel anytime in Settings.")
+                Text(plans.first { $0.id == flow.answers.selectedPlan }?.renewal ?? "Renews automatically. Cancel anytime in Settings.")
                     .font(FLFont.sans(12.5))
                     .foregroundStyle(Palette.mist)
                     .multilineTextAlignment(.center)
@@ -88,6 +110,17 @@ struct PaywallStepView: View {
                     .contentTransition(.opacity)
                     .animation(.easeOut(duration: 0.2), value: flow.answers.selectedPlan)
                 HStack(spacing: 6) {
+                    if Subscriptions.isAvailable {
+                        Button { restoreTapped() } label: {
+                            Text("Restore")
+                                .underline()
+                                .frame(minHeight: 32)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isPurchasing)
+                        Text("·")
+                    }
                     legalLink("Terms", LegalLinks.terms)
                     Text("·")
                     legalLink("Privacy", LegalLinks.privacyPolicy)
@@ -101,6 +134,16 @@ struct PaywallStepView: View {
         }
         .background(Palette.canvas.ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: flow.answers.selectedPlan)
+        .task {
+            await subscriptions.refresh()
+            selectDefaultPlan()
+        }
+        .onChange(of: subscriptions.packages.count) { _, _ in selectDefaultPlan() }
+        .alert("Membership", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(notice ?? "")
+        }
         .sheet(item: $openLink) { url in
             SafariSheet(url: url)
                 .ignoresSafeArea()
@@ -112,6 +155,51 @@ struct PaywallStepView: View {
             }
             .environment(store)
         }
+    }
+
+    /// Keeps a valid plan selected: the annual plan (listed first) when the live plans arrive.
+    private func selectDefaultPlan() {
+        guard !plans.contains(where: { $0.id == flow.answers.selectedPlan }) else { return }
+        flow.answers.selectedPlan = plans.first(where: { $0.badge != nil })?.id ?? plans.first?.id ?? ""
+    }
+
+    private func startTapped() {
+        guard let package = plans.first(where: { $0.id == flow.answers.selectedPlan })?.package else {
+            // No live plans (RevenueCat not set up yet): continue as before.
+            beginMembership()
+            return
+        }
+        isPurchasing = true
+        Task {
+            let outcome = await subscriptions.purchase(package)
+            isPurchasing = false
+            switch outcome {
+            case .purchased: beginMembership()
+            case .cancelled: break
+            case .failed(let message): notice = message
+            }
+        }
+    }
+
+    private func restoreTapped() {
+        isPurchasing = true
+        Task {
+            let found = await subscriptions.restore()
+            isPurchasing = false
+            if found {
+                beginMembership()
+            } else {
+                notice = "We couldn't find an active membership for this Apple ID."
+            }
+        }
+    }
+
+    /// Her scan is read now, right after she subscribes, using her answers.
+    private func beginMembership() {
+        store.skinType = flow.answers.resolvedSkinType
+        store.skinGoals = flow.answers.skinGoals
+        store.saveProfile(flow.answers)
+        isReading = true
     }
 
     private func legalLink(_ title: String, _ url: URL) -> some View {
@@ -136,9 +224,9 @@ struct PaywallStepView: View {
     }
 
     private func planRow(_ plan: Plan) -> some View {
-        let isSelected = flow.answers.selectedPlan == plan.name
+        let isSelected = flow.answers.selectedPlan == plan.id
         return Button {
-            flow.answers.selectedPlan = plan.name
+            flow.answers.selectedPlan = plan.id
         } label: {
             HStack(spacing: 16) {
                 ZStack {

@@ -11,6 +11,7 @@ import SwiftUI
 struct FACELIFTApp: App {
     init() {
         FontRegistrar.registerAll()
+        Subscriptions.shared.configure()
     }
 
     var body: some Scene {
