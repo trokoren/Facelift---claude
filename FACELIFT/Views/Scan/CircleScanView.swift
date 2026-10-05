@@ -438,8 +438,8 @@ struct ScanPrivacySheet: View {
     let onDecline: () -> Void
 
     /// Bump the version when the consent wording changes, so everyone agrees to the new text.
-    private static let key = "facelift.scanConsent.v2"
-    private static let dateKey = "facelift.scanConsent.v2.date"
+    private static let key = "facelift.scanConsent.v3"
+    private static let dateKey = "facelift.scanConsent.v3.date"
     static var hasAgreed: Bool {
         get { UserDefaults.standard.bool(forKey: key) }
         set {
@@ -466,7 +466,7 @@ struct ScanPrivacySheet: View {
                     .foregroundStyle(Palette.ink)
                     .padding(.top, 14)
 
-                Text("To read your skin, we map your face to guide the scan and analyze one photo. It's sent securely to our skin-analysis partners to create your consultation. We never store your photo and never sell it.")
+                Text("To read your skin, we map your face to guide the scan and analyze one photo. It's sent securely to Perfect Corp, which measures your skin, and to Anthropic, which writes your consultation. We never store your photo and never sell it.")
                     .font(FLFont.sans(15))
                     .foregroundStyle(Palette.body)
                     .multilineTextAlignment(.center)
@@ -482,7 +482,7 @@ struct ScanPrivacySheet: View {
                         Image(systemName: isChecked ? "checkmark.square.fill" : "square")
                             .font(.system(size: 20, weight: .regular))
                             .foregroundStyle(isChecked ? Palette.rose : Palette.stone)
-                        Text("I agree to FACELIFT scanning my face and using my photo and my answers, including any health details I share, to create my skin consultation.")
+                        Text("I agree to FACELIFT scanning my face and sharing my photo and answers, including any health details I share, with Perfect Corp and Anthropic to create my skin consultation.")
                             .font(FLFont.sans(13))
                             .foregroundStyle(Palette.body)
                             .multilineTextAlignment(.leading)
