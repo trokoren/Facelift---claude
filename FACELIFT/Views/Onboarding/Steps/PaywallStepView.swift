@@ -5,6 +5,7 @@ struct PaywallStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
     @State private var isReading = false
+    @State private var openLink: URL?
 
     private struct Plan: Identifiable {
         let name: String
@@ -77,6 +78,13 @@ struct PaywallStepView: View {
                 Text("cancel anytime")
                     .font(FLFont.sans(13.5))
                     .foregroundStyle(Palette.mist)
+                HStack(spacing: 6) {
+                    legalLink("Terms", LegalLinks.terms)
+                    Text("·")
+                    legalLink("Privacy", LegalLinks.privacyPolicy)
+                }
+                .font(FLFont.sans(12))
+                .foregroundStyle(Palette.mist)
             }
             .padding(.horizontal, 24)
             .padding(.top, 10)
@@ -84,6 +92,10 @@ struct PaywallStepView: View {
         }
         .background(Palette.canvas.ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: flow.answers.selectedPlan)
+        .sheet(item: $openLink) { url in
+            SafariSheet(url: url)
+                .ignoresSafeArea()
+        }
         .fullScreenCover(isPresented: $isReading) {
             FirstReadView {
                 isReading = false
@@ -91,6 +103,16 @@ struct PaywallStepView: View {
             }
             .environment(store)
         }
+    }
+
+    private func legalLink(_ title: String, _ url: URL) -> some View {
+        Button { openLink = url } label: {
+            Text(title)
+                .underline()
+                .frame(minHeight: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func benefit(_ text: String) -> some View {
