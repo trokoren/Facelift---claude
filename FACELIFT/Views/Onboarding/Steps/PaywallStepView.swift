@@ -18,7 +18,7 @@ struct PaywallStepView: View {
     }
 
     private let plans: [Plan] = [
-        Plan(name: "Free Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year",
+        Plan(name: "3-Day Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year",
              renewal: "$3.99 for 3 days, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
         Plan(name: "Weekly", price: "$8.99/week",
              renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings."),
