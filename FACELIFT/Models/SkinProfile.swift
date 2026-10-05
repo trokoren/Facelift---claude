@@ -26,17 +26,22 @@ struct SkinProfile: Codable, Equatable {
         city = answers.city
     }
 
-    private static let key = "facelift.profile"
+    /// Saved in a file protected while the phone is locked (it can hold health answers).
+    private static let fileName = "profile.json"
+    /// Where older builds kept it; moved into the protected file on first load.
+    private static let legacyKey = "facelift.profile"
 
     static func load() -> SkinProfile? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(SkinProfile.self, from: data)
+        if let profile = LocalFile.load(SkinProfile.self, from: fileName) { return profile }
+        guard let data = UserDefaults.standard.data(forKey: legacyKey),
+              let profile = try? JSONDecoder().decode(SkinProfile.self, from: data) else { return nil }
+        profile.save()
+        UserDefaults.standard.removeObject(forKey: legacyKey)
+        return profile
     }
 
     func save() {
-        if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: Self.key)
-        }
+        LocalFile.save(self, to: Self.fileName)
     }
 
     /// What the consultation receives. Empty answers are left out.
