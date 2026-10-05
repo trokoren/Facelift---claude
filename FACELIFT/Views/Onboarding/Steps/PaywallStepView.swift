@@ -12,13 +12,18 @@ struct PaywallStepView: View {
         let price: String
         var perMonth: String? = nil
         var badge: String? = nil
+        /// What she'll be charged and when, shown under the button (App Store guideline 3.1.2).
+        var renewal: String = ""
         var id: String { name }
     }
 
     private let plans: [Plan] = [
-        Plan(name: "Free Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year"),
-        Plan(name: "Weekly", price: "$8.99/week"),
-        Plan(name: "Annual", price: "$4.16/month", perMonth: "$49.99 billed yearly", badge: "SAVE 90%")
+        Plan(name: "Free Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year",
+             renewal: "$3.99 for 3 days, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
+        Plan(name: "Weekly", price: "$8.99/week",
+             renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings."),
+        Plan(name: "Annual", price: "$4.16/month", perMonth: "$49.99 billed yearly", badge: "SAVE 90%",
+             renewal: "$49.99/year. Renews automatically. Cancel anytime in Settings.")
     ]
 
     var body: some View {
@@ -75,9 +80,13 @@ struct PaywallStepView: View {
                     store.saveProfile(flow.answers)
                     isReading = true
                 }
-                Text("cancel anytime")
-                    .font(FLFont.sans(13.5))
+                Text(plans.first { $0.name == flow.answers.selectedPlan }?.renewal ?? "Renews automatically. Cancel anytime in Settings.")
+                    .font(FLFont.sans(12.5))
                     .foregroundStyle(Palette.mist)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                    .animation(.easeOut(duration: 0.2), value: flow.answers.selectedPlan)
                 HStack(spacing: 6) {
                     legalLink("Terms", LegalLinks.terms)
                     Text("·")
