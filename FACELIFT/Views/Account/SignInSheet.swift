@@ -78,15 +78,41 @@ struct SignInSheet: View {
                     .foregroundStyle(Palette.faint)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 12)
+
+                #if DEBUG
+                // Test builds only (run from Xcode): skip sign-in and go straight into the app,
+                // keeping whatever scans and profile are on this phone. Never in App Store builds.
+                if purpose == .returning {
+                    Button {
+                        dismiss()
+                        onUnlocked()
+                    } label: {
+                        Text("Skip sign-in (test build)")
+                            .font(FLFont.sans(12.5, .medium))
+                            .foregroundStyle(Palette.rose)
+                            .underline()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                #endif
             }
         }
         .padding(.horizontal, 28)
         .padding(.top, 34)
         .padding(.bottom, 20)
         .background(Palette.sheet.ignoresSafeArea())
-        .presentationDetents([.height(hasNoMembership ? 420 : 400)])
+        .presentationDetents([.height(hasNoMembership ? 420 : Self.signInHeight)])
         .presentationDragIndicator(.visible)
     }
+
+    #if DEBUG
+    private static let signInHeight: CGFloat = 450
+    #else
+    private static let signInHeight: CGFloat = 400
+    #endif
 
     private var title: String {
         if hasNoMembership { return "No membership found" }
