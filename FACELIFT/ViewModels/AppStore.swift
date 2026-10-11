@@ -370,7 +370,7 @@ final class AppStore {
         if let index = scans.firstIndex(where: { $0.id == scanID }) {
             scans[index].productsShopped += 1
         }
-        addToRoutine(product)
+        // Shopping isn't buying: she adds products to "What I'm using" herself.
     }
 
     /// True when a recommended product is already in "What I'm using".
