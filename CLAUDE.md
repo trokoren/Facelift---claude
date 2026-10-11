@@ -38,6 +38,7 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
   - `analyze-skin`: photo to Perfect Corp YouCam (7 measures + skin type) then Claude (`claude-sonnet-5`) writes the consult. Retries the consult once; if it still fails, returns scores only.
   - `progress-review`: numbers only, writes a short progress review on cadence (first, every 5 scans, meaningful change, monthly).
   - `delete-account`: deletes the signed-in user (App Store requirement).
+  - Removed 2026-10-11: `deep-read` and `consult-preview` (both retired stubs returning 410, unused by the app). Do not redeploy them.
   - Secrets in Supabase: `ANTHROPIC_API_KEY`, the YouCam key.
 - **Database:** `public.product_catalog` (60 products; columns concern, tier, rank, brand, name, price, url, image_name, pregnancy_safe, strength, skin_types, active). Public read of active rows only. Migrations in `supabase/migrations/`.
 - **Auth:** Supabase Auth, Apple provider ON with client ID `app.faceliftai.facelift` (no secret needed for native).
