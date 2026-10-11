@@ -19,13 +19,12 @@ final class AppStore {
     /// Her onboarding answers, used to personalize every consultation.
     var profile: SkinProfile? = SkinProfile.load()
 
-    /// Her scans, newest first. Saved on this phone after every change; until her first real
-    /// scan, the app shows its placeholder scans (never saved).
-    var scans: [Scan] = ScanArchive.load() ?? SampleData.scans {
+    /// Her scans, newest first. Saved on this phone after every change.
+    var scans: [Scan] = ScanArchive.load() ?? [] {
         didSet { ScanArchive.save(scans) }
     }
     /// "What I'm using", saved on this phone.
-    var usedProducts: [UsedProduct] = LocalFile.load([UsedProduct].self, from: "products.json") ?? SampleData.usedProducts {
+    var usedProducts: [UsedProduct] = LocalFile.load([UsedProduct].self, from: "products.json") ?? [] {
         didSet { LocalFile.save(usedProducts, to: "products.json") }
     }
     /// Her "How's it going?" answers, newest last, saved on this phone.
@@ -506,22 +505,20 @@ final class AppStore {
             skinType = answers.resolvedSkinType
             skinGoals = answers.skinGoals
             remindersOn = answers.notificationsRequested
-            if let first = scans.first {
-                scans[0] = Scan(
-                    id: first.id,
-                    date: latestReport == nil ? first.date : Date(),
-                    portraitName: first.portraitName,
-                    concerns: latestReport?.topConcerns ?? answers.topConcerns,
-                    productsShopped: first.productsShopped,
-                    categories: latestReport?.categories ?? first.categories,
-                    recommendations: first.recommendations,
-                    consult: latestReport?.consult ?? first.consult,
-                    measures: latestReport?.measures ?? first.measures,
-                    isSample: latestReport == nil && first.isSample
+            // The scan she took during the tour becomes her first saved scan.
+            if let report = latestReport {
+                let scan = Scan(
+                    id: UUID(),
+                    date: Date(),
+                    portraitName: nil,
+                    concerns: report.topConcerns,
+                    productsShopped: 0,
+                    categories: report.categories,
+                    recommendations: SampleData.recommendations,
+                    consult: report.consult,
+                    measures: report.measures
                 )
-                if !scans[0].isSample {
-                    scans = [scans[0]] + scans.dropFirst().filter { !$0.isSample }
-                }
+                scans = [scan] + scans.filter { !$0.isSample }
             }
         }
         latestReport = nil

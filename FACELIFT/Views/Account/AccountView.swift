@@ -22,7 +22,7 @@ struct AccountView: View {
                             label: "MEMBERSHIP",
                             accent: Palette.rose,
                             title: "FACELIFT Premium",
-                            text: "You're a FACELIFT member. Your membership includes unlimited skin scans, full analysis across all twelve markers, personalised product recommendations and progress tracking over time. You can manage or cancel your membership any time from your device's subscription settings."
+                            text: "Your FACELIFT membership includes up to two skin scans a day, a full consultation across seven measures of your skin, product recommendations matched to your results and progress tracking over time. You can manage or cancel it any time from your device's subscription settings."
                         )
                     } label: {
                         Text("$")

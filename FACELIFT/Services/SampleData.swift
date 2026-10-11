@@ -89,38 +89,18 @@ enum SampleData {
         )
     ]
 
-    static let scans: [Scan] = [
-        Scan(id: UUID(), date: date(2026, 8, 28), portraitName: "blonde_woman_smiling_portrait",
-             concerns: ["Dehydration", "Fine Lines", "Texture"], productsShopped: 2,
-             categories: categories(), recommendations: recommendations, isSample: true),
-        Scan(id: UUID(), date: date(2024, 4, 18), portraitName: "woman_touching_hair_portrait",
-             concerns: ["Fine Lines", "Texture", "Dullness"], productsShopped: 1,
-             categories: categories(shift: -6), recommendations: recommendations, isSample: true),
-        Scan(id: UUID(), date: date(2024, 3, 2), portraitName: "woman_headshot_bangs",
-             concerns: ["Dehydration", "Fine Lines", "Texture"], productsShopped: 0,
-             categories: categories(shift: -14), recommendations: recommendations, isSample: true)
-    ]
-
     static let chartPoints: [ChartPoint] = [
         ChartPoint(label: "Mar 2", value: 58, color: Palette.sky),
         ChartPoint(label: "Apr 18", value: 67, color: Palette.rose),
         ChartPoint(label: "Aug 12", value: 74, color: Palette.sage)
     ]
 
-    static let usedProducts: [UsedProduct] = [
-        UsedProduct(id: UUID(), brand: "Laneige", name: "Water Bank Serum", price: 38, tint: .sky, url: URL(string: "https://laneige.com")),
-        UsedProduct(id: UUID(), brand: "Sunday Riley", name: "Good Genes Treatment", price: 85, tint: .sage, url: URL(string: "https://sundayriley.com")),
-        UsedProduct(id: UUID(), brand: "CeraVe", name: "Eye Repair Cream", price: 16, tint: .rose, url: URL(string: "https://cerave.com"))
-    ]
-
-    static let progressUpdate = "Your hydration has improved the most since your last scan - the Laneige serum is doing its job. Your cheek zone dehydration is down noticeably and your skin barrier feels stronger, which is already softening the look of texture around your nose. Keep your routine consistent for the next few weeks, and let the under-eye area be your next focus - that's where a gentle retinol will make the biggest difference."
-
     static let faq: [FAQItem] = [
-        FAQItem(question: "How does the scan work?", answer: "FACELIFT reads your face through the front camera and looks at twelve markers across three areas - aging and structure, tone and clarity, and overall skin health. Each marker is scored from 0 to 100, and we turn those scores into plain-language insights and product recommendations matched to what your skin actually needs."),
-        FAQItem(question: "How often should I scan?", answer: "Every two to four weeks is the sweet spot. Skin renews itself roughly every 28 days, so scanning on that rhythm shows real change instead of day-to-day noise. For the most accurate comparison, scan in similar lighting with a clean, bare face."),
-        FAQItem(question: "What does my score mean?", answer: "Scores are relative to healthy skin for your age. 80 and above is Very Good, 70 to 79 is Good, and 60 to 69 is Fair. A lower score isn't a judgement - it simply points to where a small change in your routine will make the biggest visible difference."),
+        FAQItem(question: "How does the scan work?", answer: "FACELIFT reads your face through the front camera and measures seven areas: fine lines, dark circles, dark spots, redness, texture, pores and hydration. Each is scored from 0 to 100, and your consultation turns those scores into plain-language guidance and a routine matched to what your skin needs."),
+        FAQItem(question: "How often should I scan?", answer: "Every three to four days is the sweet spot. Skin changes over weeks, so scans taken closer together mostly show day-to-day variation like sleep and hydration. You can scan up to twice a day. For the clearest comparison, scan in similar bright light with a clean, bare face."),
+        FAQItem(question: "What does my score mean?", answer: "Scores run from 0 to 100, and higher means healthier-looking skin. 80 and above is Very Good, 70 to 79 is Good, and 60 to 69 is Fair. A lower score isn't a judgement; it simply points to where a small change in your routine will make the biggest visible difference."),
         FAQItem(question: "How do I cancel?", answer: "You can cancel any time from your device's subscription settings: open Settings, tap your name, choose Subscriptions, then select FACELIFT. You'll keep access until the end of your current billing period."),
-        FAQItem(question: "Is my photo stored?", answer: "Your camera feed is analysed in the moment. We keep your scores and recommendations so you can track progress over time, but you're always in control - you can delete your scan history at any time from Privacy & Data.")
+        FAQItem(question: "Is my photo stored?", answer: "No. Your photo is sent securely to our skin-analysis partners, Perfect Corp and Anthropic, to read your skin, and they must delete it within 30 days. We never store it. Your scores and consultations are saved on this phone so you can track your progress, and you can delete them any time from Privacy & Data.")
     ]
 
     static let skinGoalOptions: [String] = [
