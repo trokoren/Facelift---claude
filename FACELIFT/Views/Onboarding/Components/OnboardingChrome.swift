@@ -231,7 +231,7 @@ struct GoldStars: View {
     }
 }
 
-/// Lock + "Your photos are never stored." Shown anywhere the camera is on or about to be.
+/// Lock + "We never store your photos." Shown anywhere the camera is on or about to be.
 struct PrivacyNote: View {
     var tint: Color = Color(hex: 0xB3ABA9)
 
@@ -239,7 +239,7 @@ struct PrivacyNote: View {
         HStack(spacing: 7) {
             Image(systemName: "lock.fill")
                 .font(.system(size: 12, weight: .regular))
-            Text("Your photos are never stored.")
+            Text("We never store your photos.")
                 .font(FLFont.sans(14, .medium))
         }
         .foregroundStyle(tint)

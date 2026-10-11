@@ -534,7 +534,7 @@ struct ScanPrivacySheet: View {
                     .frame(width: 52, height: 52)
                     .background(Palette.blush, in: Circle())
 
-                Text("Your photos are never stored.")
+                Text("We never store your photos.")
                     .font(FLFont.serif(30))
                     .foregroundStyle(Palette.ink)
                     .multilineTextAlignment(.center)
