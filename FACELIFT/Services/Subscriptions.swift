@@ -71,6 +71,20 @@ final class Subscriptions {
         }
     }
 
+    /// Ties her membership to her FACELIFT account, so it follows her to a new phone.
+    func identify(_ accountID: String) async {
+        guard Purchases.isConfigured,
+              let result = try? await Purchases.shared.logIn(accountID) else { return }
+        isPremium = result.customerInfo.entitlements[Self.entitlement]?.isActive == true
+    }
+
+    /// After sign out or account deletion: back to an anonymous buyer on this phone.
+    func forget() async {
+        guard Purchases.isConfigured, !Purchases.shared.isAnonymous,
+              let info = try? await Purchases.shared.logOut() else { return }
+        isPremium = info.entitlements[Self.entitlement]?.isActive == true
+    }
+
     /// True when a restore found an active membership.
     func restore() async -> Bool {
         guard Purchases.isConfigured,

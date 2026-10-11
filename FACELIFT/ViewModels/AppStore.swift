@@ -53,8 +53,6 @@ final class AppStore {
         }
     }
 
-    var name: String = "Sophia Chen"
-    var email: String = "sophia@email.com"
     var skinType: String = "Combination"
     var skinGoals: [String] = ["Anti-aging", "Hydration"]
     var remindersOn: Bool = true
@@ -165,10 +163,6 @@ final class AppStore {
             print("progress review failed:", error)
             #endif
         }
-    }
-
-    var initial: String {
-        String(name.prefix(1)).uppercased()
     }
 
     var lastScannedText: String {
@@ -490,7 +484,9 @@ final class AppStore {
         SkinTypeRecord.clear()
     }
 
-    func signOut() {
+    /// Signs out of her account. Her scans and profile stay on this phone.
+    func signOut() async {
+        await Account.shared.signOut()
         mySkinPath = []
         accountPath = []
         selectedTab = .scan

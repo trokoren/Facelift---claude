@@ -7,6 +7,7 @@ struct HeroStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
     @State private var hasAppeared: Bool = false
+    @State private var isSigningIn: Bool = false
 
     var body: some View {
         ZStack {
@@ -54,7 +55,7 @@ struct HeroStepView: View {
                     .opacity(hasAppeared ? 1 : 0)
 
                 Button {
-                    store.completeOnboarding(with: flow.answers, signIn: true)
+                    isSigningIn = true
                 } label: {
                     Text("Already a user? Sign in →")
                         .font(FLFont.sans(13.5))
@@ -71,6 +72,13 @@ struct HeroStepView: View {
             .padding(.horizontal, 28)
         }
         .task { await requestTrackingThenReveal() }
+        .sheet(isPresented: $isSigningIn) {
+            SignInSheet(
+                purpose: .returning,
+                onUnlocked: { store.completeOnboarding(with: flow.answers, signIn: true) },
+                onContinue: { flow.next() }
+            )
+        }
     }
 
     private func requestTrackingThenReveal() async {
