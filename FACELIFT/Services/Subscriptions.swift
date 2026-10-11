@@ -141,13 +141,10 @@ final class Subscriptions {
         switch package.packageType {
         case .weekly: return 0
         case .annual: return 1
-        default: break
-        }
-        switch package.packageType {
-        case .sixMonth: 2
-        case .threeMonth: 3
-        case .monthly: 4
-        default: 5
+        case .sixMonth: return 2
+        case .threeMonth: return 3
+        case .monthly: return 4
+        default: return 5
         }
     }
 }
