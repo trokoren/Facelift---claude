@@ -74,17 +74,19 @@ struct AnalysisView: View {
                         .padding(.top, 16)
                     }
 
-                    needsBanner
-                        .padding(.top, 20)
+                    if !scan.recommendations.isEmpty {
+                        needsBanner
+                            .padding(.top, 20)
 
-                    VStack(alignment: .leading, spacing: 26) {
-                        ForEach(scan.recommendations) { recommendation in
-                            RecommendationSectionView(recommendation: recommendation) { product in
-                                shop(product, scanID: scan.id)
+                        VStack(alignment: .leading, spacing: 26) {
+                            ForEach(scan.recommendations) { recommendation in
+                                RecommendationSectionView(recommendation: recommendation) { product in
+                                    shop(product, scanID: scan.id)
+                                }
                             }
                         }
+                        .padding(.top, 32)
                     }
-                    .padding(.top, 32)
                 } header: {
                     if !isFresh {
                         backRow(date: scan.formattedDate)
@@ -186,7 +188,7 @@ struct AnalysisView: View {
     private func shop(_ product: Recommendation.Product, scanID: UUID) {
         shopCount += 1
         store.recordShop(product, scanID: scanID)
-        if let url = ShopLink.url(for: product.name) {
+        if let url = product.url ?? ShopLink.url(for: product.name) {
             openURL(url)
         }
     }

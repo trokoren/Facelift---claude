@@ -21,6 +21,7 @@ struct ContentView: View {
             }
         }
         .environment(store)
+        .task { await store.refreshCatalog() }
         .fullScreenCover(isPresented: $store.isScanning) {
             ScanCameraView()
                 .environment(store)

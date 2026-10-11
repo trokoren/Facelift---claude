@@ -7,6 +7,10 @@ struct Recommendation: Identifiable, Hashable, Codable {
         let name: String
         let price: Int
         let imageName: String
+        /// Set for products from the catalog (older scans don't have them).
+        var brand: String? = nil
+        /// Affiliate or product link from the catalog. Empty means a shopping search.
+        var url: URL? = nil
 
         var id: String { name }
     }

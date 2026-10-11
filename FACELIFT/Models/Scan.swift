@@ -7,7 +7,7 @@ struct Scan: Identifiable, Hashable, Codable {
     let concerns: [String]
     var productsShopped: Int
     let categories: [AnalysisCategory]
-    let recommendations: [Recommendation]
+    var recommendations: [Recommendation]
     /// Written results (scans made with the consult). Older and sample scans have none.
     var consult: Consult? = nil
     /// YouCam measurements behind the consult, 0-100, higher is healthier.

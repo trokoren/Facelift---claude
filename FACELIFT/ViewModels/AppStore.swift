@@ -291,6 +291,34 @@ final class AppStore {
         return nil
     }
 
+    /// "What your skin needs" for a scan: her weakest areas, matched to catalog products.
+    func pickRecommendations(for report: SkinReport) -> [Recommendation] {
+        ProductPicker.recommendations(
+            measures: report.measures,
+            consult: report.consult,
+            profile: profile,
+            usedProducts: usedProducts,
+            checkIns: checkIns
+        )
+    }
+
+    /// Loads the latest product catalog, then swaps the old built-in sample products on any
+    /// earlier real scans for picks that match that scan's results.
+    func refreshCatalog() async {
+        await ProductCatalog.shared.refresh()
+        let sampleIssues = SampleData.recommendations.map(\.issue)
+        for index in scans.indices {
+            let scan = scans[index]
+            guard !scan.isSample, !scan.measures.isEmpty,
+                  scan.recommendations.map(\.issue) == sampleIssues else { continue }
+            let picks = ProductPicker.recommendations(
+                measures: scan.measures, consult: scan.consult, profile: profile,
+                usedProducts: usedProducts, checkIns: checkIns
+            )
+            scans[index].recommendations = picks
+        }
+    }
+
     /// Finishes a camera scan: records the result and shows the fresh analysis.
     func completeScan() {
         let base = latestScan
@@ -303,7 +331,7 @@ final class AppStore {
             concerns: report?.topConcerns ?? base?.concerns ?? ["Dehydration", "Fine Lines", "Texture"],
             productsShopped: 0,
             categories: report?.categories ?? SampleData.categories(shift: 2),
-            recommendations: SampleData.recommendations,
+            recommendations: report.map(pickRecommendations) ?? [],
             consult: report?.consult,
             measures: report?.measures ?? [:]
         )
@@ -339,12 +367,19 @@ final class AppStore {
         }
         let alreadyUsing = usedProducts.contains { product.name.localizedCaseInsensitiveContains($0.name) }
         guard !alreadyUsing else { return }
-        let words = product.name.split(separator: " ")
-        let brandWordCount = product.name.hasPrefix("The ") || product.name.hasPrefix("Sunday ") || product.name.hasPrefix("Dr. ") || product.name.hasPrefix("Drunk ") ? 2 : 1
-        let brand = words.prefix(brandWordCount).joined(separator: " ")
-        let name = words.dropFirst(brandWordCount).joined(separator: " ")
+        let brand: String
+        let name: String
+        if let known = product.brand, product.name.hasPrefix(known) {
+            brand = known
+            name = String(product.name.dropFirst(known.count)).trimmingCharacters(in: .whitespaces)
+        } else {
+            let words = product.name.split(separator: " ")
+            let brandWordCount = product.name.hasPrefix("The ") || product.name.hasPrefix("Sunday ") || product.name.hasPrefix("Dr. ") || product.name.hasPrefix("Drunk ") ? 2 : 1
+            brand = words.prefix(brandWordCount).joined(separator: " ")
+            name = words.dropFirst(brandWordCount).joined(separator: " ")
+        }
         let tint = UsedProduct.Tint.allCases[usedProducts.count % UsedProduct.Tint.allCases.count]
-        usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: product.price, tint: tint), at: 0)
+        usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: product.price, tint: tint, url: product.url), at: 0)
     }
 
     /// Replaces "What I'm using" with the edited list from the editor sheet. Blank rows are dropped.
@@ -514,7 +549,7 @@ final class AppStore {
                     concerns: report.topConcerns,
                     productsShopped: 0,
                     categories: report.categories,
-                    recommendations: SampleData.recommendations,
+                    recommendations: pickRecommendations(for: report),
                     consult: report.consult,
                     measures: report.measures
                 )
