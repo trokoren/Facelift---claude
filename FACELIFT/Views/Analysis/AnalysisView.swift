@@ -51,7 +51,6 @@ struct AnalysisView: View {
                         ConsultView(
                             scan: scan,
                             consult: consult,
-                            onShop: { shop($0, scanID: scan.id) },
                             onSeeAllPicks: { scrollToPicks(proxy) }
                         )
                     } else {
@@ -87,7 +86,7 @@ struct AnalysisView: View {
 
                         VStack(alignment: .leading, spacing: 26) {
                             ForEach(scan.recommendations) { recommendation in
-                                RecommendationSectionView(recommendation: recommendation) { product in
+                                RecommendationSectionView(recommendation: recommendation, budget: store.profile?.budget) { product in
                                     shop(product, scanID: scan.id)
                                 }
                             }

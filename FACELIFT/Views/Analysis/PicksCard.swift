@@ -134,3 +134,71 @@ extension Recommendation {
         return products.first
     }
 }
+
+/// The slim teaser on her results: her picks' photos, how many, the price range at her
+/// budget tier, and a tap that scrolls to the full product section.
+struct PicksPreview: View {
+    let recommendations: [Recommendation]
+    let budget: String?
+    let onTap: () -> Void
+
+    private var featured: [Recommendation.Product] {
+        recommendations.compactMap { $0.featured(for: budget) }
+    }
+
+    var body: some View {
+        let picks = featured
+        let prices = picks.map(\.price)
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                HStack(spacing: -12) {
+                    ForEach(Array(picks.prefix(3).enumerated()), id: \.element.id) { offset, product in
+                        Color(hex: 0xF1EEEA)
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Image(product.imageName)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .allowsHitTesting(false)
+                            }
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                            .zIndex(Double(3 - offset))
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(picks.count == 1 ? "1 pick for your skin" : "\(picks.count) picks for your skin")
+                        .font(FLFont.serif(17))
+                        .foregroundStyle(Palette.ink)
+                    if let low = prices.min(), let high = prices.max() {
+                        Text(low == high ? "$\(low)" : "$\(low) to $\(high)")
+                            .font(FLFont.sans(11.5))
+                            .foregroundStyle(Palette.stone)
+                    }
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 4) {
+                    Text("See picks")
+                    Image(systemName: "arrow.down")
+                        .font(.system(size: 10, weight: .regular))
+                }
+                .font(FLFont.sans(11.4))
+                .foregroundStyle(Palette.rose)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .cardSurface(radius: 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(CardPressStyle())
+        .accessibilityLabel("See your product picks")
+    }
+}
+
+extension Recommendation {
+    /// All tiers, with the one that fits her budget first.
+    func products(orderedFor budget: String?) -> [Product] {
+        guard let lead = featured(for: budget) else { return products }
+        return [lead] + products.filter { $0.id != lead.id }
+    }
+}

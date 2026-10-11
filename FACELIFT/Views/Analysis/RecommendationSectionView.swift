@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RecommendationSectionView: View {
     let recommendation: Recommendation
+    /// Her budget answer: that tier leads the row.
+    var budget: String? = nil
     let onShop: (Recommendation.Product) -> Void
 
     var body: some View {
@@ -39,7 +41,7 @@ struct RecommendationSectionView: View {
 
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 12) {
-                    ForEach(Array(recommendation.products.enumerated()), id: \.element.id) { offset, product in
+                    ForEach(Array(recommendation.products(orderedFor: budget).enumerated()), id: \.element.id) { offset, product in
                         ProductCardView(product: product, index: offset + 1) {
                             onShop(product)
                         }

@@ -5,8 +5,7 @@ import SwiftUI
 struct ConsultView: View {
     let scan: Scan
     let consult: Consult
-    /// When set, "Your picks" appears under the Skin Score.
-    var onShop: ((Recommendation.Product) -> Void)? = nil
+    /// When set, a slim "picks for your skin" teaser appears under the Skin Score.
     var onSeeAllPicks: (() -> Void)? = nil
 
     @Environment(AppStore.self) private var store
@@ -19,12 +18,11 @@ struct ConsultView: View {
             scoreCard
                 .padding(.top, 18)
 
-            if let onShop, !scan.recommendations.isEmpty {
-                PicksCard(
+            if let onSeeAllPicks, !scan.recommendations.isEmpty {
+                PicksPreview(
                     recommendations: scan.recommendations,
                     budget: store.profile?.budget,
-                    onShop: onShop,
-                    onSeeAll: { onSeeAllPicks?() }
+                    onTap: onSeeAllPicks
                 )
                 .padding(.top, 14)
             }
