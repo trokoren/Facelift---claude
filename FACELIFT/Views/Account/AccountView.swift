@@ -5,6 +5,7 @@ struct AccountView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.requestReview) private var requestReview
     @State private var isShowingGoals: Bool = false
+    @State private var isShowingApproach: Bool = false
     @State private var isConfirmingSignOut: Bool = false
     @State private var isSigningIn: Bool = false
     @State private var isConfirmingDelete: Bool = false
@@ -54,6 +55,11 @@ struct AccountView: View {
                 VStack(spacing: 0) {
                     Button { isShowingGoals = true } label: {
                         SettingsRow(title: "Skin Goals", value: store.skinGoals.isEmpty ? "None" : store.skinGoals.joined(separator: ", "))
+                    }
+                    .buttonStyle(CardPressStyle())
+                    RowDivider()
+                    Button { isShowingApproach = true } label: {
+                        SettingsRow(title: "Skincare Approach", value: store.approach.title)
                     }
                     .buttonStyle(CardPressStyle())
                     RowDivider()
@@ -150,6 +156,9 @@ struct AccountView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $isShowingGoals) {
             SkinGoalsSheet()
+        }
+        .sheet(isPresented: $isShowingApproach) {
+            ApproachSheet()
         }
         .sheet(item: $insight) { item in
             InsightSheet(content: item)

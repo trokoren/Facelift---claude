@@ -12,6 +12,7 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
     case mainGoal
     case results28
     case budget
+    case approach
     case healthContext
     case reviewAsk
     case spfHabits

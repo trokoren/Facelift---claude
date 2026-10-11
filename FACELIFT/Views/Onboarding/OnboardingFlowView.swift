@@ -42,6 +42,7 @@ struct OnboardingFlowView: View {
         case .mainGoal: MainGoalStepView()
         case .results28: Results28StepView()
         case .budget: BudgetStepView()
+        case .approach: ApproachStepView()
         case .healthContext: HealthContextStepView()
         case .reviewAsk: ReviewAskStepView()
         case .spfHabits: SPFStepView()

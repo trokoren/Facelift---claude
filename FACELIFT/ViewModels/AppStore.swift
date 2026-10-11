@@ -550,6 +550,27 @@ final class AppStore {
 
     /// Applies the onboarding answers to the profile and enters the main app.
     /// Keeps her onboarding answers for every future consultation.
+    /// Her Clinical to Natural setting (Balanced until she changes it).
+    var approach: SkincareApproach { profile?.approach ?? .balanced }
+
+    /// Saves a new Clinical to Natural setting and re-picks the products on her latest scan,
+    /// so My Skin shows the change right away. Older scans keep the picks they had.
+    func setApproach(_ approach: SkincareApproach) {
+        var updated = profile ?? SkinProfile(OnboardingAnswers())
+        guard updated.approach != approach else { return }
+        updated.approach = approach
+        updated.save()
+        profile = updated
+        guard let index = scans.firstIndex(where: { !$0.isSample && !$0.measures.isEmpty }) else { return }
+        let scan = scans[index]
+        let realCount = scans.filter { !$0.isSample }.count
+        scans[index].recommendations = ProductPicker.recommendations(
+            measures: scan.measures, consult: scan.consult, profile: updated,
+            usedProducts: usedProducts, checkIns: checkIns,
+            rotation: max(0, realCount - 1)
+        )
+    }
+
     func saveProfile(_ answers: OnboardingAnswers) {
         let profile = SkinProfile(answers)
         profile.save()

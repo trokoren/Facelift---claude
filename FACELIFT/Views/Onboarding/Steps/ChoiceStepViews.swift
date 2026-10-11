@@ -212,6 +212,24 @@ struct BudgetStepView: View {
     }
 }
 
+// MARK: - Skincare approach (slider)
+
+struct ApproachStepView: View {
+    @Environment(OnboardingStore.self) private var flow
+
+    var body: some View {
+        @Bindable var flow = flow
+        OnboardingPage(title: "How do you like\nyour skincare?", subtitle: "Proven actives, plant-based care, or a mix.\nYou can change this anytime in Account.", titleSize: 33, titleTop: 4) {
+            ApproachSlider(approach: $flow.answers.approach)
+                .padding(.top, 36)
+        } footer: {
+            OnboardingCTA(title: "Continue") { flow.next() }
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+        }
+    }
+}
+
 // MARK: - Health context (multi)
 
 struct HealthContextStepView: View {
