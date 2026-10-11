@@ -7,6 +7,8 @@ struct SkinAnalysisError: LocalizedError {
 
     static let generic = SkinAnalysisError(message: "We couldn't read that scan. Please try again in bright, even light.")
     static let offline = SkinAnalysisError(message: "We couldn't reach our servers. Check your connection and try again.")
+    /// Our side is having trouble (for example the skin reader is down). Not her photo or light.
+    static let unavailable = SkinAnalysisError(message: "Scans are briefly unavailable on our end. Your photo was fine. Please try again a little later.")
 
     /// The general message, plus the technical reason in test builds so failures can be
     /// diagnosed from a screenshot. Customers only ever see the friendly message.
@@ -65,6 +67,14 @@ enum SkinAnalysisService {
             #if DEBUG
             print("analyze-skin failed (\(status)):", String(data: data, encoding: .utf8) ?? "")
             #endif
+            // 500s mean the problem is on our side, so don't send her off to fix her lighting.
+            if status >= 500 {
+                #if DEBUG
+                throw SkinAnalysisError(message: SkinAnalysisError.unavailable.message + "\n\n[test build] server status \(status): " + String((String(data: data, encoding: .utf8) ?? "").prefix(160)))
+                #else
+                throw SkinAnalysisError.unavailable
+                #endif
+            }
             throw SkinAnalysisError.generic("server status \(status): " + String((String(data: data, encoding: .utf8) ?? "").prefix(160)))
         }
 
