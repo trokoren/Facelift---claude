@@ -22,8 +22,33 @@ final class Subscriptions {
     /// The plans on sale, in the order the paywall shows them (annual first).
     private(set) var packages: [Package] = []
     private(set) var isPremium: Bool = false
+    /// True once RevenueCat has told us her membership status this launch (from its cache
+    /// or the network). Until then we don't lock anything, so a member never sees a flash
+    /// of the locked screens.
+    private(set) var hasChecked: Bool = false
+
+    #if DEBUG
+    /// Scan Lab switch: pretend her membership has lapsed, to see the locked screens.
+    var debugLapsed: Bool = UserDefaults.standard.bool(forKey: "facelift.debugLapsed") {
+        didSet { UserDefaults.standard.set(debugLapsed, forKey: "facelift.debugLapsed") }
+    }
+    #endif
+
+    /// Her membership has ended: new scans, consults, picks and progress are locked until
+    /// she renews. Only once RevenueCat is live and has answered; her scans are never deleted.
+    var isLapsed: Bool {
+        #if DEBUG
+        if debugLapsed { return true }
+        #endif
+        return Self.isAvailable && hasChecked && !isPremium
+    }
 
     private init() {}
+
+    private func apply(_ info: CustomerInfo) {
+        isPremium = info.entitlements[Self.entitlement]?.isActive == true
+        hasChecked = true
+    }
 
     /// Call once at launch.
     func configure() {
@@ -37,7 +62,7 @@ final class Subscriptions {
         Task { await refresh() }
         Task {
             for await info in Purchases.shared.customerInfoStream {
-                isPremium = info.entitlements[Self.entitlement]?.isActive == true
+                apply(info)
             }
         }
     }
@@ -49,7 +74,7 @@ final class Subscriptions {
             packages = offering.availablePackages.sorted { order($0) < order($1) }
         }
         if let info = try? await Purchases.shared.customerInfo() {
-            isPremium = info.entitlements[Self.entitlement]?.isActive == true
+            apply(info)
         }
     }
 
@@ -63,7 +88,7 @@ final class Subscriptions {
         do {
             let result = try await Purchases.shared.purchase(package: package)
             if result.userCancelled { return .cancelled }
-            isPremium = result.customerInfo.entitlements[Self.entitlement]?.isActive == true
+            apply(result.customerInfo)
             return isPremium ? .purchased : .failed("Your purchase went through, but we couldn't confirm it yet. Try Restore Purchases in a moment.")
         } catch {
             if (error as NSError).code == ErrorCode.purchaseCancelledError.rawValue { return .cancelled }
@@ -75,21 +100,21 @@ final class Subscriptions {
     func identify(_ accountID: String) async {
         guard Purchases.isConfigured,
               let result = try? await Purchases.shared.logIn(accountID) else { return }
-        isPremium = result.customerInfo.entitlements[Self.entitlement]?.isActive == true
+        apply(result.customerInfo)
     }
 
     /// After sign out or account deletion: back to an anonymous buyer on this phone.
     func forget() async {
         guard Purchases.isConfigured, !Purchases.shared.isAnonymous,
               let info = try? await Purchases.shared.logOut() else { return }
-        isPremium = info.entitlements[Self.entitlement]?.isActive == true
+        apply(info)
     }
 
     /// True when a restore found an active membership.
     func restore() async -> Bool {
         guard Purchases.isConfigured,
               let info = try? await Purchases.shared.restorePurchases() else { return false }
-        isPremium = info.entitlements[Self.entitlement]?.isActive == true
+        apply(info)
         return isPremium
     }
 

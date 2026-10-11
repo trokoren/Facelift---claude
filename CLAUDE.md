@@ -63,11 +63,12 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
   - My Skin: full "Your picks" card with Shop and "I have this" (only "I have this" adds to What I'm using; Shop just opens the link).
   - Product links/prices are edited in Supabase (`product_catalog`), no app update needed. Affiliate links go in `url`.
 - **Progress:** chart defaults to the last 6 scans evenly spaced; progress review sheet; "What I'm using" with check-ins.
+- **Lapsed membership** (`Subscriptions.isLapsed`): only when RevenueCat is live, has answered this launch, and `premium` is inactive. Scan button and opening a scan show `RenewSheet` (same RevenueCat offering as onboarding, no trial shown since she's had it). My Skin keeps her profile, latest score and last scan date; picks are replaced by the locked card and older scans are blurred. Progress update and chart are blurred behind the locked card. Account stays fully open (Restore, Sign out, Delete account). Nothing is deleted. Test with Scan Lab > "Pretend membership lapsed" (debug only).
 - **Sign in:** Sign in with Apple built, needs the Xcode capability (paid team only). Sign out and Delete account work.
 
 ## Status (as of 2026-10-11)
 
-Done recently: real sign-in code, product catalog (60, verified prices), picks preview + My Skin card, placeholder data removed, accurate FAQ/membership copy, privacy manifest, paywall compliance (restore, terms, renewal wording), consent copy, skin type every scan, stricter low light.
+Done recently: lapsed membership gate, real sign-in code, product catalog (60, verified prices), picks preview + My Skin card, placeholder data removed, accurate FAQ/membership copy, privacy manifest, paywall compliance (restore, terms, renewal wording), consent copy, skin type every scan, stricter low light.
 
 Waiting on Trevor (business):
 - EIN: IRS online gave reference 101 (name match). Call 1-800-829-4933 weekdays 7am MT.
@@ -75,12 +76,11 @@ Waiting on Trevor (business):
 - Sign the Operating Agreement. Open a business bank account after the EIN.
 
 Next to build (ask before starting):
-1. Lapsed membership: gate with the paywall when `premium` is inactive (decide whether past scans stay viewable).
-2. Server-side scan limits + subscriber check in `analyze-skin` (after RevenueCat is live).
-3. RevenueCat live: needs the `appl_` key in `Subscriptions.apiKey`, App Store Connect products (`facelift_annual`, `facelift_weekly`, offering `default`, entitlement `premium`).
-4. Sign in with Apple capability once the Ocean Park team is in Xcode; add Apple token revocation on delete (needs a Sign in with Apple key).
-5. Scan sync to the account (scores and consults only, not photos or health answers) before paid ads.
-6. Tracking prompt wording + Meta SDK (needs Meta App ID and Client Token).
-7. Real product photos (from affiliate networks).
+1. Server-side scan limits + subscriber check in `analyze-skin` (after RevenueCat is live).
+2. RevenueCat live: needs the `appl_` key in `Subscriptions.apiKey`, App Store Connect products (`facelift_annual`, `facelift_weekly`, offering `default`, entitlement `premium`).
+3. Sign in with Apple capability once the Ocean Park team is in Xcode; add Apple token revocation on delete (needs a Sign in with Apple key).
+4. Scan sync to the account (scores and consults only, not photos or health answers) before paid ads.
+5. Tracking prompt wording + Meta SDK (needs Meta App ID and Client Token).
+6. Real product photos (from affiliate networks).
 
 Open questions Trevor still owns: the 93% stat, the "Jamie L." review, and "70,000+ scans" claims; Anthropic data retention (zero retention or say 30 days in the privacy policy).

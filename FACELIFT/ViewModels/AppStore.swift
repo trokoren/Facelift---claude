@@ -188,7 +188,14 @@ final class AppStore {
     /// Set before opening a scan from "See all options" on My Skin; the scan scrolls to its products.
     var scrollToPicksOnOpen: Bool = false
 
+    /// The renew paywall, shown over the app when her membership has lapsed.
+    var showsRenew: Bool = false
+
+    /// Membership ended: scans, consults, picks and progress are locked (see Subscriptions).
+    var isLapsed: Bool { Subscriptions.shared.isLapsed }
+
     func openScan(_ id: UUID) {
+        if isLapsed { showsRenew = true; return }
         guard scan(with: id) != nil else { return }
         mySkinPath = [.scan(id: id, isFresh: false)]
         selectedTab = .mySkin
@@ -206,6 +213,7 @@ final class AppStore {
     }
 
     func startScan() {
+        if isLapsed { showsRenew = true; return }
         isScanning = true
     }
 

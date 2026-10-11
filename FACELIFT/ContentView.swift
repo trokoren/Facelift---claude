@@ -26,6 +26,16 @@ struct ContentView: View {
             ScanCameraView()
                 .environment(store)
         }
+        .sheet(isPresented: $store.showsRenew) {
+            RenewSheet()
+                .environment(store)
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+        }
+        // If her membership ends while a scan's results are open, step back to My Skin.
+        .onChange(of: store.isLapsed) { _, lapsed in
+            if lapsed { store.mySkinPath = [] }
+        }
     }
 
     /// Hidden on the Scan landing and whenever a scan's results are open, so the results

@@ -5,6 +5,7 @@ import SwiftUI
 struct ScanLabView: View {
     @State private var lab = ScanLab.shared
     @State private var viewing: ScanLab.Mode = ScanLab.shared.mode
+    @Bindable private var subscriptions = Subscriptions.shared
 
     var body: some View {
         List {
@@ -54,6 +55,16 @@ struct ScanLabView: View {
             Section {
                 Button("Clear test results", role: .destructive) { lab.clear() }
             }
+
+            #if DEBUG
+            Section {
+                Toggle("Pretend membership lapsed", isOn: $subscriptions.debugLapsed)
+            } header: {
+                Text("Membership")
+            } footer: {
+                Text("Shows the locked screens a member sees after her membership ends. Debug builds only.")
+            }
+            #endif
         }
         .navigationTitle("Scan Lab")
         .navigationBarTitleDisplayMode(.inline)

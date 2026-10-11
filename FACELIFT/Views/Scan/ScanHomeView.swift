@@ -60,6 +60,10 @@ struct ScanHomeView: View {
                 .offset(y: hasAppeared ? 0 : 14)
 
                 Button {
+                    if store.isLapsed {
+                        store.showsRenew = true
+                        return
+                    }
                     switch ScanAllowance.current {
                     case .open: store.startScan()
                     case .alreadyScanned: showsAlreadyScanned = true

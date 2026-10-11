@@ -16,11 +16,17 @@ struct ProgressScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 BrandHeader(subtitle: "Your Progress.")
 
-                updateCard
-                    .padding(.top, 18)
+                VStack(alignment: .leading, spacing: 0) {
+                    updateCard
+                        .padding(.top, 18)
 
-                chartCard
-                    .padding(.top, 18)
+                    chartCard
+                        .padding(.top, 18)
+                }
+                .lockedWhenLapsed(
+                    store.isLapsed,
+                    message: "Renew to see your Skin Score over time and your progress reviews. Your scans are saved on this phone."
+                ) { store.showsRenew = true }
 
                 if let product = checkInProduct {
                     CheckInCard(product: product) { checkInProduct = nil }
@@ -48,7 +54,7 @@ struct ProgressScreen: View {
             ProgressReviewSheet()
         }
         // Catches up if a review was due but couldn't be written last time.
-        .task { await store.refreshProgressReviewIfDue() }
+        .task { if !store.isLapsed { await store.refreshProgressReviewIfDue() } }
         .sheet(isPresented: $isEditingProducts) {
             EditProductsSheet()
                 .presentationDetents([.large])

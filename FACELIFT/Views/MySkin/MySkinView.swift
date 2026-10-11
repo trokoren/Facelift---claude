@@ -17,7 +17,13 @@ struct MySkinView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 20)
 
-                if let latest = store.scans.first(where: { !$0.isSample && !$0.recommendations.isEmpty }) {
+                if store.isLapsed {
+                    LockedCard(
+                        message: "Renew to see your consultations and product picks, and to keep scanning. Your scans are saved on this phone."
+                    ) { store.showsRenew = true }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+                } else if let latest = store.scans.first(where: { !$0.isSample && !$0.recommendations.isEmpty }) {
                     PicksCard(
                         recommendations: latest.recommendations,
                         budget: store.profile?.budget,
@@ -65,11 +71,15 @@ struct MySkinView: View {
                             scan: scan,
                             previousScore: store.scans.indices.contains(offset + 1) ? store.scans[offset + 1].overallScore : nil,
                             isFirst: offset == 0,
-                            isLast: offset == store.scans.count - 1
+                            isLast: offset == store.scans.count - 1,
+                            isLocked: store.isLapsed,
+                            onLockedTap: { store.showsRenew = true }
                         )
+                        // Lapsed: her latest score stays readable, older scans are blurred.
+                        .blur(radius: store.isLapsed && offset > 0 ? 6 : 0)
                         // Long-press a scan to share it as a picture or delete it.
                         .contextMenu {
-                            if !scan.isSample {
+                            if !scan.isSample && !store.isLapsed {
                                 Button {
                                     sharing = scan
                                 } label: {
@@ -218,21 +228,31 @@ private struct ScanTimelineRow: View {
     let previousScore: Int?
     let isFirst: Bool
     let isLast: Bool
+    /// Lapsed membership: tapping opens the renew screen instead of the scan.
+    var isLocked: Bool = false
+    var onLockedTap: () -> Void = {}
 
     private let avatarSize: CGFloat = 52
 
     var body: some View {
-        NavigationLink(value: MySkinRoute.scan(id: scan.id, isFresh: false)) {
-            HStack(alignment: .center, spacing: 14) {
-                scoreRing
-                card
-            }
-            .padding(.vertical, 6)
-            .background(alignment: .leading) {
-                timeline
-            }
+        if isLocked {
+            Button(action: onLockedTap) { row }
+                .buttonStyle(CardPressStyle())
+        } else {
+            NavigationLink(value: MySkinRoute.scan(id: scan.id, isFresh: false)) { row }
+                .buttonStyle(CardPressStyle())
         }
-        .buttonStyle(CardPressStyle())
+    }
+
+    private var row: some View {
+        HStack(alignment: .center, spacing: 14) {
+            scoreRing
+            card
+        }
+        .padding(.vertical, 6)
+        .background(alignment: .leading) {
+            timeline
+        }
     }
 
     /// The Skin Score at a glance: the number inside a ring filled to the score.
