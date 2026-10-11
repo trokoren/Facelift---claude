@@ -62,6 +62,7 @@ struct SkinProfile: Codable, Equatable {
         if let spfHabit { out["spf_habit"] = spfHabit }
         if !routine.isEmpty { out["current_routine"] = routine }
         if let city { out["city"] = city }
+        out["skincare_approach"] = (approach ?? .balanced).title
         return out
     }
 }
