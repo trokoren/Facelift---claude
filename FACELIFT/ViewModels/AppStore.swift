@@ -298,7 +298,8 @@ final class AppStore {
             consult: report.consult,
             profile: profile,
             usedProducts: usedProducts,
-            checkIns: checkIns
+            checkIns: checkIns,
+            rotation: scans.filter { !$0.isSample }.count
         )
     }
 
@@ -313,7 +314,8 @@ final class AppStore {
                   scan.recommendations.map(\.issue) == sampleIssues else { continue }
             let picks = ProductPicker.recommendations(
                 measures: scan.measures, consult: scan.consult, profile: profile,
-                usedProducts: usedProducts, checkIns: checkIns
+                usedProducts: usedProducts, checkIns: checkIns,
+                rotation: scans.count - 1 - index
             )
             scans[index].recommendations = picks
         }

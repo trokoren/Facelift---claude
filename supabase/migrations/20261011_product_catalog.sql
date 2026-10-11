@@ -26,3 +26,9 @@ create policy "Anyone can read active products"
   on public.product_catalog for select
   to anon, authenticated
   using (active);
+
+alter table public.product_catalog
+  add column if not exists strength text not null default 'regular' check (strength in ('gentle','regular','strong')),
+  add column if not exists skin_types text[];
+comment on column public.product_catalog.strength is 'gentle = fine for very sensitive skin; strong = never shown to sensitive skin.';
+comment on column public.product_catalog.skin_types is 'Empty = every skin type. Otherwise any of dry, oily, combination, normal.';
