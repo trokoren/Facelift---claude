@@ -16,12 +16,23 @@ struct CatalogProduct: Codable, Hashable {
     var strength: String? = nil
     /// Skin types it suits ("dry", "oily", "combination", "normal"). Empty means all.
     var skinTypes: [String]? = nil
+    /// "clinical", "natural" or "both". Empty is clinical.
+    var approach: String? = nil
+    /// Contains essential oils or fragrant botanicals.
+    var essentialOils: Bool? = nil
 
     enum CodingKeys: String, CodingKey {
-        case concern, tier, rank, brand, name, price, url, strength
+        case concern, tier, rank, brand, name, price, url, strength, approach
         case imageName = "image_name"
         case pregnancySafe = "pregnancy_safe"
         case skinTypes = "skin_types"
+        case essentialOils = "essential_oils"
+    }
+
+    /// Which side of the Clinical to Natural slider it belongs to.
+    func fits(side: String) -> Bool {
+        let mine = approach ?? "clinical"
+        return mine == "both" || mine == side
     }
 
     var fullName: String { "\(brand) \(name)" }
@@ -44,7 +55,7 @@ final class ProductCatalog {
     /// Fetches the latest catalog. Keeps what it has if the server can't be reached.
     func refresh() async {
         guard Backend.isConfigured,
-              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types&active=eq.true&order=concern,tier,rank")
+              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils&active=eq.true&order=concern,tier,rank")
         else { return }
         var request = URLRequest(url: url)
         request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
@@ -168,6 +179,10 @@ enum ProductPicker {
         // Sensitive skin never sees strong products; very sensitive skin sees gentle ones first.
         let verySensitive = profile?.sensitivity == "Yes, very sensitive" || measured.contains("sensitive") || told.contains("sensitive")
         let sensitive = verySensitive || profile?.sensitivity == "Sometimes"
+        // Essential oils: never for sensitive skin or pregnancy, and never for redness (the
+        // advice there is a simple, fragrance-free routine). Everyone else sees a patch-test note.
+        let avoidEssentialOils = sensitive || avoidActives
+        let approach = profile?.approach ?? .balanced
 
         func matches(_ product: CatalogProduct, _ names: [String]) -> Bool {
             let full = product.fullName.lowercased()
@@ -182,11 +197,13 @@ enum ProductPicker {
         var shown = Set<String>()
         for key in order where picked.count < 3 {
             guard let info = issueNames[key] else { continue }
-            let products: [Recommendation.Product] = tiers.compactMap { tier in
-                var fits = catalog
+            let products: [Recommendation.Product] = tiers.enumerated().compactMap { tierIndex, tier in
+                let eligible = catalog
                     .filter { $0.concern == key && $0.tier == tier }
                     .filter { p in
-                        (!avoidActives || p.pregnancySafe)
+                        let oils = p.essentialOils == true
+                        return (!avoidActives || p.pregnancySafe)
+                            && !(oils && (avoidEssentialOils || key == "redness"))
                             && !(sensitive && p.strength == "strong")
                             && (skinType == nil || (p.skinTypes ?? []).isEmpty || p.skinTypes!.contains(skinType!))
                             && !matches(p, using) && !matches(p, avoided)
@@ -196,6 +213,12 @@ enum ProductPicker {
                         if verySensitive, (a.strength == "gentle") != (b.strength == "gentle") { return a.strength == "gentle" }
                         return a.rank < b.rank
                     }
+                // Her Clinical to Natural setting.
+                var fits = eligible
+                if let side = approach.side(forTierAt: tierIndex, slot: picked.count + rotation) {
+                    let onSide = eligible.filter { $0.fits(side: side) }
+                    fits = onSide.isEmpty && !approach.isStrict ? eligible : onSide
+                }
                 // Very sensitive skin: only the gentle ones, when the tier has any.
                 if verySensitive, fits.contains(where: { $0.strength == "gentle" }) {
                     fits = fits.filter { $0.strength == "gentle" }
@@ -206,7 +229,8 @@ enum ProductPicker {
                         Recommendation.Product(
                             tier: tier, name: p.fullName, price: p.price,
                             imageName: p.imageName ?? "serum_bottle_dropper",
-                            brand: p.brand, url: p.url.flatMap(URL.init(string:))
+                            brand: p.brand, url: p.url.flatMap(URL.init(string:)),
+                            essentialOils: p.essentialOils == true ? true : nil
                         )
                     }
             }

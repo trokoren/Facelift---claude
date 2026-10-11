@@ -34,6 +34,14 @@ struct ProductCardView: View {
                     .lineLimit(2, reservesSpace: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 5)
+                // Same height on every card, so the row stays even.
+                Text(product.essentialOils == true ? "Essential oils. Patch test first." : " ")
+                    .font(FLFont.sans(9))
+                    .foregroundStyle(Palette.stone)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .padding(.top, 3)
+                    .accessibilityHidden(product.essentialOils != true)
                 HStack {
                     Button(action: onShop) {
                         Text("Shop")

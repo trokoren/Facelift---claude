@@ -11,6 +11,11 @@ struct Recommendation: Identifiable, Hashable, Codable {
         var brand: String? = nil
         /// Affiliate or product link from the catalog. Empty means a shopping search.
         var url: URL? = nil
+        /// Contains essential oils: shown with a patch-test note.
+        var essentialOils: Bool? = nil
+
+        /// The note shown on products with essential oils.
+        static let patchTestNote = "Contains essential oils. Patch test first."
 
         var id: String { name }
     }

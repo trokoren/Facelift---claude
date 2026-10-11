@@ -78,6 +78,12 @@ struct PicksCard: View {
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                if product.essentialOils == true {
+                    Text(Recommendation.Product.patchTestNote)
+                        .font(FLFont.sans(10.5))
+                        .foregroundStyle(Palette.stone)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 HStack(spacing: 8) {
                     Text("$\(product.price)")
                         .font(FLFont.sans(11.5, .semibold))

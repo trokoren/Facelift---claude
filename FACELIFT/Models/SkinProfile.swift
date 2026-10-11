@@ -15,6 +15,8 @@ struct SkinProfile: Codable, Equatable {
     var city: String?
     /// Her monthly budget answer ("Under $30"...). Decides which product tier leads.
     var budget: String?
+    /// Clinical to Natural. Nil on profiles saved before the setting existed, read as Balanced.
+    var approach: SkincareApproach?
 
     init(_ answers: OnboardingAnswers) {
         ageRange = answers.ageRange
@@ -27,6 +29,7 @@ struct SkinProfile: Codable, Equatable {
         routine = answers.routine
         city = answers.city
         budget = answers.budget
+        approach = answers.approach
     }
 
     /// Saved in a file protected while the phone is locked (it can hold health answers).

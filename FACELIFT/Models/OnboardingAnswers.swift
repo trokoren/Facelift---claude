@@ -9,6 +9,8 @@ struct OnboardingAnswers: Equatable {
     /// How she wants to feel in 28 days (pick any).
     var feelings: [String] = []
     var budget: String?
+    /// Clinical to Natural; Balanced unless she moves the slider.
+    var approach: SkincareApproach = .balanced
     var healthContext: [String] = []
     var spfHabit: String?
     var routine: [String] = []
