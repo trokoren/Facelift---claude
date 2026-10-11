@@ -6,6 +6,8 @@ Read this first. It is everything a new session needs to keep building FACELIFT 
 
 FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score across 7 measures plus a written consultation, sees products matched to her results (affiliate links), and tracks progress over time. Subscription: RevenueCat (weekly and annual plans).
 
+- Pricing (decided 2026-10-11): Weekly $8.99, Annual $49.99 with a free 3-day trial (introductory offer on `facelift_annual` in App Store Connect). Trevor will test many paywall setups in the first months, so plans, prices and trials come from the RevenueCat offering (Experiments), not from code. The built-in plans in `PaywallStepView` are only a fallback for when RevenueCat isn't live.
+
 - Owner: Trevor Okoren, solo founder. Publisher (pending): **Ocean Park LLC**, a Colorado LLC formed 10/08/2026 (Colorado ID 20268253892). The app will ship under the Ocean Park Apple Developer account, NOT Faver, Inc.
 - Domain faceliftai.app. Email trevor@faceliftai.app (trevor@oceanpark.la planned). Instagram @faceliftai.
 - Bundle ID: `app.faceliftai.facelift` (register it only in the Ocean Park developer account).
@@ -71,7 +73,6 @@ Waiting on Trevor (business):
 - EIN: IRS online gave reference 101 (name match). Call 1-800-829-4933 weekdays 7am MT.
 - D-U-N-S: requested via Apple's lookup with the Highlands Ranch address (~5 business days). Then enroll Apple Developer as an organization (Ocean Park LLC).
 - Sign the Operating Agreement. Open a business bank account after the EIN.
-- Trial decision: free 3-day trial on Annual, or $2.99 first month (Apple can't do a paid 3-day trial).
 
 Next to build (ask before starting):
 1. Lapsed membership: gate with the paywall when `premium` is inactive (decide whether past scans stay viewable).

@@ -43,13 +43,13 @@ struct PaywallStepView: View {
         return live.isEmpty ? fallbackPlans : live
     }
 
+    /// Mirrors the App Store setup: Annual with a free 3-day trial, and Weekly.
+    /// Worded the same way the live plans are, so the screen looks alike either way.
     private let fallbackPlans: [Plan] = [
-        Plan(name: "3-Day Trial", price: "Only $3.99 for 3 days", perMonth: "Then $49.99/year",
-             renewal: "$3.99 for 3 days, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
+        Plan(name: "Annual", price: "3 days free, then $49.99/year", badge: "BEST VALUE",
+             renewal: "3 days free, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
         Plan(name: "Weekly", price: "$8.99/week",
-             renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings."),
-        Plan(name: "Annual", price: "$4.16/month", perMonth: "$49.99 billed yearly", badge: "SAVE 90%",
-             renewal: "$49.99/year. Renews automatically. Cancel anytime in Settings.")
+             renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings.")
     ]
 
     var body: some View {
