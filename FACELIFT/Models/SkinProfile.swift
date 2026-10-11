@@ -13,6 +13,8 @@ struct SkinProfile: Codable, Equatable {
     var spfHabit: String?
     var routine: [String] = []
     var city: String?
+    /// Her monthly budget answer ("Under $30"...). Decides which product tier leads.
+    var budget: String?
 
     init(_ answers: OnboardingAnswers) {
         ageRange = answers.ageRange
@@ -24,6 +26,7 @@ struct SkinProfile: Codable, Equatable {
         spfHabit = answers.spfHabit
         routine = answers.routine
         city = answers.city
+        budget = answers.budget
     }
 
     /// Saved in a file protected while the phone is locked (it can hold health answers).

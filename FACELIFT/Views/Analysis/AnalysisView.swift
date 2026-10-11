@@ -38,6 +38,7 @@ struct AnalysisView: View {
     }
 
     private func content(for scan: Scan) -> some View {
+        ScrollViewReader { proxy in
         ScrollView {
             // The FACELIFT header scrolls away; on past scans the "Back to My Skin" bar
             // sits just under it and then sticks to the top once it gets there.
@@ -47,7 +48,12 @@ struct AnalysisView: View {
                 Section {
                     if let consult = scan.consult {
                         // Current scans: the consultation.
-                        ConsultView(scan: scan, consult: consult)
+                        ConsultView(
+                            scan: scan,
+                            consult: consult,
+                            onShop: { shop($0, scanID: scan.id) },
+                            onSeeAllPicks: { scrollToPicks(proxy) }
+                        )
                     } else {
                         // Older and sample scans: the category cards.
                         if !scan.isSample && !scan.measures.isEmpty {
@@ -75,6 +81,7 @@ struct AnalysisView: View {
                     }
 
                     if !scan.recommendations.isEmpty {
+                        Color.clear.frame(height: 1).id(Self.picksAnchor)
                         needsBanner
                             .padding(.top, 20)
 
@@ -116,6 +123,24 @@ struct AnalysisView: View {
                             .ignoresSafeArea()
                     )
             }
+        }
+        .task {
+            // Opened from "See all options" on My Skin: go straight to the products.
+            guard store.scrollToPicksOnOpen else { return }
+            store.scrollToPicksOnOpen = false
+            try? await Task.sleep(for: .milliseconds(350))
+            scrollToPicks(proxy)
+        }
+        }
+    }
+
+    private static let picksAnchor = "picks"
+
+    /// Scrolls to "What your skin needs." On past scans the pinned back bar covers the top,
+    /// so the anchor lands a little lower.
+    private func scrollToPicks(_ proxy: ScrollViewProxy) {
+        withAnimation(.easeInOut(duration: 0.45)) {
+            proxy.scrollTo(Self.picksAnchor, anchor: UnitPoint(x: 0.5, y: isFresh ? 0 : 0.06))
         }
     }
 

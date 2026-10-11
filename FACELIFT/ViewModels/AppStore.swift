@@ -185,6 +185,9 @@ final class AppStore {
     }
 
     /// Opens a past consultation from the progress chart.
+    /// Set before opening a scan from "See all options" on My Skin; the scan scrolls to its products.
+    var scrollToPicksOnOpen: Bool = false
+
     func openScan(_ id: UUID) {
         guard scan(with: id) != nil else { return }
         mySkinPath = [.scan(id: id, isFresh: false)]
@@ -367,8 +370,17 @@ final class AppStore {
         if let index = scans.firstIndex(where: { $0.id == scanID }) {
             scans[index].productsShopped += 1
         }
-        let alreadyUsing = usedProducts.contains { product.name.localizedCaseInsensitiveContains($0.name) }
-        guard !alreadyUsing else { return }
+        addToRoutine(product)
+    }
+
+    /// True when a recommended product is already in "What I'm using".
+    func isInRoutine(_ product: Recommendation.Product) -> Bool {
+        usedProducts.contains { !$0.name.isEmpty && product.name.localizedCaseInsensitiveContains($0.name) }
+    }
+
+    /// Adds a recommended product to "What I'm using" (once).
+    func addToRoutine(_ product: Recommendation.Product) {
+        guard !isInRoutine(product) else { return }
         let brand: String
         let name: String
         if let known = product.brand, product.name.hasPrefix(known) {

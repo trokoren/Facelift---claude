@@ -3,6 +3,8 @@ import SwiftUI
 /// Skin profile summary and a timeline of past scans.
 struct MySkinView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.openURL) private var openURL
+    @State private var addedCount: Int = 0
     @State private var sharing: Scan?
     @State private var deleting: Scan?
 
@@ -14,6 +16,30 @@ struct MySkinView: View {
                 profileCard
                     .padding(.horizontal, 24)
                     .padding(.top, 20)
+
+                if let latest = store.scans.first(where: { !$0.isSample && !$0.recommendations.isEmpty }) {
+                    PicksCard(
+                        recommendations: latest.recommendations,
+                        budget: store.profile?.budget,
+                        subtitle: "From your \(latest.date.formatted(.dateTime.month(.abbreviated).day())) scan",
+                        onShop: { product in
+                            store.recordShop(product, scanID: latest.id)
+                            if let url = product.url ?? ShopLink.url(for: product.name) { openURL(url) }
+                        },
+                        onHaveIt: { product in
+                            withAnimation(.snappy) { store.addToRoutine(product) }
+                            addedCount += 1
+                        },
+                        isOwned: store.isInRoutine,
+                        onSeeAll: {
+                            store.scrollToPicksOnOpen = true
+                            store.openScan(latest.id)
+                        }
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+                    .sensoryFeedback(.success, trigger: addedCount)
+                }
 
                 HStack(spacing: 12) {
                     Text("YOUR SCANS")
