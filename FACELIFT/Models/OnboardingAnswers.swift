@@ -14,7 +14,7 @@ struct OnboardingAnswers: Equatable {
     var routine: [String] = []
     var city: String?
     var notificationsRequested: Bool = false
-    var selectedPlan: String = "Annual"
+    var selectedPlan: String = "3-Day Free Trial"
 
     /// Skin type as shown on the profile card ("I don't really know" becomes "Combination").
     var resolvedSkinType: String {

@@ -14,21 +14,39 @@ struct MembershipPlan: Identifiable {
     var package: Package? = nil
     var id: String { package?.identifier ?? name }
 
+    /// What the free trial includes, shown on the trial plan and wherever the trial limit applies.
+    static let trialScanNote = "Your free trial includes 1 scan a day."
+
     /// Live plans from RevenueCat when available, else the built-in ones.
-    /// `showsIntro` is off on the renew screen: Apple gives the free trial only once, and a
-    /// returning member has already had it.
+    /// Order: free trial, weekly, annual. `showsIntro` is off on the renew screen: Apple gives
+    /// the free trial only once, and a returning member has already had it.
     static func current(from packages: [Package], showsIntro: Bool = true) -> [MembershipPlan] {
-        let live = packages.map { package -> MembershipPlan in
-            let isAnnual = package.packageType == .annual
-            let intro = showsIntro ? package.introLine : nil
+        let weekly = packages.first { $0.packageType == .weekly }
+        let live = packages.compactMap { package -> MembershipPlan? in
+            if package.hasFreeTrial {
+                guard showsIntro else { return nil }
+                return MembershipPlan(
+                    name: package.trialName ?? "Free Trial",
+                    price: "Free, then \(package.priceLine)",
+                    perMonth: trialScanNote,
+                    renewal: package.renewalLine,
+                    package: package
+                )
+            }
+            if package.packageType == .annual {
+                return MembershipPlan(
+                    name: package.planName,
+                    price: package.monthlyEquivalent.map { "\($0)/month" } ?? package.priceLine,
+                    perMonth: "\(package.storeProduct.localizedPriceString) billed yearly",
+                    badge: savingsBadge(annual: package, weekly: weekly),
+                    renewal: "\(package.priceLine). Renews automatically. Cancel anytime in Settings.",
+                    package: package
+                )
+            }
             return MembershipPlan(
                 name: package.planName,
-                price: intro.map { "\($0.capitalizedFirst), then \(package.priceLine)" }
-                    ?? (isAnnual ? package.storeProduct.localizedPricePerMonth.map { "\($0)/month" } : nil)
-                    ?? package.priceLine,
-                perMonth: intro == nil && isAnnual ? "\(package.storeProduct.localizedPriceString) billed yearly" : nil,
-                badge: isAnnual ? "BEST VALUE" : nil,
-                renewal: showsIntro ? package.renewalLine : "\(package.priceLine). Renews automatically. Cancel anytime in Settings.",
+                price: package.priceLine,
+                renewal: "\(package.priceLine). Renews automatically. Cancel anytime in Settings.",
                 package: package
             )
         }
@@ -36,25 +54,32 @@ struct MembershipPlan: Identifiable {
         return showsIntro ? fallback : fallbackWithoutIntro
     }
 
-    /// Mirrors the App Store setup: Annual with a free 3-day trial, and Weekly.
-    /// Worded the same way the live plans are, so the screen looks alike either way.
+    /// "SAVE 89%": annual against a year of weekly, rounded down so it never overstates.
+    private static func savingsBadge(annual: Package, weekly: Package?) -> String? {
+        guard let weekly else { return "BEST VALUE" }
+        let yearOfWeekly = (weekly.storeProduct.price as NSDecimalNumber).doubleValue * 52
+        let annualPrice = (annual.storeProduct.price as NSDecimalNumber).doubleValue
+        guard yearOfWeekly > 0, annualPrice < yearOfWeekly else { return "BEST VALUE" }
+        return "SAVE \(Int((1 - annualPrice / yearOfWeekly) * 100))%"
+    }
+
+    /// Mirrors the App Store setup: the free 3-day trial (converts to annual), weekly, annual.
     static let fallback: [MembershipPlan] = [
-        MembershipPlan(name: "Annual", price: "3 days free, then $49.99/year", badge: "BEST VALUE",
+        MembershipPlan(name: "3-Day Free Trial", price: "Free, then $49.99/year", perMonth: trialScanNote,
                        renewal: "3 days free, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
         MembershipPlan(name: "Weekly", price: "$8.99/week",
-                       renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings.")
+                       renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings."),
+        MembershipPlan(name: "Annual", price: "$4.16/month", perMonth: "$49.99 billed yearly", badge: "SAVE 89%",
+                       renewal: "$49.99/year. Renews automatically. Cancel anytime in Settings.")
     ]
 
-    static let fallbackWithoutIntro: [MembershipPlan] = [
-        MembershipPlan(name: "Annual", price: "$4.17/month", perMonth: "$49.99 billed yearly", badge: "BEST VALUE",
-                       renewal: "$49.99/year. Renews automatically. Cancel anytime in Settings."),
-        MembershipPlan(name: "Weekly", price: "$8.99/week",
-                       renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings.")
-    ]
+    static let fallbackWithoutIntro: [MembershipPlan] = Array(fallback.dropFirst())
 
-    /// The plan to select first: the one with a badge (annual), else the first.
+    /// The plan to select first: the free trial when there is one, else the one with a badge.
     static func defaultID(in plans: [MembershipPlan]) -> String {
-        plans.first(where: { $0.badge != nil })?.id ?? plans.first?.id ?? ""
+        plans.first(where: { $0.package?.hasFreeTrial == true || $0.name.contains("Free Trial") })?.id
+            ?? plans.first(where: { $0.badge != nil })?.id
+            ?? plans.first?.id ?? ""
     }
 }
 

@@ -81,6 +81,14 @@ struct ScanHomeView: View {
                 .padding(.top, 36)
                 .opacity(hasAppeared ? 1 : 0)
 
+                if ScanAllowance.isTrial && !store.isLapsed {
+                    Text("Free trial: 1 scan a day")
+                        .font(FLFont.sans(12.5))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .padding(.top, 10)
+                        .opacity(hasAppeared ? 1 : 0)
+                }
+
                 Button {
                     store.goHome()
                 } label: {
@@ -108,7 +116,9 @@ struct ScanHomeView: View {
         .alert("Your next scan unlocks tomorrow", isPresented: $showsUsedUp) {
             Button("Got it", role: .cancel) {}
         } message: {
-            Text("Skin changes slowly, and a little time between scans makes your progress easier to see.")
+            Text(ScanAllowance.isTrial
+                 ? "Your free trial includes 1 scan a day, and your membership includes 2."
+                 : "Skin changes slowly, and a little time between scans makes your progress easier to see.")
         }
         .onAppear {
             withAnimation(.easeOut(duration: 1.4)) {

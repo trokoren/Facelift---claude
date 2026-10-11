@@ -59,10 +59,11 @@ struct ScanLabView: View {
             #if DEBUG
             Section {
                 Toggle("Pretend membership lapsed", isOn: $subscriptions.debugLapsed)
+                Toggle("Pretend free trial", isOn: $subscriptions.debugTrial)
             } header: {
                 Text("Membership")
             } footer: {
-                Text("Shows the locked screens a member sees after her membership ends. Debug builds only.")
+                Text("Lapsed shows the locked screens after a membership ends. Free trial applies the 1 scan a day limit and its wording, counting today's real scans. Debug builds only.")
             }
             #endif
         }

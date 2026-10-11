@@ -1,6 +1,7 @@
 import Foundation
 
-/// Scans per day. Two a day, four on her very first day so she can try it freely. Every scan
+/// Scans per day. During the free trial, one a day (her onboarding scan is the first).
+/// Members get two a day, four on her very first day so she can try it freely. Every scan
 /// after the first of a day gets a gentle "you've already scanned" note; past the limit, the
 /// next scan unlocks tomorrow. Off in test builds run from Xcode. Only finished scans count: a scan that couldn't be read never does, and
 /// deleting a scan doesn't give one back. Saved on this phone.
@@ -29,11 +30,18 @@ enum ScanAllowance {
         return first == today()
     }
 
+    /// She's on the free trial, which allows one scan a day.
+    static var isTrial: Bool { Subscriptions.shared.isInTrial }
+
     static var current: ScanAllowance {
+        let count = countToday
+        if isTrial {
+            // Scan Lab's "Pretend free trial" applies this in test builds too.
+            return count >= 1 ? .usedUp : .open
+        }
         #if DEBUG
         return .open
         #else
-        let count = countToday
         let limit = isFirstDay ? 4 : 2
         if count >= limit { return .usedUp }
         if count >= 1 && !isFirstDay { return .alreadyScanned }

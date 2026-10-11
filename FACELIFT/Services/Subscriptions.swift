@@ -19,7 +19,7 @@ final class Subscriptions {
 
     static var isAvailable: Bool { !apiKey.isEmpty }
 
-    /// The plans on sale, in the order the paywall shows them (annual first).
+    /// The plans on sale, in the order the paywall shows them (see `order`).
     private(set) var packages: [Package] = []
     private(set) var isPremium: Bool = false
     /// True once RevenueCat has told us her membership status this launch (from its cache
@@ -27,12 +27,27 @@ final class Subscriptions {
     /// of the locked screens.
     private(set) var hasChecked: Bool = false
 
+    /// True while her membership is in its free trial (RevenueCat's period type).
+    private(set) var isTrialPeriod: Bool = false
+
     #if DEBUG
     /// Scan Lab switch: pretend her membership has lapsed, to see the locked screens.
     var debugLapsed: Bool = UserDefaults.standard.bool(forKey: "facelift.debugLapsed") {
         didSet { UserDefaults.standard.set(debugLapsed, forKey: "facelift.debugLapsed") }
     }
+    /// Scan Lab switch: pretend she's on the free trial, to see the 1-a-day limit and its wording.
+    var debugTrial: Bool = UserDefaults.standard.bool(forKey: "facelift.debugTrial") {
+        didSet { UserDefaults.standard.set(debugTrial, forKey: "facelift.debugTrial") }
+    }
     #endif
+
+    /// She's on the free trial: 1 scan a day until she's a paying member.
+    var isInTrial: Bool {
+        #if DEBUG
+        if debugTrial { return true }
+        #endif
+        return Self.isAvailable && isPremium && isTrialPeriod
+    }
 
     /// Her membership has ended: new scans, consults, picks and progress are locked until
     /// she renews. Only once RevenueCat is live and has answered; her scans are never deleted.
@@ -46,7 +61,9 @@ final class Subscriptions {
     private init() {}
 
     private func apply(_ info: CustomerInfo) {
-        isPremium = info.entitlements[Self.entitlement]?.isActive == true
+        let entitlement = info.entitlements[Self.entitlement]
+        isPremium = entitlement?.isActive == true
+        isTrialPeriod = entitlement?.periodType == .trial
         hasChecked = true
     }
 
@@ -118,13 +135,18 @@ final class Subscriptions {
         return isPremium
     }
 
+    /// Free trial first, then weekly, then annual (and anything else after).
     private func order(_ package: Package) -> Int {
+        if package.hasFreeTrial { return -1 }
         switch package.packageType {
-        case .annual: 0
-        case .sixMonth: 1
-        case .threeMonth: 2
-        case .monthly: 3
-        case .weekly: 4
+        case .weekly: return 0
+        case .annual: return 1
+        default: break
+        }
+        switch package.packageType {
+        case .sixMonth: 2
+        case .threeMonth: 3
+        case .monthly: 4
         default: 5
         }
     }
@@ -133,6 +155,29 @@ final class Subscriptions {
 // MARK: - Plan wording
 
 extension Package {
+    /// The plan comes with a free trial (Apple's introductory offer).
+    var hasFreeTrial: Bool { storeProduct.introductoryDiscount?.paymentMode == .freeTrial }
+
+    /// "3-Day Free Trial"
+    var trialName: String? {
+        guard hasFreeTrial, let period = storeProduct.introductoryDiscount?.subscriptionPeriod else { return nil }
+        return "\(period.value)-\(period.unitName.capitalized) Free Trial"
+    }
+
+    /// The yearly price split into months, rounded down so it never overstates: "$4.16".
+    var monthlyEquivalent: String? {
+        guard packageType == .annual else { return nil }
+        var perMonth = storeProduct.price / 12
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &perMonth, 2, .down)
+        let formatter = storeProduct.priceFormatter ?? {
+            let f = NumberFormatter()
+            f.numberStyle = .currency
+            return f
+        }()
+        return formatter.string(from: rounded as NSDecimalNumber)
+    }
+
     /// "Annual", "Weekly"...
     var planName: String {
         switch packageType {

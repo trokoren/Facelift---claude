@@ -6,7 +6,7 @@ Read this first. It is everything a new session needs to keep building FACELIFT 
 
 FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score across 7 measures plus a written consultation, sees products matched to her results (affiliate links), and tracks progress over time. Subscription: RevenueCat (weekly and annual plans).
 
-- Pricing (decided 2026-10-11): Weekly $8.99, Annual $49.99 with a free 3-day trial (introductory offer on `facelift_annual` in App Store Connect). Trevor will test many paywall setups in the first months, so plans, prices and trials come from the RevenueCat offering (Experiments), not from code. The built-in plans in `PaywallStepView` are only a fallback for when RevenueCat isn't live.
+- Pricing (decided 2026-10-11): free 3-day trial that converts to Annual $49.99, Weekly $8.99, Annual $49.99 (shown as $4.16/month, rounded down, with "$49.99 billed yearly"). Paywall order: 3-Day Free Trial, Weekly, Annual; the trial is preselected. Apple attaches a trial to a product, so this needs two annual products: `facelift_annual_trial` (free 3-day introductory offer) and `facelift_annual` (no offer), plus `facelift_weekly`, all in one subscription group. A paid 3-day trial isn't possible on Apple (paid intros are 1 week or longer). Cost per scan measured 2026-10-11: 12 YouCam units ($0.66 at $0.055/unit) plus about $0.025 for Claude, about $0.68. Trevor will test many paywall setups in the first months, so plans, prices and trials come from the RevenueCat offering (Experiments), not from code. The built-in plans in `PaywallStepView` are only a fallback for when RevenueCat isn't live.
 
 - Owner: Trevor Okoren, solo founder. Publisher (pending): **Ocean Park LLC**, a Colorado LLC formed 10/08/2026 (Colorado ID 20268253892). The app will ship under the Ocean Park Apple Developer account, NOT Faver, Inc.
 - Domain faceliftai.app. Email trevor@faceliftai.app (trevor@oceanpark.la planned). Instagram @faceliftai.
@@ -56,7 +56,7 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
 ## How key features work
 
 - **Scan:** ARKit maps the face, one photo is captured and cropped. Scan won't start when light is dark (ARKit ambient < ~400). Consent sheet: "We never store your photos." (partners named only in the privacy policy).
-- **Scan limits:** 2 per day, 4 on day one; warning before the 2nd ("Scan anyway"), blocked after. Off in DEBUG. On-device only for now.
+- **Scan limits:** free trial 1 per day (her onboarding scan is day one's), told on the paywall's trial plan, under the Scan button, and in the limit alert. Members 2 per day, 4 on day one; warning before the 2nd ("Scan anyway"), blocked after. Trial is RevenueCat's period type on `premium`. Off in DEBUG except Scan Lab > "Pretend free trial". On-device only for now; server enforcement comes with the analyze-skin lock-down.
 - **Skin type** is re-measured on every scan; shows "Confirmed" or "Changed from X".
 - **Recommendations:** `ProductPicker` picks her 3 neediest areas (consult priorities, then lowest scores), one product per Budget/Balanced/Luxury tier. Filters: pregnancy/TTC/breastfeeding (no retinoids, arbutin, strong BHA), sensitivity (no "strong"; very sensitive gets "gentle"), skin type, products she uses or marked irritating. Rotates between scans. Her onboarding budget decides which tier leads.
   - Results: slim "N picks for your skin" preview under the score, scrolls to the full section.
@@ -77,7 +77,7 @@ Waiting on Trevor (business):
 
 Next to build (ask before starting):
 1. Server-side scan limits + subscriber check in `analyze-skin` (after RevenueCat is live).
-2. RevenueCat live: needs the `appl_` key in `Subscriptions.apiKey`, App Store Connect products (`facelift_annual`, `facelift_weekly`, offering `default`, entitlement `premium`).
+2. RevenueCat live: needs the `appl_` key in `Subscriptions.apiKey`, App Store Connect products (`facelift_annual_trial`, `facelift_weekly`, `facelift_annual`, offering `default` with all three, entitlement `premium`).
 3. Sign in with Apple capability once the Ocean Park team is in Xcode; add Apple token revocation on delete (needs a Sign in with Apple key).
 4. Scan sync to the account (scores and consults only, not photos or health answers) before paid ads.
 5. Tracking prompt wording + Meta SDK (needs Meta App ID and Client Token).
