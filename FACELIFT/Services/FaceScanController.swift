@@ -167,9 +167,11 @@ final class FaceScanController: NSObject, ARSessionDelegate {
             let intensity = light.ambientIntensity
             let level: LightLevel
             switch lightLevel {
-            case .good: level = intensity < 520 ? (intensity < 260 ? .dark : .dim) : .good
-            case .dim: level = intensity > 620 ? .good : (intensity < 260 ? .dark : .dim)
-            case .dark: level = intensity > 340 ? (intensity > 620 ? .good : .dim) : .dark
+            // Dark (below ~400) blocks the scan: dim light flattens differences in the skin
+            // and makes different faces read alike.
+            case .good: level = intensity < 600 ? (intensity < 400 ? .dark : .dim) : .good
+            case .dim: level = intensity > 700 ? .good : (intensity < 400 ? .dark : .dim)
+            case .dark: level = intensity > 460 ? (intensity > 700 ? .good : .dim) : .dark
             }
             if level != lightLevel { lightLevel = level }
         }

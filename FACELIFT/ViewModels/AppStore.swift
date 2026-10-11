@@ -248,7 +248,7 @@ final class AppStore {
         // Her city and weather get named only in her first consultation, never again.
         let consultsKey = "facelift.consultCount"
         context["first_consult"] = UserDefaults.standard.integer(forKey: consultsKey) == 0
-        // Skin type stays steady: re-read every 4th scan, otherwise reuse the established one.
+        // Skin type is read fresh every scan; the last reading only decides Confirmed / Changed.
         let skinTypeRecord = SkinTypeRecord.load()
         let reassess = SkinTypeRecord.isDue
         context["reassess_skin_type"] = reassess

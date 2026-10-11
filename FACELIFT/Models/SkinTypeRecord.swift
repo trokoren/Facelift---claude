@@ -1,7 +1,7 @@
 import Foundation
 
-/// Her established skin type. Skin type changes slowly, so it's read fresh on her first scan,
-/// then kept steady and re-read every 4th scan (or after 90 days). Saved on this phone.
+/// Her last measured skin type. It's read fresh on every scan; this record lets the next
+/// scan say whether it held or changed. Saved on this phone.
 struct SkinTypeRecord: Codable {
     var label: String
     var explanation: String
@@ -24,9 +24,8 @@ struct SkinTypeRecord: Codable {
         if let data = try? JSONEncoder().encode(self) { UserDefaults.standard.set(data, forKey: Self.key) }
     }
 
-    /// True when the next scan should read her skin type fresh.
-    static var isDue: Bool {
-        guard let record = load() else { return true }
-        return record.scansSince >= 3 || Date().timeIntervalSince(record.date) > 90 * 86_400
-    }
+    /// True when the next scan should read her skin type fresh: every scan, so each reading
+    /// reflects the face in front of the camera. The last reading is kept only to say whether
+    /// it held ("Confirmed") or moved ("Changed from ...").
+    static var isDue: Bool { true }
 }
