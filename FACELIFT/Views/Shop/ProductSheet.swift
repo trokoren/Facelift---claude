@@ -8,6 +8,10 @@ struct ProductSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.openURL) private var openURL
     @State private var addedCount = 0
+    @State private var position = ScrollPosition(edge: .top)
+    /// The first product she ever opens rises a little and settles back, so she sees it scrolls.
+    @AppStorage("facelift.productSheetNudged") private var nudged = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Every catalog row for this product (it can help several areas).
     private var rows: [CatalogProduct] {
@@ -70,6 +74,7 @@ struct ProductSheet: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .scrollPosition($position)
             .overlay(alignment: .bottom) {
                 // A soft fade above the buttons so the next section peeks through,
                 // a quiet hint that there is more to read.
@@ -86,6 +91,16 @@ struct ProductSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .sensoryFeedback(.success, trigger: addedCount)
+        .task { await nudgeOnce() }
+    }
+
+    private func nudgeOnce() async {
+        guard !nudged, !reduceMotion else { return }
+        nudged = true
+        try? await Task.sleep(for: .milliseconds(700))
+        withAnimation(.smooth(duration: 0.6)) { position.scrollTo(y: 90) }
+        try? await Task.sleep(for: .milliseconds(850))
+        withAnimation(.smooth(duration: 0.6)) { position.scrollTo(edge: .top) }
     }
 
     // MARK: - Pieces
@@ -203,8 +218,9 @@ struct ProductSheet: View {
         let owned = store.isInRoutine(asRecommendation)
         return HStack(spacing: 10) {
             Button {
-                withAnimation(.snappy) { store.addToRoutine(asRecommendation) }
-                addedCount += 1
+                let adding = !owned
+                withAnimation(.snappy) { store.toggleRoutine(asRecommendation) }
+                if adding { addedCount += 1 }
             } label: {
                 Label(owned ? "In your routine" : "I have this", systemImage: owned ? "checkmark" : "plus")
                     .font(FLFont.sans(14, .medium))
@@ -214,7 +230,7 @@ struct ProductSheet: View {
                     .background(Color(hex: 0xF6EAE8), in: Capsule())
             }
             .buttonStyle(PressableStyle())
-            .disabled(owned)
+            .accessibilityHint(owned ? "Removes it from What I'm using" : "Adds it to What I'm using")
 
             Button {
                 if let url = product.url.flatMap(URL.init(string:)) ?? ShopLink.url(for: product.fullName) {

@@ -33,8 +33,9 @@ struct MySkinView: View {
                             if let url = product.url ?? ShopLink.url(for: product.name) { openURL(url) }
                         },
                         onHaveIt: { product in
-                            withAnimation(.snappy) { store.addToRoutine(product) }
-                            addedCount += 1
+                            let adding = !store.isInRoutine(product)
+                            withAnimation(.snappy) { store.toggleRoutine(product) }
+                            if adding { addedCount += 1 }
                         },
                         isOwned: store.isInRoutine,
                         onSeeAll: {

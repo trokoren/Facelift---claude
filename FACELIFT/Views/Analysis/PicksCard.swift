@@ -8,7 +8,7 @@ struct PicksCard: View {
     let budget: String?
     var subtitle: String? = nil
     let onShop: (Recommendation.Product) -> Void
-    /// My Skin only: lets her mark a pick as something she already uses.
+    /// My Skin only: marks a pick as something she already uses, or unmarks it.
     var onHaveIt: ((Recommendation.Product) -> Void)? = nil
     var isOwned: (Recommendation.Product) -> Bool = { _ in false }
     let onSeeAll: () -> Void
@@ -90,10 +90,16 @@ struct PicksCard: View {
                         .foregroundStyle(Palette.pebble)
                     if let onHaveIt {
                         if owned {
-                            Label("In your routine", systemImage: "checkmark")
-                                .font(FLFont.sans(11.5))
-                                .foregroundStyle(Palette.sage)
-                                .labelStyle(.titleAndIcon)
+                            Button { onHaveIt(product) } label: {
+                                Label("In your routine", systemImage: "checkmark")
+                                    .font(FLFont.sans(11.5))
+                                    .foregroundStyle(Palette.sage)
+                                    .labelStyle(.titleAndIcon)
+                                    .frame(minHeight: 28)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(PressableStyle())
+                            .accessibilityHint("Removes it from What I'm using")
                         } else {
                             Button { onHaveIt(product) } label: {
                                 Text("I have this")

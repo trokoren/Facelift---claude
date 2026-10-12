@@ -404,6 +404,16 @@ final class AppStore {
         usedProducts.insert(UsedProduct(id: UUID(), brand: brand, name: name, price: product.price, tint: tint, url: product.url), at: 0)
     }
 
+    /// Takes a recommended product back out of "What I'm using". Her check-ins on it are kept.
+    func removeFromRoutine(_ product: Recommendation.Product) {
+        usedProducts.removeAll { !$0.name.isEmpty && product.name.localizedCaseInsensitiveContains($0.name) }
+    }
+
+    /// "I have this" and "In your routine" are one button: tapping adds, tapping again removes.
+    func toggleRoutine(_ product: Recommendation.Product) {
+        if isInRoutine(product) { removeFromRoutine(product) } else { addToRoutine(product) }
+    }
+
     /// Replaces "What I'm using" with the edited list from the editor sheet. Blank rows are dropped.
     func saveUsedProducts(_ drafts: [ProductDraft]) {
         let tints = UsedProduct.Tint.allCases
