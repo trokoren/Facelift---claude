@@ -28,6 +28,12 @@ struct CatalogProduct: Codable, Hashable {
     var expertTitle: String? = nil
     var sourceName: String? = nil
     var sourceURL: String? = nil
+    var expertQuote: String? = nil
+    /// Product sheet details (empty until filled in).
+    var details: String? = nil
+    var keyIngredients: [String]? = nil
+    var howToUse: String? = nil
+    var size: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case concern, tier, rank, brand, name, price, url, strength, approach, featured
@@ -40,6 +46,11 @@ struct CatalogProduct: Codable, Hashable {
         case expertTitle = "expert_title"
         case sourceName = "source_name"
         case sourceURL = "source_url"
+        case expertQuote = "expert_quote"
+        case details = "description"
+        case keyIngredients = "key_ingredients"
+        case howToUse = "how_to_use"
+        case size
     }
 
     /// Which side of the Clinical to Natural slider it belongs to.
@@ -49,6 +60,10 @@ struct CatalogProduct: Codable, Hashable {
     }
 
     var fullName: String { "\(brand) \(name)" }
+}
+
+extension CatalogProduct: Identifiable {
+    var id: String { fullName }
 }
 
 /// The products she can be recommended. Loaded from the server at launch and kept on the
@@ -68,7 +83,7 @@ final class ProductCatalog {
     /// Fetches the latest catalog. Keeps what it has if the server can't be reached.
     func refresh() async {
         guard Backend.isConfigured,
-              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils,featured,featured_rank,expert_name,expert_title,source_name,source_url&active=eq.true&order=concern,tier,rank")
+              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils,featured,featured_rank,expert_name,expert_title,source_name,source_url,expert_quote,description,key_ingredients,how_to_use,size&active=eq.true&order=concern,tier,rank")
         else { return }
         var request = URLRequest(url: url)
         request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")

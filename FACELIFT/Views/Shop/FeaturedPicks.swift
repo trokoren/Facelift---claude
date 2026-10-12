@@ -19,6 +19,7 @@ struct FeaturedPicksRow: View {
 
     let kind: Kind
     let products: [CatalogProduct]
+    let onSelect: (CatalogProduct) -> Void
     let onShop: (CatalogProduct) -> Void
     let onSource: (URL) -> Void
 
@@ -40,6 +41,9 @@ struct FeaturedPicksRow: View {
                         FeaturedPickCard(product: product, kind: kind,
                                          onShop: { onShop(product) },
                                          onSource: onSource)
+                            .contentShape(Rectangle())
+                            .onTapGesture { onSelect(product) }
+                            .accessibilityAction(named: "Details") { onSelect(product) }
                     }
                 }
                 .padding(.horizontal, 24)

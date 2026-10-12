@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The Shop tab: her current picks first, then every product in the catalog by outcome.
+/// The Shop tab: every product in the catalog by outcome, then Dermatologist Recommends and
+/// Natural Favorites. Tapping a product opens its details sheet.
 /// Uses the same safety rules as her picks (pregnancy, sensitivity, essential oils), and
 /// starts on her Clinical to Natural setting. Open to everyone, lapsed members included.
 struct ShopScreen: View {
@@ -8,7 +9,10 @@ struct ShopScreen: View {
     @Environment(\.openURL) private var openURL
     @State private var side: Side?
     @State private var tier: String?
-    @State private var addedCount = 0
+    /// The product whose details sheet is open.
+    @State private var selected: CatalogProduct?
+    /// The Clinical / Natural filter starts on her setting once, then stays where she puts it.
+    @State private var hasSetDefault = false
 
     /// The Clinical / Natural filter. Nil shows both.
     enum Side: String, CaseIterable {
@@ -26,50 +30,8 @@ struct ShopScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 BrandHeader(subtitle: "Shop.")
 
-                if let latest = latestScan {
-                    PicksCard(
-                        recommendations: latest.recommendations,
-                        budget: store.profile?.budget,
-                        subtitle: "Picked for you from your \(latest.date.formatted(.dateTime.month(.abbreviated).day())) scan",
-                        onShop: { product in
-                            store.recordShop(product, scanID: latest.id)
-                            open(product.url, name: product.name)
-                        },
-                        onHaveIt: { product in
-                            withAnimation(.snappy) { store.addToRoutine(product) }
-                            addedCount += 1
-                        },
-                        isOwned: store.isInRoutine,
-                        onSeeAll: {
-                            store.scrollToPicksOnOpen = true
-                            store.openScan(latest.id)
-                        }
-                    )
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    .sensoryFeedback(.success, trigger: addedCount)
-                }
-
-                ForEach([FeaturedPicksRow.Kind.dermatologist, .natural], id: \.key) { kind in
-                    let picks = featured(kind)
-                    if !picks.isEmpty {
-                        FeaturedPicksRow(
-                            kind: kind, products: picks,
-                            onShop: { product in open(product.url.flatMap(URL.init(string:)), name: product.fullName) },
-                            onSource: { openURL($0) }
-                        )
-                        .padding(.top, 28)
-                    }
-                }
-
-                Text("All products")
-                    .font(FLFont.serif(22))
-                    .foregroundStyle(Palette.ink)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 32)
-
                 filters
-                    .padding(.top, 12)
+                    .padding(.top, 20)
 
                 ForEach(sections, id: \.key) { section in
                     outcomeRow(section)
@@ -82,6 +44,19 @@ struct ShopScreen: View {
                         .foregroundStyle(Palette.stone)
                         .padding(.horizontal, 24)
                         .padding(.top, 28)
+                }
+
+                ForEach([FeaturedPicksRow.Kind.dermatologist, .natural], id: \.key) { kind in
+                    let picks = featured(kind)
+                    if !picks.isEmpty {
+                        FeaturedPicksRow(
+                            kind: kind, products: picks,
+                            onSelect: { selected = $0 },
+                            onShop: { product in open(product.url.flatMap(URL.init(string:)), name: product.fullName) },
+                            onSource: { openURL($0) }
+                        )
+                        .padding(.top, 36)
+                    }
                 }
 
                 Text("Prices can change at the store. We may earn a small commission when you shop through FACELIFT, at no extra cost to you.")
@@ -97,7 +72,15 @@ struct ShopScreen: View {
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
         .background(Palette.canvas.ignoresSafeArea())
-        .onAppear { if side == nil { side = Self.defaultSide(for: store.approach) } }
+        .sheet(item: $selected) { product in
+            ProductSheet(product: product)
+                .environment(store)
+        }
+        .onAppear {
+            guard !hasSetDefault else { return }
+            hasSetDefault = true
+            side = Self.defaultSide(for: store.approach)
+        }
         .onChange(of: store.approach) { _, new in side = Self.defaultSide(for: new) }
     }
 
@@ -210,6 +193,9 @@ struct ShopScreen: View {
                         ProductCardView(product: item, index: offset + 1) {
                             open(item.url, name: item.name)
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture { selected = product }
+                        .accessibilityAction(named: "Details") { selected = product }
                     }
                 }
                 .padding(.horizontal, 24)
