@@ -63,6 +63,8 @@ private struct TabIcon: View {
                         .font(.system(size: 9, weight: .regular))
                         .offset(x: 9, y: -6)
                 }
+        case .shop:
+            Image(systemName: "bag")
         case .progress:
             Image(systemName: "chart.line.uptrend.xyaxis")
         case .account:

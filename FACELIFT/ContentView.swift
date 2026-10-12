@@ -56,6 +56,8 @@ struct ContentView: View {
                 .tabVisible(store.selectedTab == .scan)
             MySkinTab()
                 .tabVisible(store.selectedTab == .mySkin)
+            ShopScreen()
+                .tabVisible(store.selectedTab == .shop)
             ProgressScreen()
                 .tabVisible(store.selectedTab == .progress)
             AccountTab()

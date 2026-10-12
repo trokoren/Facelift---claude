@@ -134,6 +134,33 @@ final class ProductCatalog {
     ]
 }
 
+/// Who a product is safe to show, from her answers and her latest consult. Shared by her
+/// picks and the Shop tab so they never disagree.
+struct ProductSafety {
+    /// Pregnant, trying to conceive or breastfeeding: no retinoids, arbutin or strong BHA.
+    let avoidActives: Bool
+    let sensitive: Bool
+    let verySensitive: Bool
+
+    init(profile: SkinProfile?, consult: Consult?) {
+        avoidActives = !(profile?.healthContext ?? []).filter { ["Pregnant", "Trying to conceive", "Breastfeeding"].contains($0) }.isEmpty
+        let measured = consult?.skinType.label.lowercased() ?? ""
+        let told = profile?.skinType?.lowercased() ?? ""
+        verySensitive = profile?.sensitivity == "Yes, very sensitive" || measured.contains("sensitive") || told.contains("sensitive")
+        sensitive = verySensitive || profile?.sensitivity == "Sometimes"
+    }
+
+    /// Essential oils: never for sensitive skin or pregnancy, and never for redness (the
+    /// advice there is a simple, fragrance-free routine). Sensitive skin never sees strong
+    /// products.
+    func allows(_ product: CatalogProduct) -> Bool {
+        let oils = product.essentialOils == true
+        return (!avoidActives || product.pregnancySafe)
+            && !(oils && (avoidActives || sensitive || product.concern == "redness"))
+            && !(sensitive && product.strength == "strong")
+    }
+}
+
 /// Picks "What your skin needs": her three areas most in need of care, each with a Budget,
 /// Balanced and Luxury product from the catalog that suits her skin type, sensitivity and
 /// health context. When a tier has several good fits, scans take turns between them so she
@@ -148,7 +175,10 @@ enum ProductPicker {
         "texture": ("Texture", "Gentle Exfoliant", "Texture is one of the areas with the most room to improve. A gentle exfoliant two or three nights a week smooths the surface, usually within three to four weeks."),
         "pore": ("Pores", "Pore-Refining Serum", "Pores are one of your lower scores. Keeping them clear and balancing oil makes them look smaller over a few weeks of consistent use."),
     ]
-    private static let tiers = ["Budget", "Balanced", "Luxury"]
+    /// The 7 outcomes in a fixed order, with the name she sees ("Hydration", "Fine Lines"...).
+    static let outcomes: [(key: String, name: String)] = ["moisture", "wrinkle", "age_spot", "dark_circle", "redness", "pore", "texture"]
+        .compactMap { key in issueNames[key].map { (key, $0.issue) } }
+    static let tiers = ["Budget", "Balanced", "Luxury"]
     private static let numerals = ["I", "II", "III"]
 
     static func recommendations(
@@ -166,7 +196,7 @@ enum ProductPicker {
         for key in byScore where !order.contains(key) { order.append(key) }
         guard !order.isEmpty else { return [] }
 
-        let avoidActives = !(profile?.healthContext ?? []).filter { ["Pregnant", "Trying to conceive", "Breastfeeding"].contains($0) }.isEmpty
+        let safety = ProductSafety(profile: profile, consult: consult)
         let using = usedProducts.map { "\($0.brand) \($0.name)".lowercased() }
         let latestAnswer = Dictionary(checkIns.map { ($0.productName.lowercased(), $0.answer) }, uniquingKeysWith: { _, last in last })
         let avoided = latestAnswer.filter { $0.value == .irritating || $0.value == .stopped }.map(\.key)
@@ -176,12 +206,8 @@ enum ProductPicker {
         let measured = consult?.skinType.label.lowercased() ?? ""
         let told = profile?.skinType?.lowercased() ?? ""
         let skinType = typeWords.first { measured.contains($0) } ?? typeWords.first { told.contains($0) }
-        // Sensitive skin never sees strong products; very sensitive skin sees gentle ones first.
-        let verySensitive = profile?.sensitivity == "Yes, very sensitive" || measured.contains("sensitive") || told.contains("sensitive")
-        let sensitive = verySensitive || profile?.sensitivity == "Sometimes"
-        // Essential oils: never for sensitive skin or pregnancy, and never for redness (the
-        // advice there is a simple, fragrance-free routine). Everyone else sees a patch-test note.
-        let avoidEssentialOils = sensitive || avoidActives
+        // Very sensitive skin sees gentle products first.
+        let verySensitive = safety.verySensitive
         let approach = profile?.approach ?? .balanced
 
         func matches(_ product: CatalogProduct, _ names: [String]) -> Bool {
@@ -201,10 +227,7 @@ enum ProductPicker {
                 let eligible = catalog
                     .filter { $0.concern == key && $0.tier == tier }
                     .filter { p in
-                        let oils = p.essentialOils == true
-                        return (!avoidActives || p.pregnancySafe)
-                            && !(oils && (avoidEssentialOils || key == "redness"))
-                            && !(sensitive && p.strength == "strong")
+                        safety.allows(p)
                             && (skinType == nil || (p.skinTypes ?? []).isEmpty || p.skinTypes!.contains(skinType!))
                             && !matches(p, using) && !matches(p, avoided)
                             && !shown.contains(p.fullName)
