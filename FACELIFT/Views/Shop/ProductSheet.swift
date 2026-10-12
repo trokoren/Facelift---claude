@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Product details, opened by tapping a product in the Shop tab. A bottom sheet that opens at
-/// half height and expands to full. Any detail the catalog doesn't have yet is simply left out.
+/// 70% height and expands to full. Any detail the catalog doesn't have yet is simply left out.
 struct ProductSheet: View {
     let product: CatalogProduct
 
@@ -32,7 +32,7 @@ struct ProductSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Color(hex: 0xF1EEEA)
-                        .frame(height: 220)
+                        .frame(height: 160)
                         .overlay {
                             Image(product.imageName ?? "serum_bottle_dropper")
                                 .resizable()
@@ -43,11 +43,11 @@ struct ProductSheet: View {
 
                     VStack(alignment: .leading, spacing: 0) {
                         header
-                        tags.padding(.top, 14)
-                        forYourSkin.padding(.top, 24)
                         if let details = product.details, !details.isEmpty {
                             section("About") { paragraph(details) }
                         }
+                        tags.padding(.top, 20)
+                        forYourSkin.padding(.top, 24)
                         if let ingredients = product.keyIngredients, !ingredients.isEmpty {
                             section("Key ingredients") { paragraph(ingredients.joined(separator: " · ")) }
                         }
@@ -70,11 +70,19 @@ struct ProductSheet: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .overlay(alignment: .bottom) {
+                // A soft fade above the buttons so the next section peeks through,
+                // a quiet hint that there is more to read.
+                LinearGradient(colors: [Palette.canvas.opacity(0), Palette.canvas],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 44)
+                    .allowsHitTesting(false)
+            }
 
             actions
         }
         .background(Palette.canvas.ignoresSafeArea())
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.fraction(0.7), .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .sensoryFeedback(.success, trigger: addedCount)
