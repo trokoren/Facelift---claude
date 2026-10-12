@@ -11,6 +11,8 @@ struct PicksCard: View {
     /// My Skin only: marks a pick as something she already uses, or unmarks it.
     var onHaveIt: ((Recommendation.Product) -> Void)? = nil
     var isOwned: (Recommendation.Product) -> Bool = { _ in false }
+    /// My Skin only: tapping a pick opens its details sheet, like the Shop tab.
+    var onSelect: ((Recommendation.Product) -> Void)? = nil
     let onSeeAll: () -> Void
 
     var body: some View {
@@ -67,6 +69,8 @@ struct PicksCard: View {
                         .allowsHitTesting(false)
                 }
                 .clipShape(.rect(cornerRadius: 12, style: .continuous))
+                .contentShape(Rectangle())
+                .onTapGesture { onSelect?(product) }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(recommendation.issue.uppercased())
@@ -115,6 +119,8 @@ struct PicksCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { onSelect?(product) }
 
             Button { onShop(product) } label: {
                 Text("Shop")
@@ -127,6 +133,7 @@ struct PicksCard: View {
             .buttonStyle(PressableStyle(scale: 0.93))
         }
         .padding(.vertical, 12)
+        .accessibilityAction(named: "Details") { onSelect?(product) }
     }
 }
 

@@ -7,6 +7,8 @@ struct MySkinView: View {
     @State private var addedCount: Int = 0
     @State private var sharing: Scan?
     @State private var deleting: Scan?
+    /// The pick whose details sheet is open.
+    @State private var selected: CatalogProduct?
 
     var body: some View {
         ScrollView {
@@ -38,6 +40,9 @@ struct MySkinView: View {
                             if adding { addedCount += 1 }
                         },
                         isOwned: store.isInRoutine,
+                        onSelect: { product in
+                            selected = ProductCatalog.shared.products.first { $0.fullName == product.name }
+                        },
                         onSeeAll: {
                             store.scrollToPicksOnOpen = true
                             store.openScan(latest.id)
@@ -46,6 +51,10 @@ struct MySkinView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 16)
                     .sensoryFeedback(.success, trigger: addedCount)
+                    .sheet(item: $selected) { product in
+                        ProductSheet(product: product)
+                            .environment(store)
+                    }
                 }
 
                 HStack(spacing: 12) {
