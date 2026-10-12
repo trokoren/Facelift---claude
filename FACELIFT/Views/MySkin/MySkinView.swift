@@ -9,8 +9,12 @@ struct MySkinView: View {
     @State private var deleting: Scan?
     /// The pick whose details sheet is open.
     @State private var selected: CatalogProduct?
+    /// True once the "Your scans" heading is on screen. Until then a small button at the
+    /// bottom shows there are scans below and takes her to them.
+    @State private var scansInView = false
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 BrandHeader(subtitle: "Your Skin Analysis.")
@@ -68,6 +72,10 @@ struct MySkinView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 32)
+                .id("scans")
+                .onScrollVisibilityChange(threshold: 0.2) { visible in
+                    withAnimation(.easeInOut(duration: 0.2)) { scansInView = visible }
+                }
 
                 if store.scans.isEmpty {
                     emptyScans
@@ -111,6 +119,14 @@ struct MySkinView: View {
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
+        .overlay(alignment: .bottom) {
+            if !scansInView && !store.scans.isEmpty {
+                scansButton { withAnimation(.smooth) { proxy.scrollTo("scans", anchor: .top) } }
+                    .padding(.bottom, 14)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        }
         .background(Palette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $sharing) { scan in
@@ -129,6 +145,26 @@ struct MySkinView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+    }
+
+    /// Floats at the bottom while her scans are below the fold.
+    private func scansButton(action: @escaping () -> Void) -> some View {
+        let count = store.scans.filter { !$0.isSample }.count
+        return Button(action: action) {
+            HStack(spacing: 6) {
+                Text(count > 0 ? (count == 1 ? "Your scan" : "Your \(count) scans") : "Your scans")
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .font(FLFont.sans(12.5, .medium))
+            .foregroundStyle(Palette.ink)
+            .padding(.horizontal, 16)
+            .frame(height: 36)
+            .background(Color.white, in: Capsule())
+            .shadow(color: Palette.ink.opacity(0.10), radius: 12, x: 0, y: 4)
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("Scroll to your scans")
     }
 
     /// No scans yet: an empty ring where the first Skin Score will go, and a way to scan.
