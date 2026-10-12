@@ -50,8 +50,26 @@ struct ShopScreen: View {
                     .sensoryFeedback(.success, trigger: addedCount)
                 }
 
+                ForEach([FeaturedPicksRow.Kind.dermatologist, .natural], id: \.key) { kind in
+                    let picks = featured(kind)
+                    if !picks.isEmpty {
+                        FeaturedPicksRow(
+                            kind: kind, products: picks,
+                            onShop: { product in open(product.url.flatMap(URL.init(string:)), name: product.fullName) },
+                            onSource: { openURL($0) }
+                        )
+                        .padding(.top, 28)
+                    }
+                }
+
+                Text("All products")
+                    .font(FLFont.serif(22))
+                    .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 32)
+
                 filters
-                    .padding(.top, latestScan == nil ? 20 : 30)
+                    .padding(.top, 12)
 
                 ForEach(sections, id: \.key) { section in
                     outcomeRow(section)
@@ -199,6 +217,17 @@ struct ShopScreen: View {
             }
             .scrollIndicators(.hidden)
         }
+    }
+
+    /// Featured picks of one kind, safe for her, in their curated order, each product once.
+    private func featured(_ kind: FeaturedPicksRow.Kind) -> [CatalogProduct] {
+        let safety = ProductSafety(profile: store.profile, consult: latestScan?.consult)
+        var seen = Set<String>()
+        return ProductCatalog.shared.products
+            .filter { $0.featured == kind.key && safety.allows($0) }
+            .filter { kind == .natural || ($0.expertName != nil && $0.sourceURL != nil) }
+            .sorted { ($0.featuredRank ?? 99) < ($1.featuredRank ?? 99) }
+            .filter { seen.insert($0.fullName).inserted }
     }
 
     private func latestMeasure(_ key: String) -> Int? {

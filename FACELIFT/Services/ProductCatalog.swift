@@ -20,13 +20,26 @@ struct CatalogProduct: Codable, Hashable {
     var approach: String? = nil
     /// Contains essential oils or fragrant botanicals.
     var essentialOils: Bool? = nil
+    /// Shop features: "dermatologist" (Dermatologist Recommends) or "natural" (Natural Favorites).
+    var featured: String? = nil
+    var featuredRank: Int? = nil
+    /// Dermatologist Recommends: who recommended it and where it was published.
+    var expertName: String? = nil
+    var expertTitle: String? = nil
+    var sourceName: String? = nil
+    var sourceURL: String? = nil
 
     enum CodingKeys: String, CodingKey {
-        case concern, tier, rank, brand, name, price, url, strength, approach
+        case concern, tier, rank, brand, name, price, url, strength, approach, featured
         case imageName = "image_name"
         case pregnancySafe = "pregnancy_safe"
         case skinTypes = "skin_types"
         case essentialOils = "essential_oils"
+        case featuredRank = "featured_rank"
+        case expertName = "expert_name"
+        case expertTitle = "expert_title"
+        case sourceName = "source_name"
+        case sourceURL = "source_url"
     }
 
     /// Which side of the Clinical to Natural slider it belongs to.
@@ -55,7 +68,7 @@ final class ProductCatalog {
     /// Fetches the latest catalog. Keeps what it has if the server can't be reached.
     func refresh() async {
         guard Backend.isConfigured,
-              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils&active=eq.true&order=concern,tier,rank")
+              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils,featured,featured_rank,expert_name,expert_title,source_name,source_url&active=eq.true&order=concern,tier,rank")
         else { return }
         var request = URLRequest(url: url)
         request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
