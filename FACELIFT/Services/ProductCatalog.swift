@@ -34,6 +34,8 @@ struct CatalogProduct: Codable, Hashable {
     var keyIngredients: [String]? = nil
     var howToUse: String? = nil
     var size: String? = nil
+    /// Product photo link. Swap in Supabase any time; empty shows the placeholder art.
+    var imageURL: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case concern, tier, rank, brand, name, price, url, strength, approach, featured
@@ -51,6 +53,7 @@ struct CatalogProduct: Codable, Hashable {
         case keyIngredients = "key_ingredients"
         case howToUse = "how_to_use"
         case size
+        case imageURL = "image_url"
     }
 
     /// Which side of the Clinical to Natural slider it belongs to.
@@ -83,7 +86,7 @@ final class ProductCatalog {
     /// Fetches the latest catalog. Keeps what it has if the server can't be reached.
     func refresh() async {
         guard Backend.isConfigured,
-              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils,featured,featured_rank,expert_name,expert_title,source_name,source_url,expert_quote,description,key_ingredients,how_to_use,size&active=eq.true&order=concern,tier,rank")
+              let url = URL(string: "\(Backend.supabaseURL)/rest/v1/product_catalog?select=concern,tier,rank,brand,name,price,url,image_name,pregnancy_safe,strength,skin_types,approach,essential_oils,featured,featured_rank,expert_name,expert_title,source_name,source_url,expert_quote,description,key_ingredients,how_to_use,size,image_url&active=eq.true&order=concern,tier,rank")
         else { return }
         var request = URLRequest(url: url)
         request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")

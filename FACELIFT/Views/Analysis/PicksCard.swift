@@ -63,10 +63,7 @@ struct PicksCard: View {
             Color(hex: 0xF1EEEA)
                 .frame(width: 56, height: 56)
                 .overlay {
-                    Image(product.imageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .allowsHitTesting(false)
+                    ProductPhoto(name: product.name, fallback: product.imageName, inset: 4)
                 }
                 .clipShape(.rect(cornerRadius: 12, style: .continuous))
                 .contentShape(Rectangle())
@@ -175,10 +172,7 @@ struct PicksPreview: View {
                         Color(hex: 0xF1EEEA)
                             .frame(width: 40, height: 40)
                             .overlay {
-                                Image(product.imageName)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .allowsHitTesting(false)
+                                ProductPhoto(name: product.name, fallback: product.imageName, inset: 3)
                             }
                             .clipShape(Circle())
                             .overlay(Circle().stroke(Color.white, lineWidth: 2))

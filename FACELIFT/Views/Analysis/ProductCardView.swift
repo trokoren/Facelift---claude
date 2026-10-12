@@ -10,10 +10,7 @@ struct ProductCardView: View {
             Color(hex: 0xF1EEEA)
                 .frame(height: 78)
                 .overlay {
-                    Image(product.imageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .allowsHitTesting(false)
+                    ProductPhoto(name: product.name, fallback: product.imageName, inset: 6)
                 }
                 .clipped()
 

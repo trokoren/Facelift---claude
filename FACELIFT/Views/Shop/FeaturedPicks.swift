@@ -65,10 +65,7 @@ private struct FeaturedPickCard: View {
             Color(hex: 0xF1EEEA)
                 .frame(height: 96)
                 .overlay {
-                    Image(product.imageName ?? "serum_bottle_dropper")
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .allowsHitTesting(false)
+                    ProductPhoto(name: product.fullName, fallback: product.imageName ?? "serum_bottle_dropper", inset: 6)
                 }
                 .clipped()
 
