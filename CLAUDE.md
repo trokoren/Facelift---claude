@@ -40,8 +40,9 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
   - `analyze-skin`: photo to Perfect Corp YouCam (7 measures + skin type) then Claude (`claude-sonnet-5`) writes the consult. Retries the consult once; if it still fails, returns scores only.
   - `progress-review`: numbers only, writes a short progress review on cadence (first, every 5 scans, meaningful change, monthly).
   - `delete-account`: deletes the signed-in user (App Store requirement).
+  - `credit-alert`: daily (pg_cron `youcam-credit-check`, 15:00 UTC) YouCam balance check; emails trevor@faceliftai.app from alerts@faceliftai.app through Resend when under 240 credits (about 20 scans), at most every 12 hours. `{"test": true}` sends a test (once per 10 minutes). YouCam's reply is a list of credit packs (`results[].amount`, `expiry`); the balance is the sum of unexpired packs. Sent alerts are logged in `public.ops_alerts`.
   - Removed 2026-10-11: `deep-read` and `consult-preview` (both retired stubs returning 410, unused by the app). Do not redeploy them.
-  - Secrets in Supabase: `ANTHROPIC_API_KEY`, the YouCam key.
+  - Secrets in Supabase: `ANTHROPIC_API_KEY`, `PERFECT_CORP_API_KEY` (YouCam), `RESEND_API_KEY`.
 - **Database:** `public.product_catalog` (60 products; columns concern, tier, rank, brand, name, price, url, image_name, pregnancy_safe, strength, skin_types, active). Public read of active rows only. Migrations in `supabase/migrations/`.
 - **Auth:** Supabase Auth, Apple provider ON with client ID `app.faceliftai.facelift` (no secret needed for native).
 
