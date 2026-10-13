@@ -88,9 +88,9 @@ def nasa(key):
         rh = p["RH2M"]
         months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
         good = lambda v: v is not None and v > -900  # noqa: E731
+        monthly = [uv[m] if good(uv[m]) else None for m in months]
         return {
-            "uv_ann": uv["ANN"] if good(uv["ANN"]) else None,
-            "uv_max": max((uv[m] for m in months if good(uv[m])), default=None),
+            "uv_months": monthly if all(v is not None for v in monthly) else None,
             "rh": rh["ANN"] if good(rh["ANN"]) else None,
         }
     except Exception as e:  # noqa: BLE001
@@ -105,6 +105,32 @@ with ThreadPoolExecutor(max_workers=4) as pool:
         cache[k] = v
         if i % 100 == 0:
             print(f"  {i}/{len(keys)}", flush=True)
+
+# --- Midday UV ---------------------------------------------------------------------------------
+# NASA's UV index is a 24-hour average (nights count as zero). What matters for skin is the
+# typical midday UV index. For each month we scale NASA's figure by how much stronger the sun is
+# at noon than over the whole day at that latitude (clear-sky UV rises with cos(sun angle)^2.42),
+# which keeps NASA's clouds, ozone and altitude in the number.
+
+MID_MONTH_DAY = [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349]
+
+
+def noon_factor(lat, day):
+    decl = math.radians(23.44) * math.sin(2 * math.pi * (284 + day) / 365)
+    phi = math.radians(lat)
+    def strength(hour_angle):
+        c = math.sin(phi) * math.sin(decl) + math.cos(phi) * math.cos(decl) * math.cos(hour_angle)
+        return max(c, 0) ** 2.42
+    steps = 288
+    mean = sum(strength(2 * math.pi * i / steps - math.pi) for i in range(steps)) / steps
+    noon = strength(0)
+    return noon / mean if mean > 0 else 0
+
+
+def midday_uv(lat, months):
+    values = [m * noon_factor(lat, d) for m, d in zip(months, MID_MONTH_DAY)]
+    return sum(values) / 12, max(values)
+
 
 # --- EPA: US air quality by metro ------------------------------------------------------------
 
@@ -156,16 +182,16 @@ def us_aqi(c):
 rows, missing = [], 0
 for c in cities:
     n = cache.get(cell(c))
-    if not n or n["uv_ann"] is None or n["rh"] is None:
+    if not n or n["uv_months"] is None or n["rh"] is None:
         missing += 1
         continue
+    uv_year, uv_peak = midday_uv(c["lat"], n["uv_months"])
     aqi = us_aqi(c) if c["cc"] == "US" else None
     rows.append([c["name"], c["region"], c["cc"], round(c["lat"], 2), round(c["lon"], 2),
-                 round(n["uv_ann"], 1), round(n["uv_max"], 1) if n["uv_max"] is not None else None,
-                 round(n["rh"]), round(aqi) if aqi is not None else None])
+                 round(uv_year, 1), round(uv_peak, 1), round(n["rh"]), round(aqi) if aqi is not None else None])
 
 with open(OUT, "w") as f:
-    json.dump({"fields": ["name", "region", "country", "lat", "lon", "uv_year", "uv_peak_month", "humidity", "aqi"],
+    json.dump({"fields": ["name", "region", "country", "lat", "lon", "uv_midday_year", "uv_midday_peak_month", "humidity", "aqi"],
                "sources": "GeoNames (CC BY 4.0), NASA POWER, US EPA AirData",
                "cities": rows}, f, separators=(",", ":"))
 
