@@ -7,6 +7,9 @@ struct ProgressScreen: View {
     @State private var insight: InsightContent?
     @State private var showsReview = false
     @State private var isEditingProducts: Bool = false
+    @State private var isAddingProduct = false
+    /// Set when she taps "Add it yourself": opens the manual form with this name filled in.
+    @State private var manualName: String?
     @State private var range: ChartRange = .recent
     /// The product we're asking about this visit (kept steady while she answers).
     @State private var checkInProduct: UsedProduct?
@@ -55,8 +58,16 @@ struct ProgressScreen: View {
         }
         // Catches up if a review was due but couldn't be written last time.
         .task { if !store.isLapsed { await store.refreshProgressReviewIfDue() } }
-        .sheet(isPresented: $isEditingProducts) {
-            EditProductsSheet()
+        .sheet(isPresented: $isAddingProduct, onDismiss: {
+            if manualName != nil { isEditingProducts = true }
+        }) {
+            AddProductSheet { name in manualName = name }
+                .presentationDetents([.large])
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isEditingProducts, onDismiss: { manualName = nil }) {
+            EditProductsSheet(startingName: manualName)
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)
@@ -211,6 +222,17 @@ struct ProgressScreen: View {
                     .foregroundStyle(Palette.stone)
                 Spacer()
                 Button {
+                    isAddingProduct = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .light))
+                        .foregroundStyle(Palette.stone)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle(scale: 0.9))
+                .accessibilityLabel("Add a product")
+                Button {
                     isEditingProducts = true
                 } label: {
                     Image(systemName: "pencil")
@@ -226,7 +248,7 @@ struct ProgressScreen: View {
 
             if store.usedProducts.isEmpty {
                 Button {
-                    isEditingProducts = true
+                    isAddingProduct = true
                 } label: {
                     Text("Add the products in your routine so we can track what's working.")
                         .font(FLFont.sans(12))
@@ -337,6 +359,9 @@ enum ChartRange: String, CaseIterable {
 /// Full-height editor: one card per product (brand, name, price, link), delete with X,
 /// dashed "+ Add Product", and Save / Done to keep changes. Swiping down discards them.
 private struct EditProductsSheet: View {
+    /// From "Add it yourself": starts a new product with what she searched for.
+    var startingName: String? = nil
+
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var drafts: [ProductDraft] = []
@@ -395,6 +420,11 @@ private struct EditProductsSheet: View {
         .background(Palette.canvas.ignoresSafeArea())
         .onAppear {
             drafts = store.usedProducts.map(ProductDraft.init)
+            if let startingName {
+                var draft = ProductDraft()
+                draft.name = startingName
+                drafts.append(draft)
+            }
         }
     }
 
