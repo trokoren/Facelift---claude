@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var store = AppStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -72,7 +73,17 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: showsTabBar)
         .preferredColorScheme(.light)
-        .task { await store.refreshReminderPermission() }
+        .task {
+            await store.refreshReminderPermission()
+            await store.updateReminders()
+        }
+        // Keep the weekly scan reminder 7 days after her latest scan, and the trial heads-up
+        // in step with her membership.
+        .onChange(of: store.scans.first?.date) { Task { await store.updateReminders() } }
+        .onChange(of: Subscriptions.shared.trialEndDate) { Task { await store.updateReminders() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await store.updateReminders() } }
+        }
         // Keeps the tab bar from riding up with the keyboard. Onboarding is left alone
         // so buttons under text fields (like the city search) stay reachable.
         .ignoresSafeArea(.keyboard, edges: .bottom)

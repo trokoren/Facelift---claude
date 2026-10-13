@@ -64,7 +64,10 @@ struct AccountView: View {
                     .buttonStyle(CardPressStyle())
                     RowDivider()
                     SettingsRow(title: "Scan Reminders", showsChevron: false) {
-                        Toggle("Scan Reminders", isOn: $store.remindersOn)
+                        Toggle("Scan Reminders", isOn: Binding(
+                            get: { store.remindersOn },
+                            set: { on in Task { await store.setReminders(on) } }
+                        ))
                             .labelsHidden()
                             .tint(Palette.rose)
                             .scaleEffect(0.86, anchor: .trailing)

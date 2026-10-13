@@ -54,7 +54,13 @@ final class AppStore {
 
     var skinType: String = "Combination"
     var skinGoals: [String] = ["Anti-aging", "Hydration"]
-    var remindersOn: Bool = true
+    /// The "Scan Reminders" switch in Account. Saved on this phone.
+    var remindersOn: Bool = UserDefaults.standard.object(forKey: "facelift.remindersOn") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(remindersOn, forKey: "facelift.remindersOn")
+            Task { await updateReminders() }
+        }
+    }
 
     var latestScan: Scan? { scans.first }
 
@@ -203,6 +209,31 @@ final class AppStore {
 
     func scan(with id: UUID) -> Scan? {
         scans.first { $0.id == id }
+    }
+
+    /// Reschedules the weekly scan reminder and the trial heads-up on this phone.
+    func updateReminders() async {
+        await Reminders.update(
+            lastScan: scans.first { !$0.isSample }?.date,
+            scanRemindersOn: remindersOn,
+            trialEnds: Subscriptions.shared.trialEndDate
+        )
+    }
+
+    /// The Account switch. Turning it on asks iOS for permission the first time; if she
+    /// said no before, iOS won't ask again, so we open Settings instead.
+    func setReminders(_ on: Bool) async {
+        guard on else { remindersOn = false; return }
+        let center = UNUserNotificationCenter.current()
+        switch await center.notificationSettings().authorizationStatus {
+        case .notDetermined:
+            remindersOn = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        case .denied:
+            remindersOn = false
+            if let url = URL(string: UIApplication.openSettingsURLString) { await UIApplication.shared.open(url) }
+        default:
+            remindersOn = true
+        }
     }
 
     /// Keeps the "Scan Reminders" switch honest: it's only on if iOS actually allows notifications.

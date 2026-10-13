@@ -30,6 +30,10 @@ final class Subscriptions {
     /// True while her membership is in its free trial (RevenueCat's period type).
     private(set) var isTrialPeriod: Bool = false
 
+    /// When her free trial becomes a paid membership (nil when she isn't on a trial).
+    /// Used for the "trial ends tomorrow" reminder.
+    private(set) var trialEndDate: Date?
+
     #if DEBUG
     /// Scan Lab switch: pretend her membership has lapsed, to see the locked screens.
     var debugLapsed: Bool = UserDefaults.standard.bool(forKey: "facelift.debugLapsed") {
@@ -64,6 +68,7 @@ final class Subscriptions {
         let entitlement = info.entitlements[Self.entitlement]
         isPremium = entitlement?.isActive == true
         isTrialPeriod = entitlement?.periodType == .trial
+        trialEndDate = isTrialPeriod && entitlement?.willRenew == true ? entitlement?.expirationDate : nil
         hasChecked = true
     }
 
