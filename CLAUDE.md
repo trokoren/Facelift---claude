@@ -88,5 +88,7 @@ Next to build (ask before starting):
 4. Scan sync to the account (scores and consults only, not photos or health answers) before paid ads.
 5. Tracking prompt wording + Meta SDK (needs Meta App ID and Client Token).
 6. Replace test product photos with affiliate-network images.
+7. Push notifications (required before launch), sent directly through Apple (APNs) from Supabase, no OneSignal (decided 2026-10-12: free, no user cap, fully in our code). Start with a weekly scan reminder and a trial-ending heads-up; ask permission at a natural moment, not on first launch. Needs the paid Ocean Park team (Push capability + an APNs key stored as a Supabase secret).
+8. YouCam credit alerts by email through Resend (Loops dropped 2026-10-12, since every email lives in code that Claude controls). Needs `RESEND_API_KEY` in Supabase secrets, the verified faceliftai.app domain, a from address (e.g. alerts@faceliftai.app) and the address alerts go to. Daily balance check plus an instant alert when a scan fails for credits; balance endpoint `GET /s2s/v1.0/client/credit` (log the response shape first).
 
-Open questions Trevor still owns: the 93% stat, the "Jamie L." review, and "70,000+ scans" claims; Anthropic data retention (zero retention or say 30 days in the privacy policy).
+Decided 2026-10-12: privacy policy says Anthropic keeps consult data up to 30 days (Anthropic never receives photos). Trevor wants to keep the 93% stat, the "Jamie L." review and "70,000+ scans"; Claude flagged that unverified stats and testimonials can't ship (FTC fake-review rule, App Store review). Raise it again before submission.
