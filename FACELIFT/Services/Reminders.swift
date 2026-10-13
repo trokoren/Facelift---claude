@@ -1,8 +1,31 @@
 import Foundation
 import UserNotifications
 
+/// The day and time she picked for her weekly check-in (onboarding notifications step).
+/// Saved on this phone. Defaults to Sunday morning.
+enum ReminderTime {
+    /// Calendar weekday numbers: 1 is Sunday.
+    static let days: [(label: String, value: Int)] = [("Sun", 1), ("Mon", 2), ("Wed", 4), ("Sat", 7)]
+    static let times: [(label: String, value: Int)] = [("Morning", 9), ("Evening", 19)]
+
+    static var weekday: Int { UserDefaults.standard.object(forKey: "facelift.reminderWeekday") as? Int ?? 1 }
+    static var hour: Int { UserDefaults.standard.object(forKey: "facelift.reminderHour") as? Int ?? 9 }
+
+    static func save(weekday: Int, hour: Int) {
+        UserDefaults.standard.set(weekday, forKey: "facelift.reminderWeekday")
+        UserDefaults.standard.set(hour, forKey: "facelift.reminderHour")
+    }
+
+    /// "Sun 9:00 AM"
+    static func label(weekday: Int, hour: Int) -> String {
+        let day = days.first { $0.value == weekday }?.label ?? "Sun"
+        return "\(day) \(hour > 12 ? hour - 12 : hour):00 \(hour >= 12 ? "PM" : "AM")"
+    }
+}
+
 /// Reminders scheduled on her phone (no server needed):
-/// - Weekly scan: 10am, 7 days after her last scan. Moves forward every time she scans.
+/// - Weekly scan: on the day and time she picked, at least 5 days after her last scan.
+///   Moves forward every time she scans.
 /// - Trial heads-up: the day before her free trial becomes a paid membership.
 /// Rescheduled whenever something changes (launch, a new scan, the switch, her membership).
 enum Reminders {
@@ -16,13 +39,19 @@ enum Reminders {
         guard status == .authorized || status == .provisional else { return }
 
         if scanRemindersOn {
-            let due = (lastScan ?? Date()).addingTimeInterval(7 * 86_400)
-            await add(
-                id: scanID,
-                title: "Time for your weekly scan",
-                body: "Same light, same spot. Let's see how your skin is doing this week.",
-                at: morning(onOrAfter: due)
-            )
+            let earliest = max((lastScan ?? Date()).addingTimeInterval(5 * 86_400), Date().addingTimeInterval(60))
+            if let when = Calendar.current.nextDate(
+                after: earliest,
+                matching: DateComponents(hour: ReminderTime.hour, minute: 0, weekday: ReminderTime.weekday),
+                matchingPolicy: .nextTime
+            ) {
+                await add(
+                    id: scanID,
+                    title: "Time for your weekly scan",
+                    body: "Same light, same spot. Let's see how your skin is doing this week.",
+                    at: when
+                )
+            }
         }
 
         if let end = trialEnds {
@@ -36,17 +65,6 @@ enum Reminders {
                 )
             }
         }
-    }
-
-    /// 10am on that day, or 10am the next day if that has already passed.
-    private static func morning(onOrAfter date: Date) -> Date {
-        let calendar = Calendar.current
-        var target = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date) ?? date
-        if target < date { target = calendar.date(byAdding: .day, value: 1, to: target) ?? target }
-        if target < Date().addingTimeInterval(60) {
-            target = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: Date().addingTimeInterval(86_400)) ?? target
-        }
-        return target
     }
 
     private static func add(id: String, title: String, body: String, at date: Date) async {
