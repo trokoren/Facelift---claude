@@ -16,6 +16,9 @@ struct MembershipPlan: Identifiable {
 
     /// What the free trial includes, shown on the trial plan and wherever the trial limit applies.
     static let trialScanNote = "Your free trial includes 1 scan a day."
+    /// The line on the trial plan card: the scan limit, and the promise that we'll remind her
+    /// before she's charged (the reminder is scheduled in `Reminders`).
+    static let trialPlanNote = "1 scan a day. We'll remind you before it ends."
 
     /// Live plans from RevenueCat when available, else the built-in ones.
     /// Order: free trial, weekly, annual. `showsIntro` is off on the renew screen: Apple gives
@@ -28,7 +31,7 @@ struct MembershipPlan: Identifiable {
                 return MembershipPlan(
                     name: package.trialName ?? "Free Trial",
                     price: "Free, then \(package.priceLine)",
-                    perMonth: trialScanNote,
+                    perMonth: trialPlanNote,
                     renewal: package.renewalLine,
                     package: package
                 )
@@ -65,7 +68,7 @@ struct MembershipPlan: Identifiable {
 
     /// Mirrors the App Store setup: the free 3-day trial (converts to annual), weekly, annual.
     static let fallback: [MembershipPlan] = [
-        MembershipPlan(name: "3-Day Free Trial", price: "Free, then $49.99/year", perMonth: trialScanNote,
+        MembershipPlan(name: "3-Day Free Trial", price: "Free, then $49.99/year", perMonth: trialPlanNote,
                        renewal: "3 days free, then $49.99/year. Renews automatically. Cancel anytime in Settings."),
         MembershipPlan(name: "Weekly", price: "$8.99/week",
                        renewal: "$8.99/week. Renews automatically. Cancel anytime in Settings."),
