@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Dark scan: live camera inside the rose oval, then a four-step checklist and progress bar.
+/// Dark scan: live camera inside the rose oval, one shimmering status line at a time and a progress bar.
 struct ScanLoadingStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(AppStore.self) private var store
@@ -13,7 +13,7 @@ struct ScanLoadingStepView: View {
     @State private var didFinish: Bool = false
 
     private let ovalSize = CGSize(width: 250, height: 324)
-    private let stages: [String] = ["Reading your skin", "Scanning 14+ categories", "Scoring categories", "Building your report"]
+    private let stages: [String] = ["Reading your skin", "Finding your 7 skin measures", "Scoring each one", "Building your report"]
     private let stageDuration: Double = 1.6
 
     var body: some View {
@@ -60,27 +60,11 @@ struct ScanLoadingStepView: View {
                 oval
                     .padding(.top, 48)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in
-                        HStack(spacing: 18) {
-                            if index < completedSteps {
-                                Image(systemName: "checkmark.circle")
-                                    .font(.system(size: 20, weight: .light))
-                                    .foregroundStyle(Color(hex: 0x7C6564))
-                                    .frame(width: 22)
-                            } else {
-                                Circle()
-                                    .fill(index == completedSteps ? Palette.rose : Color.clear)
-                                    .frame(width: 9, height: 9)
-                                    .frame(width: 22)
-                            }
-                            Text(stage)
-                                .font(FLFont.sans(18.5))
-                                .foregroundStyle(index == completedSteps ? .white : Color(hex: 0x6E6866))
-                        }
-                        .animation(.easeOut(duration: 0.25), value: completedSteps)
-                    }
-                }
+                StatusLine(
+                    text: stages[min(completedSteps, stages.count - 1)],
+                    isDone: completedSteps >= stages.count,
+                    font: FLFont.sans(18)
+                )
                 .padding(.top, 38)
 
                 ZStack(alignment: .leading) {
@@ -143,10 +127,10 @@ struct ScanLoadingStepView: View {
             }
             let stage = min(stages.count - 1, Int(fraction * Double(stages.count)))
             if stage != completedSteps && stage < stages.count {
-                completedSteps = stage
+                withAnimation(.spring(duration: 0.6, bounce: 0.15)) { completedSteps = stage }
             }
         }
-        completedSteps = stages.count
+        withAnimation(.spring(duration: 0.45)) { completedSteps = stages.count }
         didFinish = true
         try? await Task.sleep(for: .milliseconds(500))
         if Task.isCancelled { return }

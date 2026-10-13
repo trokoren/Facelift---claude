@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// The "reading your skin" moment after the circle scan: black with slow, glowing rose
-/// streaks, a four-step checklist and a progress bar. No camera.
+/// streaks, one shimmering status line at a time and a progress bar. No camera.
 ///
-/// The real analysis runs underneath. The checklist paces itself, then holds on the last step
-/// until the results are in. If the photo can't be read, she gets a clear reason and a way
+/// The real analysis runs underneath. The status lines pace themselves, then hold on the last
+/// one until the results are in. If the photo can't be read, she gets a clear reason and a way
 /// to scan again.
 struct SkinAnalyzingView: View {
     let onFinished: () -> Void
@@ -17,12 +17,15 @@ struct SkinAnalyzingView: View {
 
     private let stages: [String] = [
         "Mapping your face",
-        "Measuring your skin against 70,000+ clinical references",
+        "Comparing with 70,000+ clinical references",
+        "Looking at fine lines and dark spots",
+        "Checking redness and texture",
+        "Measuring pores and hydration",
         "Reading your skin type",
         "Writing your consultation"
     ]
-    /// Seconds for each of the first three steps. The last one lasts as long as the read does.
-    private let stageDuration: Double = 3.0
+    /// Seconds for each step but the last. The last one lasts as long as the read does.
+    private let stageDuration: Double = 2.2
 
     var body: some View {
         ZStack {
@@ -106,35 +109,11 @@ struct SkinAnalyzingView: View {
                     .foregroundStyle(Palette.nightBody)
                     .padding(.top, 8)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in
-                        HStack(spacing: 16) {
-                            ZStack {
-                                if index < completed {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 20, weight: .regular))
-                                        .foregroundStyle(Palette.rose)
-                                        .transition(.scale.combined(with: .opacity))
-                                } else if index == completed {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .tint(Palette.rose)
-                                } else {
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.25), lineWidth: 1.2)
-                                        .frame(width: 16, height: 16)
-                                }
-                            }
-                            .frame(width: 22, height: 22)
-
-                            Text(stage)
-                                .font(FLFont.sans(17))
-                                .foregroundStyle(index <= completed ? .white : Color.white.opacity(0.4))
-                        }
-                        .animation(.easeOut(duration: 0.3), value: completed)
-                    }
-                }
-                .padding(.top, 40)
+                StatusLine(
+                    text: completed >= stages.count ? "Your results are ready" : stages[completed],
+                    isDone: completed >= stages.count
+                )
+                .padding(.top, 44)
 
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.12))
@@ -186,7 +165,7 @@ struct SkinAnalyzingView: View {
             withAnimation(.linear(duration: duration / Double(ticks))) { progress = fraction }
             let stage = min(stages.count, Int(fraction * Double(stages.count) + 0.0001))
             if stage != completed {
-                withAnimation(.easeOut(duration: 0.3)) { completed = stage }
+                withAnimation(.spring(duration: 0.6, bounce: 0.15)) { completed = stage }
             }
         }
     }
