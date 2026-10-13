@@ -65,6 +65,14 @@ struct PrivacyDataView: View {
                 .cardSurface()
                 .padding(.horizontal, 24)
                 .padding(.top, 12)
+
+                // Required credit for the built-in climate table (GeoNames is CC BY 4.0).
+                Text("Local climate data: NASA POWER, US EPA AirData and GeoNames (CC BY 4.0).")
+                    .font(FLFont.sans(12))
+                    .foregroundStyle(Palette.mist)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 14)
             }
             .padding(.bottom, 24)
         }

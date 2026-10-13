@@ -1,0 +1,28 @@
+name: Build climate data
+
+# One-time (or yearly) rebuild of FACELIFT/Resources/climate.json. Runs on its own branch
+# so the result can be checked before it goes into main.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: mkdir -p FACELIFT/Resources && python tools/climate/build_climate.py FACELIFT/Resources/climate.json
+      - name: Commit the result to the climate-data branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout -B climate-data
+          git add FACELIFT/Resources/climate.json
+          git commit -m "Climate data build"
+          git push -f origin climate-data

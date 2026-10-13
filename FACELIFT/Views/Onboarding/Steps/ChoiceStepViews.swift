@@ -467,7 +467,9 @@ struct LocationStepView: View {
             VStack(spacing: 14) {
                 UVCard(conditions: conditions)
                 HumidityCard(conditions: conditions)
-                PollutionCard(conditions: conditions)
+                if conditions.usAQI != nil {
+                    PollutionCard(conditions: conditions)
+                }
             }
         } else if isLoading {
             HStack(spacing: 10) {
@@ -577,7 +579,7 @@ private struct UVCard: View {
         ConditionCard {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 0) {
-                    CardTitle(text: "Avg. UV Index")
+                    CardTitle(text: "Avg. Midday UV")
                     Text("\(conditions.uvIndex)")
                         .font(FLFont.serif(44))
                         .foregroundStyle(uvColor)

@@ -1,15 +1,16 @@
 import Foundation
 
-/// Typical local conditions that affect skin: average UV, average humidity and air quality.
+/// Typical local conditions that affect skin: midday UV, humidity and air quality.
 ///
-/// UV and humidity are long-term yearly averages from NASA POWER (public data, no key).
-/// If NASA can't be reached, today's values from Open-Meteo are used instead so the screen
-/// never comes up empty. Air quality is a ~3-month average from Open-Meteo, whose free tier is non-commercial:
-/// move that to a paid plan (or another source) before launch.
+/// Built into the app (`Resources/climate.json`, made once by `tools/climate/build_climate.py`),
+/// so the screen is instant and works offline. Her city gets the nearest city in the table.
+/// UV is the typical midday UV index averaged over the year and humidity the yearly average
+/// (both NASA POWER). Air quality is the EPA's median AQI for her metro area (US only; nil
+/// elsewhere, and the card is hidden).
 struct SkinConditions: Equatable {
     let uvIndex: Int
     let humidity: Int
-    let usAQI: Int
+    let usAQI: Int?
 
     // MARK: UV
 
@@ -56,7 +57,7 @@ struct SkinConditions: Equatable {
     static let pollutionLevels = ["Low", "Moderate", "High", "Very High"]
 
     var pollutionIndex: Int {
-        switch usAQI {
+        switch usAQI ?? 0 {
         case ...50: 0
         case ...100: 1
         case ...150: 2
@@ -77,92 +78,47 @@ struct SkinConditions: Equatable {
 }
 
 enum SkinConditionsService {
+    /// Farther than this from every city in the table, we show nothing rather than guess.
+    private static let maxDistanceKm = 400.0
+
     static func fetch(latitude: Double, longitude: Double) async -> SkinConditions? {
-        let lat = String(format: "%.4f", latitude)
-        let lon = String(format: "%.4f", longitude)
-
-        let averages = await nasaAverages(lat: lat, lon: lon)
-        let today = await openMeteoToday(lat: lat, lon: lon)
-
-        guard let uv = averages?.uv ?? today?.uv,
-              let humidity = averages?.humidity ?? today?.humidity else { return nil }
-
-        #if DEBUG
-        print("[SkinConditions] NASA averages: uv=\(String(describing: averages?.uv)) humidity=\(String(describing: averages?.humidity)) | Open-Meteo: uv=\(String(describing: today?.uv)) humidity=\(String(describing: today?.humidity)) aqi=\(String(describing: today?.aqi))")
-        #endif
-
-        return SkinConditions(
-            uvIndex: Int(uv.rounded()),
-            humidity: Int(humidity.rounded()),
-            usAQI: Int((today?.aqi ?? 0).rounded())
-        )
+        lookup(latitude: latitude, longitude: longitude)
     }
 
-    /// Yearly ("ANN") averages from NASA POWER's climatology endpoint. -999 means no data.
-    private static func nasaAverages(lat: String, lon: String) async -> (uv: Double?, humidity: Double?)? {
-        guard let url = URL(string: "https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=RH2M,ALLSKY_SFC_UV_INDEX&community=RE&longitude=\(lon)&latitude=\(lat)&format=JSON"),
-              let response = try? await URLSession.shared.data(from: url),
-              let json = try? JSONSerialization.jsonObject(with: response.0) as? [String: Any],
-              let properties = json["properties"] as? [String: Any],
-              let parameters = properties["parameter"] as? [String: Any]
-        else { return nil }
-
-        func annual(_ key: String) -> Double? {
-            guard let values = parameters[key] as? [String: Any],
-                  let value = (values["ANN"] as? NSNumber)?.doubleValue,
-                  value > -900 else { return nil }
-            return value
-        }
-
-        let uv = annual("ALLSKY_SFC_UV_INDEX")
-        let humidity = annual("RH2M")
-        return (uv == nil && humidity == nil) ? nil : (uv, humidity)
+    static func lookup(latitude: Double, longitude: Double) -> SkinConditions? {
+        guard let nearest = cities.min(by: {
+            distanceKm(latitude, longitude, $0.lat, $0.lon) < distanceKm(latitude, longitude, $1.lat, $1.lon)
+        }), distanceKm(latitude, longitude, nearest.lat, nearest.lon) <= maxDistanceKm else { return nil }
+        return SkinConditions(uvIndex: Int(nearest.uv.rounded()), humidity: nearest.humidity, usAQI: nearest.aqi)
     }
 
-    /// Today's peak UV and average humidity, plus the average air quality over the last ~3 months,
-/// from Open-Meteo.
-    private static func openMeteoToday(lat: String, lon: String) async -> (uv: Double?, humidity: Double?, aqi: Double?)? {
-        guard
-            let weatherURL = URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(lat)&longitude=\(lon)&daily=uv_index_max&hourly=relative_humidity_2m&forecast_days=1&timezone=auto"),
-            let airURL = URL(string: "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\(lat)&longitude=\(lon)&hourly=us_aqi&past_days=92&forecast_days=1")
-        else { return nil }
-
-        var uv: Double?
-        var humidity: Double?
-        var aqi: Double?
-
-        if let response = try? await URLSession.shared.data(from: weatherURL),
-           let weather = try? JSONDecoder().decode(WeatherResponse.self, from: response.0) {
-            uv = weather.daily.uvIndexMax.compactMap { $0 }.first
-            let hourly = weather.hourly.relativeHumidity.compactMap { $0 }
-            if !hourly.isEmpty { humidity = hourly.reduce(0, +) / Double(hourly.count) }
-        }
-        if let response = try? await URLSession.shared.data(from: airURL),
-           let air = try? JSONDecoder().decode(AirResponse.self, from: response.0) {
-            let readings = air.hourly.usAQI.compactMap { $0 }
-            if !readings.isEmpty { aqi = readings.reduce(0, +) / Double(readings.count) }
-        }
-        return (uv == nil && humidity == nil && aqi == nil) ? nil : (uv, humidity, aqi)
+    private struct City {
+        let lat: Double
+        let lon: Double
+        let uv: Double
+        let humidity: Int
+        let aqi: Int?
     }
 
-    private struct WeatherResponse: Decodable {
-        struct Daily: Decodable {
-            let uvIndexMax: [Double?]
-            enum CodingKeys: String, CodingKey { case uvIndexMax = "uv_index_max" }
+    /// Rows: [name, region, country, lat, lon, uv_midday_year, uv_midday_peak_month, humidity, aqi].
+    private static let cities: [City] = {
+        guard let url = Bundle.main.url(forResource: "climate", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rows = json["cities"] as? [[Any]] else { return [] }
+        return rows.compactMap { row in
+            guard row.count >= 9,
+                  let lat = (row[3] as? NSNumber)?.doubleValue,
+                  let lon = (row[4] as? NSNumber)?.doubleValue,
+                  let uv = (row[5] as? NSNumber)?.doubleValue,
+                  let humidity = (row[7] as? NSNumber)?.intValue else { return nil }
+            return City(lat: lat, lon: lon, uv: uv, humidity: humidity, aqi: (row[8] as? NSNumber)?.intValue)
         }
-        struct Hourly: Decodable {
-            let relativeHumidity: [Double?]
-            enum CodingKeys: String, CodingKey { case relativeHumidity = "relative_humidity_2m" }
-        }
-        let daily: Daily
-        let hourly: Hourly
-    }
+    }()
 
-    private struct AirResponse: Decodable {
-        struct Hourly: Decodable {
-            let usAQI: [Double?]
-            enum CodingKeys: String, CodingKey { case usAQI = "us_aqi" }
-        }
-        let hourly: Hourly
+    private static func distanceKm(_ aLat: Double, _ aLon: Double, _ bLat: Double, _ bLon: Double) -> Double {
+        let p = Double.pi / 180
+        let h = pow(sin((bLat - aLat) * p / 2), 2) + cos(aLat * p) * cos(bLat * p) * pow(sin((bLon - aLon) * p / 2), 2)
+        return 12742 * asin(min(1, sqrt(h)))
     }
 }
