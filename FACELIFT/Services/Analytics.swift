@@ -31,6 +31,7 @@ enum Analytics {
         case productRemovedFromRoutine = "product_removed_from_routine"
         case approachChanged = "approach_changed"
         case remindersToggled = "reminders_toggled"
+        case onboardingStarted = "onboarding_started"
         case onboardingCompleted = "onboarding_completed"
         case paywallPlanSelected = "paywall_plan_selected"
         case purchaseStarted = "purchase_started"

@@ -19,6 +19,11 @@ struct OnboardingFlowView: View {
         .environment(flow)
         .preferredColorScheme(flow.step.isDark ? .dark : .light)
         .sensoryFeedback(.selection, trigger: flow.step)
+        .onAppear {
+            // Later steps are tracked as she moves; the first screen is tracked here.
+            Analytics.track(.onboardingStarted)
+            Analytics.track(.onboardingStepViewed, ["step": "\(flow.step)", "step_number": 1])
+        }
     }
 
     private var transition: AnyTransition {
