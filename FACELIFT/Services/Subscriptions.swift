@@ -3,7 +3,7 @@ import Observation
 import RevenueCat
 
 /// Membership through RevenueCat: what's for sale (the current offering), buying, restoring,
-/// and whether she has the `premium` entitlement.
+/// and whether she has the `facelift_pro` entitlement.
 ///
 /// Until a RevenueCat key is filled in, nothing here talks to RevenueCat and the paywall
 /// falls back to its built-in plans.
@@ -20,7 +20,7 @@ final class Subscriptions {
     static let apiKey = ""
     #endif
     /// RevenueCat → Product catalog → Entitlements.
-    static let entitlement = "premium"
+    static let entitlement = "facelift_pro"
 
     static var isAvailable: Bool { !apiKey.isEmpty }
 
@@ -152,9 +152,9 @@ final class Subscriptions {
     /// Free trial first, then weekly, then annual (and anything else after).
     private func order(_ package: Package) -> Int {
         if package.hasFreeTrial { return -1 }
+        if package.isWeekly { return 0 }
+        if package.isYearly { return 1 }
         switch package.packageType {
-        case .weekly: return 0
-        case .annual: return 1
         case .sixMonth: return 2
         case .threeMonth: return 3
         case .monthly: return 4
@@ -166,6 +166,18 @@ final class Subscriptions {
 // MARK: - Plan wording
 
 extension Package {
+    /// Read from the product's billing period, not the package name, so a second yearly plan
+    /// (the one without the trial) still counts as yearly whatever it's called in RevenueCat.
+    var isYearly: Bool {
+        guard let period = storeProduct.subscriptionPeriod else { return false }
+        return (period.unit == .year && period.value == 1) || (period.unit == .month && period.value == 12)
+    }
+
+    var isWeekly: Bool {
+        guard let period = storeProduct.subscriptionPeriod else { return false }
+        return (period.unit == .week && period.value == 1) || (period.unit == .day && period.value == 7)
+    }
+
     /// The plan comes with a free trial (Apple's introductory offer).
     var hasFreeTrial: Bool { storeProduct.introductoryDiscount?.paymentMode == .freeTrial }
 
@@ -177,7 +189,7 @@ extension Package {
 
     /// The yearly price split into months, rounded down so it never overstates: "$4.16".
     var monthlyEquivalent: String? {
-        guard packageType == .annual else { return nil }
+        guard isYearly else { return nil }
         var perMonth = storeProduct.price / 12
         var rounded = Decimal()
         NSDecimalRound(&rounded, &perMonth, 2, .down)
@@ -191,7 +203,9 @@ extension Package {
 
     /// "Annual", "Weekly"...
     var planName: String {
-        switch packageType {
+        if isYearly { return "Annual" }
+        if isWeekly { return "Weekly" }
+        return switch packageType {
         case .annual: "Annual"
         case .sixMonth: "6 Months"
         case .threeMonth: "3 Months"

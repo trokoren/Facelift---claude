@@ -24,7 +24,7 @@ struct MembershipPlan: Identifiable {
     /// Order: free trial, weekly, annual. `showsIntro` is off on the renew screen: Apple gives
     /// the free trial only once, and a returning member has already had it.
     static func current(from packages: [Package], showsIntro: Bool = true) -> [MembershipPlan] {
-        let weekly = packages.first { $0.packageType == .weekly }
+        let weekly = packages.first { $0.isWeekly }
         let live = packages.compactMap { package -> MembershipPlan? in
             if package.hasFreeTrial {
                 guard showsIntro else { return nil }
@@ -36,7 +36,7 @@ struct MembershipPlan: Identifiable {
                     package: package
                 )
             }
-            if package.packageType == .annual {
+            if package.isYearly {
                 return MembershipPlan(
                     name: package.planName,
                     price: package.monthlyEquivalent.map { "\($0)/month" } ?? package.priceLine,
