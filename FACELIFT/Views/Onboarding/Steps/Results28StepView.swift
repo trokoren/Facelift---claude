@@ -28,10 +28,10 @@ struct Results28StepView: View {
                     .padding(.top, 4)
             }
             .frame(maxWidth: .infinity)
-            .padding(.top, 8)
+            .padding(.top, 0)
 
             OnboardingCTA(title: "Next") { flow.next() }
-                .padding(.top, 16)
+                .padding(.top, 30)
                 .padding(.bottom, 10)
         }
         .onAppear {
