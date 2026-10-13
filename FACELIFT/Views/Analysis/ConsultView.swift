@@ -171,18 +171,6 @@ struct ConsultView: View {
                     .tracking(2.3)
                     .foregroundStyle(Palette.rose)
                 Spacer()
-                if !scan.measures.isEmpty {
-                    Button { showsMeasurements = true } label: {
-                        HStack(spacing: 4) {
-                            Text("See my scores")
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 10, weight: .regular))
-                        }
-                        .font(FLFont.sans(11.4))
-                        .foregroundStyle(Palette.rose)
-                    }
-                    .buttonStyle(PressableStyle())
-                }
             }
             HStack(alignment: .bottom, spacing: 9) {
                 Text("\(scan.overallScore)")
@@ -205,6 +193,13 @@ struct ConsultView: View {
                 .foregroundStyle(Palette.body)
                 .lineSpacing(5)
                 .padding(.top, 10)
+            if !scan.measures.isEmpty {
+                Button { showsMeasurements = true } label: {
+                    ScoreStrip(measures: scan.measures)
+                }
+                .buttonStyle(CardPressStyle())
+                .padding(.top, 18)
+            }
         }
         .padding(20)
         .background(GlassCardBackground(accent: Palette.rose))
@@ -449,6 +444,87 @@ private struct ConcernSheet: View {
 }
 
 /// Every measurement from this scan, for anyone who wants the numbers.
+/// A teaser of her scores on the Skin Score card: one bar per measure (no numbers, so opening
+/// the sheet still feels like a reveal), her lowest area in full rose, and "See all 7 scores".
+private struct ScoreStrip: View {
+    let measures: [String: Int]
+    @State private var isRevealed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let barHeight: CGFloat = 38
+
+    private var keys: [String] { Measure.order.filter { measures[$0] != nil } }
+    private var lowest: String? { keys.min { (measures[$0] ?? 0) < (measures[$1] ?? 0) } }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Rectangle()
+                .fill(Palette.rose.opacity(0.14))
+                .frame(height: 1)
+
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(keys, id: \.self) { key in
+                    let isLowest = key == lowest
+                    VStack(spacing: 7) {
+                        ZStack(alignment: .bottom) {
+                            Capsule()
+                                .fill(Palette.track)
+                            Capsule()
+                                .fill(isLowest ? Palette.rose : Palette.rose.opacity(0.38))
+                                .frame(height: isRevealed ? barHeight * fill(key) : 4)
+                        }
+                        .frame(width: 8, height: barHeight)
+                        Image(systemName: Self.icon(key))
+                            .font(.system(size: 10.5, weight: isLowest ? .semibold : .regular))
+                            .foregroundStyle(isLowest ? Palette.rose : Palette.stone)
+                            .frame(height: 13)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+
+            HStack(spacing: 6) {
+                Text("See all \(keys.count) scores")
+                    .font(FLFont.sans(14, .semibold))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(Palette.rose)
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(Palette.rose.opacity(0.09), in: Capsule())
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("See all \(keys.count) scores")
+        .accessibilityAddTraits(.isButton)
+        .onAppear {
+            if reduceMotion {
+                isRevealed = true
+            } else {
+                withAnimation(.spring(duration: 0.9, bounce: 0.2).delay(0.25)) { isRevealed = true }
+            }
+        }
+    }
+
+    private func fill(_ key: String) -> CGFloat {
+        CGFloat(min(max(measures[key] ?? 0, 6), 100)) / 100
+    }
+
+    static func icon(_ key: String) -> String {
+        switch key {
+        case "wrinkle": "water.waves"
+        case "dark_circle": "eye"
+        case "age_spot": "circle.dotted"
+        case "redness": "flame"
+        case "texture": "square.grid.3x3"
+        case "pore": "circle.grid.3x3"
+        case "moisture": "drop"
+        default: "circle"
+        }
+    }
+}
+
 private struct MeasurementsSheet: View {
     let measures: [String: Int]
     @Environment(\.dismiss) private var dismiss
