@@ -73,6 +73,8 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
 - **Lapsed membership** (`Subscriptions.isLapsed`): only when RevenueCat is live, has answered this launch, and `premium` is inactive. Scan button and opening a scan show `RenewSheet` (same RevenueCat offering as onboarding, no trial shown since she's had it). My Skin keeps her profile, latest score and last scan date; picks are replaced by the locked card and older scans are blurred. Progress update and chart are blurred behind the locked card. Account stays fully open (Restore, Sign out, Delete account). Nothing is deleted. Test with Scan Lab > "Pretend membership lapsed" (debug only).
 - **Sign in:** Sign in with Apple built, needs the Xcode capability (paid team only). Sign out and Delete account work.
 
+Launch checklist lives in the Facelift project as `claude/FACELIFT launch checklist.md`. Keep it updated as items finish, and delete it once every item is done (Trevor's request).
+
 ## Status (as of 2026-10-11)
 
 Done recently: Shop tab, Clinical to Natural skincare approach (catalog, picks, screens, consult), free-trial scan limit and paywall order, lapsed membership gate, real sign-in code, product catalog (60, verified prices), picks preview + My Skin card, placeholder data removed, accurate FAQ/membership copy, privacy manifest, paywall compliance (restore, terms, renewal wording), consent copy, skin type every scan, stricter low light.
