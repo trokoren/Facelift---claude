@@ -77,7 +77,7 @@ Done recently: Shop tab, Clinical to Natural skincare approach (catalog, picks, 
 
 Waiting on Trevor (business):
 - EIN: IRS online gave reference 101 (name match). Call 1-800-829-4933 weekdays 7am MT.
-- D-U-N-S: requested via Apple's lookup with the Highlands Ranch address (~5 business days). Then enroll Apple Developer as an organization (Ocean Park LLC).
+- D-U-N-S: D&B replied 2026-10-12 asking for the EIN to verify the business, so it is blocked on the EIN. Then enroll Apple Developer as an organization (Ocean Park LLC).
 - Sign the Operating Agreement. Open a business bank account after the EIN.
 
 Next to build (ask before starting):
