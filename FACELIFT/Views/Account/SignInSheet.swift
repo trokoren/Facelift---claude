@@ -73,7 +73,7 @@ struct SignInSheet: View {
                     if isWorking { ProgressView().tint(.white) }
                 }
 
-                Text("Your scans stay on this phone.")
+                Text("Your scans are saved to your account, so they follow you to a new phone.")
                     .font(FLFont.sans(11.5))
                     .foregroundStyle(Palette.faint)
                     .frame(maxWidth: .infinity)

@@ -77,6 +77,11 @@ struct ContentView: View {
             await store.refreshReminderPermission()
             await store.updateReminders()
         }
+        // Her scans backed up to her account: restored at launch and right after she signs in.
+        .task { await store.syncScans() }
+        .onChange(of: Account.shared.user?.id) { _, id in
+            if id != nil { Task { await store.syncScans() } }
+        }
         // Keep the weekly scan reminder 7 days after her latest scan, and the trial heads-up
         // in step with her membership.
         .onChange(of: store.scans.first?.date) { Task { await store.updateReminders() } }

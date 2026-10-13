@@ -5,9 +5,8 @@ import CryptoKit
 
 /// Her FACELIFT account: Sign in with Apple, backed by Supabase Auth.
 ///
-/// What an account does today: it gives her membership (RevenueCat) a stable owner, so it
-/// follows her to a new iPhone, and it gives the server a real person to check scans against.
-/// Her scans themselves still live only on this phone.
+/// What an account does: it gives her membership (RevenueCat) a stable owner and backs up her
+/// scans (`ScanSync`, scores and consultations only), so both follow her to a new iPhone.
 ///
 /// Needs, outside the app:
 /// - Xcode: Signing & Capabilities > + Capability > Sign in with Apple (paid developer team).
@@ -132,7 +131,8 @@ final class Account {
 
     // MARK: - Sign out and delete
 
-    /// Signs out on this phone. Her scans stay here; her membership stays with her Apple ID.
+    /// Signs out on this phone. Her scans stay here and in her account; her membership stays
+    /// with her Apple ID.
     func signOut() async {
         if let token = session?.accessToken {
             _ = try? await auth("logout", body: [:], bearer: token)
@@ -141,7 +141,8 @@ final class Account {
         await Subscriptions.shared.forget()
     }
 
-    /// Permanently deletes her account on our server, then signs out here.
+    /// Permanently deletes her account on our server (her scan backup goes with it), then signs
+    /// out here. Her scans on this phone stay until she deletes them.
     /// Returns false if the server couldn't be reached (nothing is deleted then).
     func deleteAccount() async -> Bool {
         guard let token = await accessToken(),

@@ -25,10 +25,24 @@ final class AppStore {
     /// Her onboarding answers, used to personalize every consultation.
     var profile: SkinProfile? = SkinProfile.load()
 
-    /// Her scans, newest first. Saved on this phone after every change.
+    /// Her scans, newest first. Saved on this phone after every change, then backed up to her
+    /// account when she's signed in (`ScanSync`).
     var scans: [Scan] = ScanArchive.load() ?? [] {
-        didSet { ScanArchive.save(scans) }
+        didSet {
+            ScanArchive.save(scans)
+            guard !isRestoringScans else { return }
+            let changed = scans.filter { !$0.isSample && !oldValue.contains($0) }
+            let currentIDs = Set(scans.map(\.id))
+            let removed = oldValue.filter { !$0.isSample && !currentIDs.contains($0.id) }.map(\.id)
+            guard !changed.isEmpty || !removed.isEmpty else { return }
+            Task {
+                if !changed.isEmpty { await ScanSync.upload(changed) }
+                if !removed.isEmpty { await ScanSync.delete(removed) }
+            }
+        }
     }
+    /// True while scans from her account are being merged in, so they aren't uploaded again.
+    @ObservationIgnored private var isRestoringScans = false
     /// "What I'm using", saved on this phone.
     var usedProducts: [UsedProduct] = LocalFile.load([UsedProduct].self, from: "products.json") ?? [] {
         didSet { LocalFile.save(usedProducts, to: "products.json") }
@@ -587,6 +601,24 @@ final class AppStore {
         }
     }
 
+    /// Brings her backed-up scans onto this phone and backs up any this phone has that her
+    /// account doesn't. Runs at launch and right after she signs in. Nothing happens when she's
+    /// signed out or offline; the phone's copy is never thrown away.
+    func syncScans() async {
+        guard Account.shared.isSignedIn, let remote = await ScanSync.fetch() else { return }
+        let localIDs = Set(scans.map(\.id))
+        let remoteIDs = Set(remote.map(\.id))
+        let missingHere = remote.filter { !localIDs.contains($0.id) }
+        if !missingHere.isEmpty {
+            isRestoringScans = true
+            let real = scans.filter { !$0.isSample }
+            scans = (real + missingHere).sorted { $0.date > $1.date }
+            isRestoringScans = false
+        }
+        let missingThere = scans.filter { !$0.isSample && !remoteIDs.contains($0.id) }
+        if !missingThere.isEmpty { await ScanSync.upload(missingThere) }
+    }
+
     func deleteScan(_ id: UUID) {
         scans.removeAll { $0.id == id }
     }
@@ -600,7 +632,7 @@ final class AppStore {
         SkinTypeRecord.clear()
     }
 
-    /// Signs out of her account. Her scans and profile stay on this phone.
+    /// Signs out of her account. Her scans and profile stay on this phone (and her scans in her account).
     func signOut() async {
         await Account.shared.signOut()
         mySkinPath = []

@@ -170,7 +170,7 @@ struct AccountView: View {
             Button("Sign out", role: .destructive) { Task { await store.signOut() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Your scans stay on this phone. Sign back in any time to reconnect your membership.")
+            Text("Your scans stay on this phone and in your account. Sign back in any time to reconnect.")
         }
         .confirmationDialog("Delete your account?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete account", role: .destructive) {
@@ -183,7 +183,7 @@ struct AccountView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently deletes your FACELIFT account. Your scans on this phone are not affected. Deleting your account does not cancel your membership; manage that in Settings > Apple ID > Subscriptions.")
+            Text("This permanently deletes your FACELIFT account and the scans saved to it. Your scans on this phone are not affected. Deleting your account does not cancel your membership; manage that in Settings > Apple ID > Subscriptions.")
         }
         .alert("We couldn't delete your account", isPresented: $deleteFailed) {
             Button("OK", role: .cancel) {}

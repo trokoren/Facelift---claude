@@ -18,7 +18,7 @@ struct PrivacyDataView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     point("We never store or sell your photo. Our skin-analysis partners read it, then must delete it within 30 days.")
                     point("The 3D map of your face that guides the scan never leaves your phone.")
-                    point("Your answers, scores and consultations are saved only on this phone, so you can see your progress.")
+                    point("Your answers are saved only on this phone. Your scores and consultations are saved on this phone and, when you're signed in, to your account so they follow you to a new phone.")
                     point("We never sell your data. Your skin is your business.")
                 }
                 .padding(20)
@@ -84,7 +84,7 @@ struct PrivacyDataView: View {
             SafariSheet(url: url)
                 .ignoresSafeArea()
         }
-        .confirmationDialog("Delete all your scans? This removes every scan and your progress on this phone. It can't be undone.", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+        .confirmationDialog("Delete all your scans? This removes every scan and your progress, on this phone and in your account. It can't be undone.", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete all scans", role: .destructive) {
                 withAnimation { store.deleteHistory() }
             }
