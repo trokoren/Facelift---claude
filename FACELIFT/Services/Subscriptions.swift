@@ -5,15 +5,20 @@ import RevenueCat
 /// Membership through RevenueCat: what's for sale (the current offering), buying, restoring,
 /// and whether she has the `premium` entitlement.
 ///
-/// Until the RevenueCat key is filled in, nothing here talks to RevenueCat and the paywall
+/// Until a RevenueCat key is filled in, nothing here talks to RevenueCat and the paywall
 /// falls back to its built-in plans.
 @Observable
 final class Subscriptions {
     static let shared = Subscriptions()
 
-    /// RevenueCat → Project settings → API keys → the Apple key (starts with "appl_").
-    /// A public key, meant to ship inside the app.
+    /// RevenueCat → Project settings → API keys. Public keys, meant to ship inside the app.
+    /// Test builds use the Test Store key (fake purchases, no App Store needed). Release builds
+    /// need the Apple key (starts with "appl_"); the Test Store key must never ship.
+    #if DEBUG
+    static let apiKey = "test_bsbaFTmTnPEmpTxQfEcMBQGuieW"
+    #else
     static let apiKey = ""
+    #endif
     /// RevenueCat → Product catalog → Entitlements.
     static let entitlement = "premium"
 
