@@ -278,6 +278,12 @@ struct SPFStepView: View {
 
 struct RoutineStepView: View {
     @Environment(OnboardingStore.self) private var flow
+    @Environment(AppStore.self) private var store
+    /// Optional: pick the exact products she uses, so What I'm using starts with photos and links
+    /// and her first picks skip what she already owns.
+    @State private var isAddingProducts = false
+    @State private var manualName: String?
+    @State private var isEditingProducts = false
     private let options: [String] = [
         "Cleanser", "Moisturizer", "Serum", "Eye Cream", "Toner", "Face Oil",
         "Retinol", "Exfoliant", "Vitamin C", "Face Mask", "Spot Treatment", "Other"
@@ -294,11 +300,45 @@ struct RoutineStepView: View {
                 }
             }
             .padding(.top, 28)
+
+            Button { isAddingProducts = true } label: {
+                HStack(spacing: 6) {
+                    Text(store.usedProducts.isEmpty ? "Know the exact products?" : productCountText)
+                        .foregroundStyle(Palette.stone)
+                    Text(store.usedProducts.isEmpty ? "Add them" : "Add more")
+                        .foregroundStyle(Palette.rose)
+                        .underline()
+                }
+                .font(FLFont.sans(14))
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 16)
         } footer: {
             OnboardingCTA(title: "Continue") { flow.next() }
                 .padding(.top, 8)
                 .padding(.bottom, 10)
         }
+        .sheet(isPresented: $isAddingProducts, onDismiss: {
+            if manualName != nil { isEditingProducts = true }
+        }) {
+            AddProductSheet { name in manualName = name }
+                .presentationDetents([.large])
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isEditingProducts, onDismiss: { manualName = nil }) {
+            EditProductsSheet(startingName: manualName)
+                .presentationDetents([.large])
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var productCountText: String {
+        store.usedProducts.count == 1 ? "1 product added." : "\(store.usedProducts.count) products added."
     }
 }
 

@@ -358,7 +358,7 @@ enum ChartRange: String, CaseIterable {
 
 /// Full-height editor: one card per product (brand, name, price, link), delete with X,
 /// dashed "+ Add Product", and Save / Done to keep changes. Swiping down discards them.
-private struct EditProductsSheet: View {
+struct EditProductsSheet: View {
     /// From "Add it yourself": starts a new product with what she searched for.
     var startingName: String? = nil
 
