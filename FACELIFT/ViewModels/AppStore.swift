@@ -8,7 +8,13 @@ final class AppStore {
     private static let onboardingKey = "facelift.hasCompletedOnboarding"
 
     var hasCompletedOnboarding: Bool = UserDefaults.standard.bool(forKey: AppStore.onboardingKey)
-    var selectedTab: AppTab = .scan
+    var selectedTab: AppTab = .scan {
+        didSet {
+            if selectedTab != oldValue, hasCompletedOnboarding {
+                Analytics.track(.tabViewed, ["tab": "\(selectedTab)"])
+            }
+        }
+    }
     var mySkinPath: [MySkinRoute] = []
     var accountPath: [AccountRoute] = []
     var isScanning: Bool = false
@@ -287,6 +293,7 @@ final class AppStore {
             return "Let's take a quick scan so we can read your skin."
         }
         let mode = ScanLab.shared.mode
+        Analytics.track(.scanStarted, ["scan_number": scans.filter { !$0.isSample }.count + 1])
         var context = consultContext
         // Her city and weather get named only in her first consultation, never again.
         let consultsKey = "facelift.consultCount"
@@ -662,6 +669,7 @@ final class AppStore {
             mySkinPath = []
         }
         selectedTab = signIn ? .scan : .mySkin
+        Analytics.track(.onboardingCompleted, ["signed_in": signIn])
         withAnimation(.easeInOut(duration: 0.5)) {
             hasCompletedOnboarding = true
         }

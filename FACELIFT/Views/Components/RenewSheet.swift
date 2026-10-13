@@ -52,6 +52,7 @@ struct RenewSheet: View {
                         ForEach(plans) { plan in
                             MembershipPlanRow(plan: plan, isSelected: selectedPlan == plan.id) {
                                 selectedPlan = plan.id
+                                Analytics.track(.paywallPlanSelected, ["plan": plan.name, "source": "renew"])
                             }
                         }
                     }
@@ -149,7 +150,7 @@ struct RenewSheet: View {
         }
         isPurchasing = true
         Task {
-            let outcome = await subscriptions.purchase(package)
+            let outcome = await subscriptions.purchase(package, source: "renew")
             isPurchasing = false
             switch outcome {
             case .purchased: dismiss()

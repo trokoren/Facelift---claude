@@ -111,15 +111,33 @@ final class Subscriptions {
         case failed(String)
     }
 
-    func purchase(_ package: Package) async -> Outcome {
+    /// `source`: "onboarding" or "renew", so the paywall reports can tell them apart.
+    func purchase(_ package: Package, source: String) async -> Outcome {
+        let details: Analytics.Properties = [
+            "product_id": package.storeProduct.productIdentifier,
+            "plan": package.hasFreeTrial ? "trial" : package.planName.lowercased(),
+            "free_trial": package.hasFreeTrial,
+            "price": (package.storeProduct.price as NSDecimalNumber).doubleValue,
+            "source": source,
+        ]
+        Analytics.track(.purchaseStarted, details)
         do {
             let result = try await Purchases.shared.purchase(package: package)
-            if result.userCancelled { return .cancelled }
+            if result.userCancelled {
+                Analytics.track(.purchaseCancelled, details)
+                return .cancelled
+            }
             apply(result.customerInfo)
-            Analytics.track(.purchaseCompleted, ["product_id": package.storeProduct.productIdentifier, "free_trial": package.hasFreeTrial])
+            Analytics.track(.purchaseCompleted, details)
             return isPremium ? .purchased : .failed("Your purchase went through, but we couldn't confirm it yet. Try Restore Purchases in a moment.")
         } catch {
-            if (error as NSError).code == ErrorCode.purchaseCancelledError.rawValue { return .cancelled }
+            if (error as NSError).code == ErrorCode.purchaseCancelledError.rawValue {
+                Analytics.track(.purchaseCancelled, details)
+                return .cancelled
+            }
+            var failed = details
+            failed["error_code"] = (error as NSError).code
+            Analytics.track(.purchaseFailed, failed)
             return .failed("The purchase didn't go through. Please try again.")
         }
     }

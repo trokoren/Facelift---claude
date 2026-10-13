@@ -103,6 +103,7 @@ struct PaywallStepView: View {
             await subscriptions.refresh()
             selectDefaultPlan()
         }
+        .onAppear { Analytics.track(.paywallViewed, ["source": "onboarding"]) }
         .onChange(of: subscriptions.packages.count) { _, _ in selectDefaultPlan() }
         .alert("Membership", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
             Button("OK", role: .cancel) {}
@@ -136,7 +137,7 @@ struct PaywallStepView: View {
         }
         isPurchasing = true
         Task {
-            let outcome = await subscriptions.purchase(package)
+            let outcome = await subscriptions.purchase(package, source: "onboarding")
             isPurchasing = false
             switch outcome {
             case .purchased: beginMembership()
@@ -191,6 +192,7 @@ struct PaywallStepView: View {
     private func planRow(_ plan: Plan) -> some View {
         MembershipPlanRow(plan: plan, isSelected: flow.answers.selectedPlan == plan.id) {
             flow.answers.selectedPlan = plan.id
+            Analytics.track(.paywallPlanSelected, ["plan": plan.name, "source": "onboarding"])
         }
     }
 }
