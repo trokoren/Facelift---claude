@@ -10,6 +10,7 @@ struct ProgressScreen: View {
     @State private var isAddingProduct = false
     /// Set when she taps "Add it yourself": opens the manual form with this name filled in.
     @State private var manualName: String?
+    @State private var isAddingManually = false
     @State private var range: ChartRange = .recent
     /// The product we're asking about this visit (kept steady while she answers).
     @State private var checkInProduct: UsedProduct?
@@ -59,15 +60,21 @@ struct ProgressScreen: View {
         // Catches up if a review was due but couldn't be written last time.
         .task { if !store.isLapsed { await store.refreshProgressReviewIfDue() } }
         .sheet(isPresented: $isAddingProduct, onDismiss: {
-            if manualName != nil { isEditingProducts = true }
+            if manualName != nil { isAddingManually = true }
         }) {
             AddProductSheet { name in manualName = name }
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $isEditingProducts, onDismiss: { manualName = nil }) {
-            EditProductsSheet(startingName: manualName)
+        .sheet(isPresented: $isAddingManually, onDismiss: { manualName = nil }) {
+            ManualProductSheet(startingName: manualName ?? "")
+                .presentationDetents([.large])
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isEditingProducts) {
+            EditProductsSheet()
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)
@@ -358,10 +365,7 @@ enum ChartRange: String, CaseIterable {
 
 /// Full-height editor: one card per product (brand, name, price, link), delete with X,
 /// dashed "+ Add Product", and Save / Done to keep changes. Swiping down discards them.
-struct EditProductsSheet: View {
-    /// From "Add it yourself": starts a new product with what she searched for.
-    var startingName: String? = nil
-
+private struct EditProductsSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var drafts: [ProductDraft] = []
@@ -420,11 +424,6 @@ struct EditProductsSheet: View {
         .background(Palette.canvas.ignoresSafeArea())
         .onAppear {
             drafts = store.usedProducts.map(ProductDraft.init)
-            if let startingName {
-                var draft = ProductDraft()
-                draft.name = startingName
-                drafts.append(draft)
-            }
         }
     }
 
@@ -445,7 +444,7 @@ struct EditProductsSheet: View {
     }
 }
 
-private struct ProductDraftCard: View {
+struct ProductDraftCard: View {
     @Binding var draft: ProductDraft
     let onDelete: () -> Void
 

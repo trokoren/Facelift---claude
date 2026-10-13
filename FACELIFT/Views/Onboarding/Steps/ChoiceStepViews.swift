@@ -283,7 +283,7 @@ struct RoutineStepView: View {
     /// and her first picks skip what she already owns.
     @State private var isAddingProducts = false
     @State private var manualName: String?
-    @State private var isEditingProducts = false
+    @State private var isAddingManually = false
     private let options: [String] = [
         "Cleanser", "Moisturizer", "Serum", "Eye Cream", "Toner", "Face Oil",
         "Retinol", "Exfoliant", "Vitamin C", "Face Mask", "Spot Treatment", "Other"
@@ -322,15 +322,15 @@ struct RoutineStepView: View {
                 .padding(.bottom, 10)
         }
         .sheet(isPresented: $isAddingProducts, onDismiss: {
-            if manualName != nil { isEditingProducts = true }
+            if manualName != nil { isAddingManually = true }
         }) {
             AddProductSheet { name in manualName = name }
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $isEditingProducts, onDismiss: { manualName = nil }) {
-            EditProductsSheet(startingName: manualName)
+        .sheet(isPresented: $isAddingManually, onDismiss: { manualName = nil }) {
+            ManualProductSheet(startingName: manualName ?? "")
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)

@@ -166,3 +166,49 @@ extension CatalogProduct {
         )
     }
 }
+
+/// "Add it yourself": one empty product card (brand, name, price, link) and Save.
+/// Whatever she searched for starts in the name.
+struct ManualProductSheet: View {
+    let startingName: String
+
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft = ProductDraft()
+
+    private var canSave: Bool {
+        !draft.brand.trimmingCharacters(in: .whitespaces).isEmpty
+            || !draft.name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Add your product")
+                .font(FLFont.serif(28))
+                .foregroundStyle(Palette.ink)
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+
+            ScrollView {
+                ProductDraftCard(draft: $draft) { dismiss() }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+                    .padding(.bottom, 16)
+            }
+            .scrollDismissesKeyboard(.interactively)
+
+            OnboardingCTA(title: "Save") {
+                let existing = store.usedProducts.map(ProductDraft.init)
+                withAnimation(.snappy) { store.saveUsedProducts([draft] + existing) }
+                dismiss()
+            }
+            .disabled(!canSave)
+            .opacity(canSave ? 1 : 0.5)
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+        }
+        .background(Palette.canvas.ignoresSafeArea())
+        .onAppear { if draft.name.isEmpty { draft.name = startingName } }
+    }
+}
