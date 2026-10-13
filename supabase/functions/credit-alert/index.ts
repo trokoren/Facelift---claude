@@ -3,7 +3,8 @@
 // Runs once a day from pg_cron (see migration 20261012_credit_alerts.sql). Checks the YouCam
 // credit balance and emails trevor@faceliftai.app when it is running low, at most once every
 // 12 hours. Send {"test": true} to get a test email with the current balance (at most one
-// test every 10 minutes).
+// test every 10 minutes). analyze-skin sends {"failure": true} when YouCam fails on a scan;
+// if credits are nearly gone that sends an "out of credits" email at once (at most hourly).
 //
 // Secrets (set in Supabase, never in the app or repo):
 //   PERFECT_CORP_API_KEY, RESEND_API_KEY
@@ -72,11 +73,16 @@ Deno.serve(async (req) => {
   if (!youcamKey || !resendKey) return json({ error: "missing secrets", youcam: !!youcamKey, resend: !!resendKey }, 500);
 
   let test = false;
-  try { test = (await req.json())?.test === true; } catch { /* no body: the daily check */ }
+  let failure = false;
+  try {
+    const body = await req.json();
+    test = body?.test === true;
+    failure = body?.failure === true;
+  } catch { /* no body: the daily check */ }
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const kind = test ? "test" : "credits_low";
-  const quiet = test ? 10 * 60 * 1000 : 12 * 60 * 60 * 1000;
+  const kind = test ? "test" : failure ? "scans_failing" : "credits_low";
+  const quiet = test ? 10 * 60 * 1000 : failure ? 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
   const { data: last } = await db.from("ops_alerts").select("sent_at").eq("kind", kind)
     .order("sent_at", { ascending: false }).limit(1).maybeSingle();
   const recentlySent = last && Date.now() - new Date(last.sent_at).getTime() < quiet;
@@ -96,6 +102,20 @@ Deno.serve(async (req) => {
   if (test) {
     if (recentlySent) return json({ sent: false, reason: "a test was sent in the last 10 minutes", balance });
     await sendEmail(resendKey, "FACELIFT alerts are working", `${summary}\n\nYou'll get an email here when credits drop below ${LOW} (about ${LOW / CREDITS_PER_SCAN} scans).`);
+    await db.from("ops_alerts").insert({ kind, detail: summary });
+    return json({ sent: true, balance });
+  }
+
+  if (failure) {
+    // Only an emergency when credits are really gone; other YouCam hiccups are just logged.
+    const out = balance !== null && balance < CREDITS_PER_SCAN * 2;
+    if (!out) return json({ sent: false, balance });
+    if (recentlySent) return json({ sent: false, reason: "already alerted in the last hour", balance });
+    await sendEmail(
+      resendKey,
+      "FACELIFT: scans are failing, YouCam is out of credits",
+      `${summary}\n\nA scan just failed because there aren't enough credits. Members are seeing "Please try again in a moment." Top up at Perfect Corp now.`,
+    );
     await db.from("ops_alerts").insert({ kind, detail: summary });
     return json({ sent: true, balance });
   }

@@ -283,6 +283,14 @@ Deno.serve(async (req) => {
     if (error instanceof FaceError) {
       return json({ error: friendlyError(error.message) ?? "Please scan again in bright, even light." }, 422);
     }
+    // Not her photo: ask credit-alert to check whether YouCam is out of credits and, if so,
+    // email Trevor right away. Runs after we answer her, so it never slows the reply.
+    const alert = fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/credit-alert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: req.headers.get("Authorization") ?? "" },
+      body: JSON.stringify({ failure: true }),
+    }).catch((e) => console.error("credit-alert call failed:", String(e)));
+    (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(alert);
     return json({ error: "We couldn't finish reading your scan. Please try again in a moment." }, 502);
   }
   console.log("skin type", JSON.stringify(measured.skinType));
