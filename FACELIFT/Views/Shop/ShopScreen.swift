@@ -13,6 +13,9 @@ struct ShopScreen: View {
     @State private var selected: CatalogProduct?
     /// The Clinical / Natural filter starts on her setting once, then stays where she puts it.
     @State private var hasSetDefault = false
+    @State private var query = ""
+
+    private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     /// The Clinical / Natural filter. Nil shows both.
     enum Side: String, CaseIterable {
@@ -30,32 +33,41 @@ struct ShopScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 BrandHeader(subtitle: "Shop.")
 
-                filters
-                    .padding(.top, 20)
+                SearchField(text: $query, prompt: "Search brands, products, ingredients")
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
 
-                ForEach(sections, id: \.key) { section in
-                    outcomeRow(section)
-                        .padding(.top, 28)
-                }
+                if isSearching {
+                    searchResults
+                        .padding(.top, 12)
+                } else {
+                    filters
+                        .padding(.top, 14)
 
-                if sections.isEmpty {
-                    Text("Nothing matches these filters yet. Try All.")
-                        .font(FLFont.sans(13))
-                        .foregroundStyle(Palette.stone)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 28)
-                }
+                    ForEach(sections, id: \.key) { section in
+                        outcomeRow(section)
+                            .padding(.top, 28)
+                    }
 
-                ForEach([FeaturedPicksRow.Kind.dermatologist, .natural], id: \.key) { kind in
-                    let picks = featured(kind)
-                    if !picks.isEmpty {
-                        FeaturedPicksRow(
-                            kind: kind, products: picks,
-                            onSelect: { selected = $0 },
-                            onShop: { product in open(product.url.flatMap(URL.init(string:)), name: product.fullName) },
-                            onSource: { openURL($0) }
-                        )
-                        .padding(.top, 36)
+                    if sections.isEmpty {
+                        Text("Nothing matches these filters yet. Try All.")
+                            .font(FLFont.sans(13))
+                            .foregroundStyle(Palette.stone)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 28)
+                    }
+
+                    ForEach([FeaturedPicksRow.Kind.dermatologist, .natural], id: \.key) { kind in
+                        let picks = featured(kind)
+                        if !picks.isEmpty {
+                            FeaturedPicksRow(
+                                kind: kind, products: picks,
+                                onSelect: { selected = $0 },
+                                onShop: { product in open(product.url.flatMap(URL.init(string:)), name: product.fullName) },
+                                onSource: { openURL($0) }
+                            )
+                            .padding(.top, 36)
+                        }
                     }
                 }
 
@@ -71,6 +83,7 @@ struct ShopScreen: View {
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.immediately)
         .background(Palette.canvas.ignoresSafeArea())
         .sheet(item: $selected) { product in
             ProductSheet(product: product)
@@ -82,6 +95,35 @@ struct ShopScreen: View {
             side = Self.defaultSide(for: store.approach)
         }
         .onChange(of: store.approach) { _, new in side = Self.defaultSide(for: new) }
+    }
+
+    // MARK: - Search
+
+    /// While she's searching, the filters and rows step aside for one list of matches.
+    /// Search looks at every product (her Clinical / Natural and price filters don't apply),
+    /// but the same safety rules do.
+    private var searchResults: some View {
+        let safety = ProductSafety(profile: store.profile, consult: latestScan?.consult)
+        let matches = CatalogSearch.results(for: query, in: ProductCatalog.shared.products.filter { safety.allows($0) })
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(matches.isEmpty ? "No matches yet. Try a brand, or an ingredient like niacinamide."
+                                 : (matches.count == 1 ? "1 product" : "\(matches.count) products"))
+                .font(FLFont.sans(12))
+                .foregroundStyle(Palette.stone)
+                .padding(.bottom, 4)
+            ForEach(Array(matches.enumerated()), id: \.element.fullName) { offset, product in
+                if offset > 0 { Rectangle().fill(Palette.rowDivider).frame(height: 1) }
+                Button { selected = product } label: {
+                    ProductSearchRow(product: product) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(Palette.faint)
+                    }
+                }
+                .buttonStyle(PressableStyle(scale: 0.98))
+            }
+        }
+        .padding(.horizontal, 24)
     }
 
     // MARK: - Filters
