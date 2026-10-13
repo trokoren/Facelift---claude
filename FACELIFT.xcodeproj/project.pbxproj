@@ -31,6 +31,7 @@
 
 /* Begin PBXBuildFile section */
 		1A0C0DE12E9F000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000002 /* RevenueCat */; };
+		1A0C0DE12E9F000000000004 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000005 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A0C0DE12E9F000000000001 /* RevenueCat in Frameworks */,
+				1A0C0DE12E9F000000000004 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +120,7 @@
 			name = FACELIFT;
 			packageProductDependencies = (
 				1A0C0DE12E9F000000000002 /* RevenueCat */,
+				1A0C0DE12E9F000000000005 /* Sentry */,
 			);
 			productName = FACELIFT;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* FACELIFT.app */;
@@ -203,6 +206,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				1A0C0DE12E9F000000000003 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				1A0C0DE12E9F000000000006 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105FC57B2E9EAD3100EA8BCF /* Products */;
@@ -603,6 +607,14 @@
 				minimumVersion = 5.0.0;
 			};
 		};
+		1A0C0DE12E9F000000000006 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.40.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -610,6 +622,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A0C0DE12E9F000000000003 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCat;
+		};
+		1A0C0DE12E9F000000000005 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0C0DE12E9F000000000006 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

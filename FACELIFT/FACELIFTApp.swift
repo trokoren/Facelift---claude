@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct FACELIFTApp: App {
     init() {
+        CrashReporting.start()
         FontRegistrar.registerAll()
         Subscriptions.shared.configure()
     }

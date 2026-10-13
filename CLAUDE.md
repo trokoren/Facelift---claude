@@ -35,7 +35,7 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
   - `FACELIFT/Views/` by tab: `Scan`, `MySkin`, `Analysis` (results/consult), `Progress`, `Account`, `Onboarding` (25-step flow + paywall), `Components`.
   - `FACELIFT/ViewModels/AppStore.swift`: main app state (scans, products, profile, navigation).
   - `FACELIFT/Services/`: `Backend.swift` (Supabase URL + anon key), `SkinAnalysisService`, `FaceScanController` (ARKit face tracking, light check), `Subscriptions` (RevenueCat), `Account` (Sign in with Apple via Supabase Auth), `ProductCatalog` (catalog + `ProductPicker`), `ProgressReviewService`, `LocalFile`/`Keychain`/`ScanArchive` (on-device storage).
-  - Packages: RevenueCat `purchases-ios-spm`.
+  - Packages: RevenueCat `purchases-ios-spm`, Sentry `sentry-cocoa` (crash reports only, `Services/CrashReporting.swift`, org ocean-park; no screenshots, view snapshots, replays or personal details).
 - **Server:** Supabase project `mrpdyksjydzxujaniflu`. Edge functions in `supabase/functions/` (deploy with full file content, `verify_jwt` true):
   - `analyze-skin`: photo to Perfect Corp YouCam (7 measures + skin type) then Claude (`claude-sonnet-5`) writes the consult. Retries the consult once; if it still fails, returns scores only.
   - `progress-review`: numbers only, writes a short progress review on cadence (first, every 5 scans, meaningful change, monthly).
@@ -95,7 +95,7 @@ Next to build (ask before starting):
 7. Server push notifications (scheduled scan and trial reminders already run on the phone), sent directly through Apple (APNs) from Supabase, no OneSignal (decided 2026-10-12: free, no user cap, fully in our code). Start with a weekly scan reminder and a trial-ending heads-up; ask permission at a natural moment, not on first launch. Needs the paid Ocean Park team (Push capability + an APNs key stored as a Supabase secret).
 8. YouCam credit alerts by email through Resend (Loops dropped 2026-10-12, since every email lives in code that Claude controls). Needs `RESEND_API_KEY` in Supabase secrets, the verified faceliftai.app domain, a from address (e.g. alerts@faceliftai.app) and the address alerts go to. Daily balance check plus an instant alert when a scan fails for credits; balance endpoint `GET /s2s/v1.0/client/credit` (log the response shape first).
 
-Analytics (decided 2026-10-13): Mixpanel for analytics, screen tests and session replay (Trevor finds its reports easier than PostHog's); Sentry for crash reports; RevenueCat Experiments for paywall and price tests. Session replay must fully mask the camera, scan and health-answer screens. Needs the Mixpanel project token and Sentry DSN (both public, fine in the app).
+Analytics (decided 2026-10-13): Mixpanel for analytics, screen tests and session replay (Trevor finds its reports easier than PostHog's); Sentry for crash reports; RevenueCat Experiments for paywall and price tests. Session replay must fully mask the camera, scan and health-answer screens. Sentry is wired in (DSN in `CrashReporting.swift`). Mixpanel still needs its project token.
 
 Parked (Trevor, 2026-10-12): a Monday "CEO Scorecard" email through Resend (scans, failures, YouCam spend, what shipped, what's next). Plan if revived: anonymous `scan_events` table written by analyze-skin, daily `credit_snapshots` from credit-alert, an `ops_outbox` table that send-report emails, and a weekly scheduled task that writes the report.
 
