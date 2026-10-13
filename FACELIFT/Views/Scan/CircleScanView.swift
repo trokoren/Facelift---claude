@@ -1,4 +1,5 @@
 import SwiftUI
+import MixpanelSessionReplay
 import ARKit
 import SceneKit
 
@@ -182,7 +183,10 @@ struct CircleScanView: View {
             flash = 0.35
             withAnimation(.easeOut(duration: 0.4)) { flash = 0 }
         }
+        // Nothing is recorded while the camera is open.
+        .mpReplaySensitive(true)
         .onAppear {
+            Analytics.pauseReplay()
             scan.onFinish = { images in
                 Task { @MainActor in
                     onCaptured?(images)
@@ -192,7 +196,10 @@ struct CircleScanView: View {
             }
             if !needsConsent { scan.start() }
         }
-        .onDisappear { scan.stop() }
+        .onDisappear {
+            scan.stop()
+            Analytics.resumeReplay()
+        }
         .onChange(of: scan.phase) { _, phase in
             guard phase == .circling else { return }
             Task {

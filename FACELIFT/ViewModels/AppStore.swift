@@ -58,6 +58,7 @@ final class AppStore {
     var remindersOn: Bool = UserDefaults.standard.object(forKey: "facelift.remindersOn") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(remindersOn, forKey: "facelift.remindersOn")
+            if remindersOn != oldValue { Analytics.track(.remindersToggled, ["on": remindersOn]) }
             Task { await updateReminders() }
         }
     }
@@ -302,8 +303,16 @@ final class AppStore {
         do {
             report = try await SkinAnalysisService.analyze(photo, mode: mode, context: context)
         } catch {
+            let message = (error as? SkinAnalysisError)?.message ?? ""
+            let reason = message.hasPrefix(SkinAnalysisError.offline.message) ? "offline"
+                : message == SkinAnalysisError.unavailable.message ? "server" : "photo"
+            Analytics.track(.scanFailed, ["reason": reason])
             return (error as? SkinAnalysisError)?.message ?? SkinAnalysisError.generic(String(describing: error)).message
         }
+        Analytics.track(.scanCompleted, [
+            "has_consult": report.consult != nil,
+            "scan_number": scans.filter { !$0.isSample }.count + 1,
+        ])
         ScanLab.shared.record(report, mode: mode)
         ScanAllowance.recordScan()
         if let consult = report.consult {
@@ -406,6 +415,7 @@ final class AppStore {
     }
 
     func recordShop(_ product: Recommendation.Product, scanID: UUID) {
+        Analytics.track(.productShopTapped, ["product": product.name, "price": product.price, "tier": product.tier, "source": "picks"])
         if let index = scans.firstIndex(where: { $0.id == scanID }) {
             scans[index].productsShopped += 1
         }
@@ -442,7 +452,9 @@ final class AppStore {
 
     /// "I have this" and "In your routine" are one button: tapping adds, tapping again removes.
     func toggleRoutine(_ product: Recommendation.Product) {
-        if isInRoutine(product) { removeFromRoutine(product) } else { addToRoutine(product) }
+        let removing = isInRoutine(product)
+        Analytics.track(removing ? .productRemovedFromRoutine : .productAddedToRoutine, ["product": product.name, "tier": product.tier])
+        if removing { removeFromRoutine(product) } else { addToRoutine(product) }
     }
 
     /// Replaces "What I'm using" with the edited list from the editor sheet. Blank rows are dropped.
@@ -599,6 +611,7 @@ final class AppStore {
     func setApproach(_ approach: SkincareApproach) {
         var updated = profile ?? SkinProfile(OnboardingAnswers())
         guard updated.approach != approach else { return }
+        Analytics.track(.approachChanged, ["approach": approach.title])
         updated.approach = approach
         updated.save()
         profile = updated

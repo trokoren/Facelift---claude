@@ -113,7 +113,10 @@ struct RenewSheet: View {
             await subscriptions.refresh()
             selectDefaultPlan()
         }
-        .onAppear { selectDefaultPlan() }
+        .onAppear {
+            selectDefaultPlan()
+            Analytics.track(.paywallViewed, ["source": "renew"])
+        }
         .onChange(of: subscriptions.packages.count) { _, _ in selectDefaultPlan() }
         .alert("Membership", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
             Button("OK", role: .cancel) {}

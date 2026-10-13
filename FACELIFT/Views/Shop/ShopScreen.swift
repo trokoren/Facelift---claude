@@ -263,6 +263,7 @@ struct ShopScreen: View {
     }
 
     private func open(_ url: URL?, name: String) {
+        Analytics.track(.productShopTapped, ["product": name, "source": "shop"])
         if let url = url ?? ShopLink.url(for: name) { openURL(url) }
     }
 }

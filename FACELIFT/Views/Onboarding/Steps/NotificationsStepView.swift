@@ -65,6 +65,7 @@ struct NotificationsStepView: View {
                     Task { await request() }
                 }
                 Button {
+                    Analytics.track(.notificationsSkipped)
                     flow.next()
                 } label: {
                     Text(isDenied ? "Continue without reminders" : "Not now")
@@ -167,6 +168,11 @@ struct NotificationsStepView: View {
             isRequesting = true
             let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
             flow.answers.notificationsRequested = granted
+            Analytics.track(.notificationsAnswered, [
+                "allowed": granted,
+                "reminder_day": ReminderTime.days.first { $0.value == weekday }?.label ?? "",
+                "reminder_time": hour < 12 ? "morning" : "evening",
+            ])
             isRequesting = false
             flow.next()
         case .denied:

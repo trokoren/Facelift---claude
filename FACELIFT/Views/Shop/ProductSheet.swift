@@ -89,6 +89,9 @@ struct ProductSheet: View {
         .presentationCornerRadius(32)
         .sensoryFeedback(.success, trigger: addedCount)
         .task { await nudgeOnce() }
+        .onAppear {
+            Analytics.track(.productViewed, ["product": product.fullName, "price": product.price, "tier": product.tier, "approach": product.approach ?? "clinical"])
+        }
     }
 
     private func nudgeOnce() async {
@@ -230,6 +233,7 @@ struct ProductSheet: View {
             .accessibilityHint(owned ? "Removes it from What I'm using" : "Adds it to What I'm using")
 
             Button {
+                Analytics.track(.productShopTapped, ["product": product.fullName, "price": product.price, "tier": product.tier, "source": "product_sheet"])
                 if let url = product.url.flatMap(URL.init(string:)) ?? ShopLink.url(for: product.fullName) {
                     openURL(url)
                 }

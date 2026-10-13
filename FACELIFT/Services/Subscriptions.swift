@@ -111,6 +111,7 @@ final class Subscriptions {
             let result = try await Purchases.shared.purchase(package: package)
             if result.userCancelled { return .cancelled }
             apply(result.customerInfo)
+            Analytics.track(.purchaseCompleted, ["product_id": package.storeProduct.productIdentifier, "free_trial": package.hasFreeTrial])
             return isPremium ? .purchased : .failed("Your purchase went through, but we couldn't confirm it yet. Try Restore Purchases in a moment.")
         } catch {
             if (error as NSError).code == ErrorCode.purchaseCancelledError.rawValue { return .cancelled }
@@ -120,6 +121,7 @@ final class Subscriptions {
 
     /// Ties her membership to her FACELIFT account, so it follows her to a new phone.
     func identify(_ accountID: String) async {
+        Analytics.identify(accountID)
         guard Purchases.isConfigured,
               let result = try? await Purchases.shared.logIn(accountID) else { return }
         apply(result.customerInfo)
@@ -127,6 +129,7 @@ final class Subscriptions {
 
     /// After sign out or account deletion: back to an anonymous buyer on this phone.
     func forget() async {
+        Analytics.reset()
         guard Purchases.isConfigured, !Purchases.shared.isAnonymous,
               let info = try? await Purchases.shared.logOut() else { return }
         apply(info)
@@ -137,6 +140,7 @@ final class Subscriptions {
         guard Purchases.isConfigured,
               let info = try? await Purchases.shared.restorePurchases() else { return false }
         apply(info)
+        if isPremium { Analytics.track(.purchaseRestored) }
         return isPremium
     }
 

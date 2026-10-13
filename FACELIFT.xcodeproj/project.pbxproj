@@ -32,6 +32,8 @@
 /* Begin PBXBuildFile section */
 		1A0C0DE12E9F000000000001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000002 /* RevenueCat */; };
 		1A0C0DE12E9F000000000004 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000005 /* Sentry */; };
+		1A0C0DE12E9F000000000007 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000008 /* Mixpanel */; };
+		1A0C0DE12E9F00000000000A /* MixpanelSessionReplay in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -59,6 +61,8 @@
 			files = (
 				1A0C0DE12E9F000000000001 /* RevenueCat in Frameworks */,
 				1A0C0DE12E9F000000000004 /* Sentry in Frameworks */,
+				1A0C0DE12E9F000000000007 /* Mixpanel in Frameworks */,
+				1A0C0DE12E9F00000000000A /* MixpanelSessionReplay in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +125,8 @@
 			packageProductDependencies = (
 				1A0C0DE12E9F000000000002 /* RevenueCat */,
 				1A0C0DE12E9F000000000005 /* Sentry */,
+				1A0C0DE12E9F000000000008 /* Mixpanel */,
+				1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */,
 			);
 			productName = FACELIFT;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* FACELIFT.app */;
@@ -207,6 +213,8 @@
 			packageReferences = (
 				1A0C0DE12E9F000000000003 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 				1A0C0DE12E9F000000000006 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+				1A0C0DE12E9F000000000009 /* XCRemoteSwiftPackageReference "mixpanel-swift" */,
+				1A0C0DE12E9F00000000000C /* XCRemoteSwiftPackageReference "mixpanel-ios-session-replay-package" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105FC57B2E9EAD3100EA8BCF /* Products */;
@@ -615,6 +623,22 @@
 				minimumVersion = 8.40.0;
 			};
 		};
+		1A0C0DE12E9F000000000009 /* XCRemoteSwiftPackageReference "mixpanel-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mixpanel/mixpanel-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
+		1A0C0DE12E9F00000000000C /* XCRemoteSwiftPackageReference "mixpanel-ios-session-replay-package" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mixpanel/mixpanel-ios-session-replay-package";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -627,6 +651,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A0C0DE12E9F000000000006 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
+		};
+		1A0C0DE12E9F000000000008 /* Mixpanel */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0C0DE12E9F000000000009 /* XCRemoteSwiftPackageReference "mixpanel-swift" */;
+			productName = Mixpanel;
+		};
+		1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0C0DE12E9F00000000000C /* XCRemoteSwiftPackageReference "mixpanel-ios-session-replay-package" */;
+			productName = MixpanelSessionReplay;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

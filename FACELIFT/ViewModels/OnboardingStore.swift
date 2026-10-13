@@ -9,7 +9,12 @@ final class OnboardingStore {
         case backward
     }
 
-    private(set) var index: Int = 0
+    private(set) var index: Int = 0 {
+        didSet {
+            guard index != oldValue else { return }
+            Analytics.track(.onboardingStepViewed, ["step": "\(step)", "step_number": index + 1])
+        }
+    }
     private(set) var direction: Direction = .forward
     var answers = OnboardingAnswers()
 

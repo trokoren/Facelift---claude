@@ -11,6 +11,7 @@ import SwiftUI
 struct FACELIFTApp: App {
     init() {
         CrashReporting.start()
+        Analytics.start()
         FontRegistrar.registerAll()
         Subscriptions.shared.configure()
     }
