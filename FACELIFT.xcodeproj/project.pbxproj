@@ -435,7 +435,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_NSCameraUsageDescription = "FACELIFT uses your front camera to read your skin during a scan.";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This lets us see which ads bring people to FACELIFT. Your photos and skin results are never shared.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Your data will be used to create your personalized skin experience.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -471,7 +471,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_NSCameraUsageDescription = "FACELIFT uses your front camera to read your skin during a scan.";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This lets us see which ads bring people to FACELIFT. Your photos and skin results are never shared.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Your data will be used to create your personalized skin experience.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
