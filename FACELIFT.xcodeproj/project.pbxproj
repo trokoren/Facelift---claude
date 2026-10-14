@@ -34,6 +34,7 @@
 		1A0C0DE12E9F000000000004 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000005 /* Sentry */; };
 		1A0C0DE12E9F000000000007 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000008 /* Mixpanel */; };
 		1A0C0DE12E9F00000000000A /* MixpanelSessionReplay in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */; };
+		1A0C0DE12E9F00000000000D /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F00000000000E /* RevenueCatUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -63,6 +64,7 @@
 				1A0C0DE12E9F000000000004 /* Sentry in Frameworks */,
 				1A0C0DE12E9F000000000007 /* Mixpanel in Frameworks */,
 				1A0C0DE12E9F00000000000A /* MixpanelSessionReplay in Frameworks */,
+				1A0C0DE12E9F00000000000D /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +129,7 @@
 				1A0C0DE12E9F000000000005 /* Sentry */,
 				1A0C0DE12E9F000000000008 /* Mixpanel */,
 				1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */,
+				1A0C0DE12E9F00000000000E /* RevenueCatUI */,
 			);
 			productName = FACELIFT;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* FACELIFT.app */;
@@ -661,6 +664,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A0C0DE12E9F00000000000C /* XCRemoteSwiftPackageReference "mixpanel-ios-session-replay-package" */;
 			productName = MixpanelSessionReplay;
+		};
+		1A0C0DE12E9F00000000000E /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0C0DE12E9F000000000003 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,5 +1,6 @@
 import SwiftUI
 import StoreKit
+import RevenueCatUI
 
 struct AccountView: View {
     @Environment(AppStore.self) private var store
@@ -12,6 +13,8 @@ struct AccountView: View {
     @State private var isDeleting: Bool = false
     @State private var deleteFailed: Bool = false
     @State private var insight: InsightContent?
+    /// RevenueCat's Customer Center: her plan, cancel, refund requests, restore.
+    @State private var isShowingMembership: Bool = false
 
     var body: some View {
         @Bindable var store = store
@@ -53,6 +56,13 @@ struct AccountView: View {
                     .padding(.top, 22)
 
                 VStack(spacing: 0) {
+                    if Subscriptions.isAvailable {
+                        Button { isShowingMembership = true } label: {
+                            SettingsRow(title: "Membership", value: "Manage")
+                        }
+                        .buttonStyle(CardPressStyle())
+                        RowDivider()
+                    }
                     Button { isShowingGoals = true } label: {
                         SettingsRow(title: "Skin Goals", value: store.skinGoals.isEmpty ? "None" : store.skinGoals.joined(separator: ", "))
                     }
@@ -159,6 +169,11 @@ struct AccountView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $isShowingGoals) {
             SkinGoalsSheet()
+        }
+        .presentCustomerCenter(isPresented: $isShowingMembership)
+        // She may have cancelled, restored or changed plans in there.
+        .onChange(of: isShowingMembership) { _, isOpen in
+            if !isOpen { Task { await Subscriptions.shared.refresh() } }
         }
         .sheet(isPresented: $isShowingApproach) {
             ApproachSheet()
