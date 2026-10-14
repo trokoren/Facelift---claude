@@ -35,6 +35,7 @@
 		1A0C0DE12E9F000000000007 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000008 /* Mixpanel */; };
 		1A0C0DE12E9F00000000000A /* MixpanelSessionReplay in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */; };
 		1A0C0DE12E9F00000000000D /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F00000000000E /* RevenueCatUI */; };
+		1A0C0DE12E9F000000000011 /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C0DE12E9F000000000010 /* FacebookCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -65,6 +66,7 @@
 				1A0C0DE12E9F000000000007 /* Mixpanel in Frameworks */,
 				1A0C0DE12E9F00000000000A /* MixpanelSessionReplay in Frameworks */,
 				1A0C0DE12E9F00000000000D /* RevenueCatUI in Frameworks */,
+				1A0C0DE12E9F000000000011 /* FacebookCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -130,6 +132,7 @@
 				1A0C0DE12E9F000000000008 /* Mixpanel */,
 				1A0C0DE12E9F00000000000B /* MixpanelSessionReplay */,
 				1A0C0DE12E9F00000000000E /* RevenueCatUI */,
+				1A0C0DE12E9F000000000010 /* FacebookCore */,
 			);
 			productName = FACELIFT;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* FACELIFT.app */;
@@ -218,6 +221,7 @@
 				1A0C0DE12E9F000000000006 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 				1A0C0DE12E9F000000000009 /* XCRemoteSwiftPackageReference "mixpanel-swift" */,
 				1A0C0DE12E9F00000000000C /* XCRemoteSwiftPackageReference "mixpanel-ios-session-replay-package" */,
+				1A0C0DE12E9F00000000000F /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105FC57B2E9EAD3100EA8BCF /* Products */;
@@ -424,13 +428,14 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/FACELIFT-Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_NSCameraUsageDescription = "FACELIFT uses your front camera to read your skin during a scan.";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Your data will be used to create your personalized skin experience.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This lets us see which ads bring people to FACELIFT. Your photos and skin results are never shared.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -459,13 +464,14 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/FACELIFT-Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_NSCameraUsageDescription = "FACELIFT uses your front camera to read your skin during a scan.";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Your data will be used to create your personalized skin experience.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This lets us see which ads bring people to FACELIFT. Your photos and skin results are never shared.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -642,6 +648,14 @@
 				minimumVersion = 2.0.0;
 			};
 		};
+		1A0C0DE12E9F00000000000F /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 18.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -669,6 +683,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A0C0DE12E9F000000000003 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCatUI;
+		};
+		1A0C0DE12E9F000000000010 /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0C0DE12E9F00000000000F /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

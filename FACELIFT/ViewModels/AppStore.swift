@@ -702,6 +702,7 @@ final class AppStore {
         }
         selectedTab = signIn ? .scan : .mySkin
         Analytics.track(.onboardingCompleted, ["signed_in": signIn])
+        MetaAds.onboardingCompleted()
         withAnimation(.easeInOut(duration: 0.5)) {
             hasCompletedOnboarding = true
         }

@@ -9,6 +9,9 @@ import SwiftUI
 
 @main
 struct FACELIFTApp: App {
+    /// Meta's SDK starts from an app delegate (see `MetaAds`).
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         CrashReporting.start()
         Analytics.start()
