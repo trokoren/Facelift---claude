@@ -22,6 +22,7 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
 - **Never use the word "AI" in in-app copy.**
 - Server keys never go in chat or the repo, only in Supabase secrets. Public keys (Supabase anon key, RevenueCat `appl_` key, Meta App ID/Client Token) may live in the app.
 - Photos are never stored by FACELIFT.
+- **Track all work in Linear** (Trevor, 2026-10-21; full rules in the project doc "FACELIFT business context"). Starting work: its issue goes to In Progress. Finished: In Review (never Done; Trevor closes). One broad main issue per piece of work with a simple title a 16-year-old would get; detailed steps as sub-issues; the main issue stays In Progress until every sub-issue is finished. Plain-language descriptions (what, why, what done looks like) and short notes as work happens, including what couldn't be checked on a phone and what's blocked on someone. Check Linear for In Progress work at the start of a session. Needs the Linear connector.
 
 ## Brand
 
@@ -83,7 +84,7 @@ Done recently: Shop tab, Clinical to Natural skincare approach (catalog, picks, 
 
 Waiting on Trevor (business):
 - EIN: IRS online gave reference 101 (name match). Call 1-800-829-4933 weekdays 7am MT.
-- D-U-N-S: D&B replied 2026-10-12 asking for the EIN to verify the business, so it is blocked on the EIN. Then enroll Apple Developer as an organization (Ocean Park LLC).
+- D-U-N-S: rejected 2026-10-14 (address didn't match the Colorado record, which shows Northwest's 1500 N Grant St Ste N, Denver 80203; phone busy; website had no contact info). Reapply through Apple's D-U-N-S lookup with the state-record address, a phone that answers, contact info on the website, and the EIN. Then enroll Apple Developer as an organization (Ocean Park LLC). Fallback: individual account now, convert later.
 - Sign the Operating Agreement. Open a business bank account after the EIN.
 
 Next to build (ask before starting):
