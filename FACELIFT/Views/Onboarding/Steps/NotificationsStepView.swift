@@ -1,15 +1,15 @@
 import SwiftUI
 import UserNotifications
 
-/// Weekly scan reminders, kept simple: one promise, the reminder she'll get, and the day and
-/// time (Sunday morning unless she changes it). Then Apple's permission popup. "Not now"
-/// always moves on.
+/// Scan reminders, kept simple: one promise, the reminder she'll get, and the days and
+/// time (Sunday morning unless she changes it; any number of days). Then Apple's permission
+/// popup. "Not now" always moves on.
 struct NotificationsStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(\.openURL) private var openURL
     @State private var isRequesting: Bool = false
     @State private var isDenied: Bool = false
-    @State private var weekday: Int = ReminderTime.weekday
+    @State private var weekdays: Set<Int> = Set(ReminderTime.weekdays)
     @State private var hour: Int = ReminderTime.hour
 
     var body: some View {
@@ -66,7 +66,7 @@ struct NotificationsStepView: View {
                     .ignoresSafeArea()
             )
         }
-        .sensoryFeedback(.selection, trigger: weekday)
+        .sensoryFeedback(.selection, trigger: weekdays)
         .sensoryFeedback(.selection, trigger: hour)
     }
 
@@ -74,12 +74,12 @@ struct NotificationsStepView: View {
 
     private var picker: some View {
         VStack(spacing: 12) {
-            Text("Pick a day and time")
+            Text("Pick your days and time")
                 .font(FLFont.sans(14, .medium))
                 .foregroundStyle(Palette.stone)
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(ReminderTime.days, id: \.value) { day in
-                    chip(day.label, isOn: weekday == day.value) { weekday = day.value }
+                    dayChip(day.label, isOn: weekdays.contains(day.value)) { toggle(day.value) }
                 }
             }
             HStack(spacing: 8) {
@@ -89,6 +89,30 @@ struct NotificationsStepView: View {
             }
         }
         .padding(.horizontal, 24)
+    }
+
+    /// Tap to add or remove a day. At least one day always stays on.
+    private func toggle(_ day: Int) {
+        if weekdays.contains(day) {
+            if weekdays.count > 1 { weekdays.remove(day) }
+        } else {
+            weekdays.insert(day)
+        }
+    }
+
+    private func dayChip(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(FLFont.sans(13.5, isOn ? .semibold : .regular))
+                .foregroundStyle(isOn ? .white : Palette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(isOn ? Palette.rose : Palette.chip, in: Capsule())
+        }
+        .buttonStyle(PressableStyle(scale: 0.94))
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     private func chip(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
@@ -106,11 +130,11 @@ struct NotificationsStepView: View {
 
     // MARK: - Preview
 
-    /// The reminder exactly as she'll get it, at the day and time she picked.
+    /// The reminder exactly as she'll get it, on her next picked day at her time.
     private var preview: some View {
         NotificationBubble(
-            time: ReminderTime.label(weekday: weekday, hour: hour),
-            title: "Time for your weekly scan",
+            time: ReminderTime.label(weekday: ReminderTime.nextDay(of: Array(weekdays)), hour: hour),
+            title: ReminderTime.reminderTitle(dayCount: weekdays.count),
             message: "Same light, same spot. Let's see how your skin is doing this week."
         )
         .padding(14)
@@ -118,7 +142,7 @@ struct NotificationsStepView: View {
             LinearGradient(colors: [Color(hex: 0xF8E7E3), Color(hex: 0xF6EDE8)], startPoint: .top, endPoint: .bottom),
             in: RoundedRectangle(cornerRadius: 30, style: .continuous)
         )
-        .animation(.easeOut(duration: 0.2), value: weekday)
+        .animation(.easeOut(duration: 0.2), value: weekdays)
         .animation(.easeOut(duration: 0.2), value: hour)
         .accessibilityElement(children: .combine)
     }
@@ -126,7 +150,7 @@ struct NotificationsStepView: View {
     // MARK: - Permission
 
     private func request() async {
-        ReminderTime.save(weekday: weekday, hour: hour)
+        ReminderTime.save(weekdays: Array(weekdays), hour: hour)
         let center = UNUserNotificationCenter.current()
         let status = await center.notificationSettings().authorizationStatus
 
@@ -138,7 +162,8 @@ struct NotificationsStepView: View {
             flow.answers.notificationsRequested = granted
             Analytics.track(.notificationsAnswered, [
                 "allowed": granted,
-                "reminder_day": ReminderTime.days.first { $0.value == weekday }?.label ?? "",
+                "reminder_day": weekdays.sorted().map(ReminderTime.dayLabel).joined(separator: ","),
+                "reminder_day_count": weekdays.count,
                 "reminder_time": hour < 12 ? "morning" : "evening",
             ])
             isRequesting = false
