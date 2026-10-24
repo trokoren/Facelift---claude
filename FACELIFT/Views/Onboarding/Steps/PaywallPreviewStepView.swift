@@ -66,14 +66,26 @@ struct PaywallPreviewStepView: View {
                     .trim(from: 0, to: isRevealed ? 0.71 : 0)
                     .stroke(Palette.rose, style: StrokeStyle(lineWidth: 10, lineCap: .butt))
                     .rotationEffect(.degrees(-90))
-                VStack(spacing: 2) {
-                    Text("71")
-                        .font(FLFont.serif(42))
-                        .foregroundStyle(Palette.ink)
-                    Text("OUT OF 100")
-                        .font(FLFont.sans(10))
-                        .tracking(2)
-                        .foregroundStyle(Palette.stone)
+                if let photo = store.lastCaptures.first {
+                    // Her own face from the scan she just took (on the phone only, never uploaded here).
+                    Image(uiImage: photo)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 124, height: 124)
+                        .clipShape(Circle())
+                        .overlay(alignment: .bottom) {
+                            lockBadge.offset(y: 12)
+                        }
+                } else {
+                    VStack(spacing: 2) {
+                        Text("71")
+                            .font(FLFont.serif(42))
+                            .foregroundStyle(Palette.ink)
+                        Text("OUT OF 100")
+                            .font(FLFont.sans(10))
+                            .tracking(2)
+                            .foregroundStyle(Palette.stone)
+                    }
                 }
             }
             .frame(width: 156, height: 156)
@@ -110,6 +122,20 @@ struct PaywallPreviewStepView: View {
             in: RoundedRectangle(cornerRadius: 30, style: .continuous)
         )
         .shadow(color: Palette.ink.opacity(0.06), radius: 24, x: 0, y: 10)
+    }
+
+    private var lockBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 10, weight: .semibold))
+            Text("Score ready")
+                .font(FLFont.sans(12, .medium))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 11)
+        .frame(height: 26)
+        .background(Palette.rose, in: Capsule())
+        .overlay(Capsule().stroke(Color.white, lineWidth: 2))
     }
 
     private func previewChip(_ text: String) -> some View {
