@@ -5,10 +5,7 @@ import StoreKit
 struct ReviewAskStepView: View {
     @Environment(OnboardingStore.self) private var flow
     @Environment(\.requestReview) private var requestReview
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var didAsk: Bool = false
-    @State private var promptAppeared: Bool = false
-    @State private var didAdvance: Bool = false
+    @State private var showsSkip: Bool = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -78,37 +75,34 @@ struct ReviewAskStepView: View {
                     .foregroundStyle(Color(hex: 0x8F8A87))
                     .padding(.top, 12)
 
-                // Tap shows Apple's rating popup over this screen. Once she rates or taps
-                // "Not Now", onboarding moves on by itself. If Apple doesn't show the popup
-                // (it limits how often it appears), we move on after a short beat.
+                // Like GlamUp: "Next" shows Apple's rating popup and she stays here either way
+                // (Apple doesn't tell us whether she rated). A quiet "I rated!" link then appears
+                // above the button, and that's how she moves on. "Next" asks again if tapped.
+                if showsSkip {
+                    Button { flow.next() } label: {
+                        Text("I rated!")
+                            .font(FLFont.sans(15))
+                            .underline()
+                            .foregroundStyle(.white.opacity(0.75))
+                            .frame(minWidth: 120, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle())
+                    .padding(.top, 14)
+                    .transition(.opacity)
+                }
+
                 OnboardingCTA(title: "Next") {
-                    if didAsk {
-                        advance()
-                    } else {
-                        didAsk = true
-                        requestReview()
-                        Task {
-                            try? await Task.sleep(for: .seconds(2.5))
-                            if !promptAppeared { advance() }
-                        }
+                    requestReview()
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.2))
+                        withAnimation(.easeOut(duration: 0.3)) { showsSkip = true }
                     }
                 }
-                .padding(.top, 26)
+                .padding(.top, showsSkip ? 4 : 26)
                 .padding(.bottom, 10)
             }
             .padding(.horizontal, 24)
         }
-        .onChange(of: scenePhase) { _, phase in
-            guard didAsk else { return }
-            // The rating popup makes the app briefly inactive; coming back means it was answered.
-            if phase == .inactive { promptAppeared = true }
-            if phase == .active && promptAppeared { advance() }
-        }
-    }
-
-    private func advance() {
-        guard !didAdvance else { return }
-        didAdvance = true
-        flow.next()
     }
 }
