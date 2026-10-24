@@ -359,7 +359,7 @@ struct LocationStepView: View {
     var body: some View {
         OnboardingPage(title: "Where do you live?", subtitle: "Your local UV index, humidity, and pollution\naffect your skin daily.", titleSize: 34, titleTop: 4) {
             searchField
-                .padding(.top, 30)
+                .padding(.top, selectedTitle == nil ? 30 : 20)
 
             if showsSuggestions {
                 suggestions
@@ -368,7 +368,7 @@ struct LocationStepView: View {
 
             if selectedTitle != nil {
                 conditionsSection
-                    .padding(.top, 14)
+                    .padding(.top, 12)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         } footer: {
@@ -421,7 +421,7 @@ struct LocationStepView: View {
         }
         .padding(.leading, 22)
         .padding(.trailing, 12)
-        .frame(height: 72)
+        .frame(height: selectedTitle == nil ? 72 : 58)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(hex: 0xEFEBE7), lineWidth: 1))
     }
@@ -464,7 +464,7 @@ struct LocationStepView: View {
     @ViewBuilder
     private var conditionsSection: some View {
         if let conditions {
-            VStack(spacing: 14) {
+            VStack(spacing: 10) {
                 UVCard(conditions: conditions)
                 HumidityCard(conditions: conditions)
                 if conditions.usAQI != nil {
@@ -545,6 +545,7 @@ struct LocationStepView: View {
 }
 
 // MARK: - Condition cards
+// Compact so all three cards, the search field and Continue fit on one screen.
 
 private let uvColor = Color(hex: 0xDD8A55)
 
@@ -556,10 +557,10 @@ private struct ConditionCard<Content: View>: View {
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 22)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color(hex: 0xEFEBE7), lineWidth: 1))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 15)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(hex: 0xEFEBE7), lineWidth: 1))
     }
 }
 
@@ -567,8 +568,27 @@ private struct CardTitle: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(FLFont.serifItalic(22))
+            .font(FLFont.serifItalic(19))
             .foregroundStyle(Palette.stone)
+    }
+}
+
+/// The big number with its level beside it, on one line.
+private struct CardValue: View {
+    let value: String
+    let level: String
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(value)
+                .font(FLFont.serif(36))
+            Text(level)
+                .font(FLFont.sans(15, .semibold))
+        }
+        .foregroundStyle(color)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
 }
 
@@ -577,29 +597,21 @@ private struct UVCard: View {
 
     var body: some View {
         ConditionCard {
-            HStack(alignment: .top) {
+            HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 0) {
                     CardTitle(text: "Avg. Midday UV")
-                    Text("\(conditions.uvIndex)")
-                        .font(FLFont.serif(44))
-                        .foregroundStyle(uvColor)
-                        .padding(.top, 6)
-                    Text(conditions.uvLevel)
-                        .font(FLFont.sans(16, .semibold))
-                        .foregroundStyle(uvColor)
+                    CardValue(value: "\(conditions.uvIndex)", level: conditions.uvLevel, color: uvColor)
                     Text(conditions.uvAdvice)
-                        .font(FLFont.sans(14))
+                        .font(FLFont.sans(13.5))
                         .foregroundStyle(Palette.stone)
-                        .padding(.top, 6)
                 }
                 Spacer()
                 ZStack {
-                    Circle().fill(uvColor.opacity(0.12)).frame(width: 64, height: 64)
+                    Circle().fill(uvColor.opacity(0.12)).frame(width: 52, height: 52)
                     Image(systemName: "sun.max")
-                        .font(.system(size: 44, weight: .ultraLight))
+                        .font(.system(size: 34, weight: .ultraLight))
                         .foregroundStyle(uvColor)
                 }
-                .padding(.top, 8)
             }
         }
     }
@@ -613,41 +625,36 @@ private struct HumidityCard: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 0) {
                     CardTitle(text: "Avg. Humidity")
-                    Text("\(conditions.humidity)%")
-                        .font(FLFont.serif(44))
-                        .foregroundStyle(Palette.sky)
-                        .padding(.top, 6)
-                    Text(conditions.humidityLevel)
-                        .font(FLFont.sans(16, .semibold))
-                        .foregroundStyle(Palette.sky)
+                    CardValue(value: "\(conditions.humidity)%", level: conditions.humidityLevel, color: Palette.sky)
                 }
                 Spacer()
                 Text(conditions.humidityNote)
-                    .font(FLFont.sans(14))
+                    .font(FLFont.sans(13.5))
                     .foregroundStyle(Palette.stone)
                     .multilineTextAlignment(.trailing)
-                    .padding(.top, 20)
+                    .frame(maxWidth: 130, alignment: .trailing)
+                    .padding(.top, 4)
             }
 
             GeometryReader { geo in
                 let width = geo.size.width
                 let value = CGFloat(min(max(conditions.humidity, 0), 100)) / 100
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.track)
+                    Capsule().fill(Palette.track).frame(height: 8)
                     Capsule()
                         .fill(Palette.sky.opacity(0.22))
-                        .frame(width: width * 0.2)
+                        .frame(width: width * 0.2, height: 8)
                         .offset(x: width * 0.4)
                     Circle()
                         .fill(Palette.sky)
-                        .frame(width: 18, height: 18)
+                        .frame(width: 16, height: 16)
                         .overlay(Circle().stroke(Color.white, lineWidth: 3))
                         .shadow(color: Palette.sky.opacity(0.3), radius: 4)
-                        .offset(x: width * value - 9)
+                        .offset(x: width * value - 8)
                 }
             }
-            .frame(height: 18)
-            .padding(.top, 18)
+            .frame(height: 16)
+            .padding(.top, 10)
 
             HStack {
                 Text("0%")
@@ -656,9 +663,9 @@ private struct HumidityCard: View {
                 Spacer()
                 Text("100%")
             }
-            .font(FLFont.sans(12))
+            .font(FLFont.sans(11.5))
             .foregroundStyle(Palette.mist)
-            .padding(.top, 6)
+            .padding(.top, 4)
         }
     }
 }
@@ -671,38 +678,32 @@ private struct PollutionCard: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 0) {
                     CardTitle(text: "Air Pollution")
-                    Text(conditions.pollutionLevel)
-                        .font(FLFont.serif(44))
-                        .foregroundStyle(Palette.sage)
-                        .padding(.top, 6)
-                    Text("AQI Classification")
-                        .font(FLFont.sans(16, .semibold))
-                        .foregroundStyle(Palette.sage)
+                    CardValue(value: conditions.pollutionLevel, level: "AQI", color: Palette.sage)
                 }
                 Spacer()
                 Text(conditions.pollutionNote)
-                    .font(FLFont.sans(14))
+                    .font(FLFont.sans(13.5))
                     .foregroundStyle(Palette.stone)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 130, alignment: .trailing)
-                    .padding(.top, 20)
+                    .padding(.top, 4)
             }
 
             HStack(spacing: 8) {
                 ForEach(Array(SkinConditions.pollutionLevels.enumerated()), id: \.offset) { index, level in
-                    VStack(spacing: 8) {
+                    VStack(spacing: 5) {
                         Capsule()
                             .fill(index == conditions.pollutionIndex ? Palette.sage : Palette.track)
-                            .frame(height: 10)
+                            .frame(height: 8)
                         Text(level)
-                            .font(FLFont.sans(12, index == conditions.pollutionIndex ? .semibold : .regular))
+                            .font(FLFont.sans(11.5, index == conditions.pollutionIndex ? .semibold : .regular))
                             .foregroundStyle(index == conditions.pollutionIndex ? Palette.sage : Palette.mist)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
                 }
             }
-            .padding(.top, 18)
+            .padding(.top, 10)
         }
     }
 }
