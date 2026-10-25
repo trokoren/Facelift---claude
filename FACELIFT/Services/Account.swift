@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import AuthenticationServices
+import UIKit
 import CryptoKit
 
 /// Her FACELIFT account: Sign in with Apple, backed by Supabase Auth.
@@ -141,16 +142,53 @@ final class Account {
         await Subscriptions.shared.forget()
     }
 
+    /// What came back when we asked her to confirm with Apple before deleting.
+    enum AppleConfirmation {
+        /// A fresh one-time code the server uses to revoke her Sign in with Apple token.
+        case code(String)
+        /// She closed Apple's sheet: she's having second thoughts, so don't delete.
+        case cancelled
+        /// Apple couldn't give us a code (no capability, offline). Delete anyway; revoking is best effort.
+        case unavailable
+    }
+
+    /// Apple requires revoking her Sign in with Apple token when she deletes her account, which
+    /// needs a fresh authorization code (they expire in 5 minutes), so we ask her to confirm
+    /// with Apple right before deleting.
+    func confirmWithApple() async -> AppleConfirmation {
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = []
+        let helper = AppleCodeRequest()
+        do {
+            let authorization = try await helper.perform(request)
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let data = credential.authorizationCode,
+                  let code = String(data: data, encoding: .utf8) else { return .unavailable }
+            return .code(code)
+        } catch {
+            if (error as? ASAuthorizationError)?.code == .canceled { return .cancelled }
+            #if DEBUG
+            print("Apple confirmation before delete failed:", error)
+            #endif
+            return .unavailable
+        }
+    }
+
     /// Permanently deletes her account on our server (her scan backup goes with it), then signs
-    /// out here. Her scans on this phone stay until she deletes them.
+    /// out here. Her scans on this phone stay until she deletes them. Pass the code from
+    /// `confirmWithApple()` so the server can revoke her Sign in with Apple token too.
     /// Returns false if the server couldn't be reached (nothing is deleted then).
-    func deleteAccount() async -> Bool {
+    func deleteAccount(appleAuthorizationCode: String? = nil) async -> Bool {
         guard let token = await accessToken(),
               let url = Backend.functionURL("delete-account") else { return false }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
+        if let appleAuthorizationCode {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["apple_authorization_code": appleAuthorizationCode])
+        }
         guard let (_, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return false }
         session = nil
@@ -217,5 +255,39 @@ final class Account {
 
     private static func sha256(_ input: String) -> String {
         SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Runs one Sign in with Apple request outside of a button and hands back the result.
+private final class AppleCodeRequest: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private var continuation: CheckedContinuation<ASAuthorization, Error>?
+    private var controller: ASAuthorizationController?
+
+    func perform(_ request: ASAuthorizationAppleIDRequest) async throws -> ASAuthorization {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            self.controller = controller
+            controller.performRequests()
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        continuation?.resume(returning: authorization)
+        continuation = nil
+        self.controller = nil
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        continuation?.resume(throwing: error)
+        continuation = nil
+        self.controller = nil
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? ASPresentationAnchor()
     }
 }

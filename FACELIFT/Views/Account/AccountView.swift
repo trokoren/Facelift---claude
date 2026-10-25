@@ -190,8 +190,15 @@ struct AccountView: View {
         .confirmationDialog("Delete your account?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete account", role: .destructive) {
                 Task {
+                    // Apple asks her to confirm first, so we can revoke her Sign in with Apple too.
+                    let appleCode: String?
+                    switch await Account.shared.confirmWithApple() {
+                    case .cancelled: return
+                    case .code(let code): appleCode = code
+                    case .unavailable: appleCode = nil
+                    }
                     isDeleting = true
-                    let deleted = await Account.shared.deleteAccount()
+                    let deleted = await Account.shared.deleteAccount(appleAuthorizationCode: appleCode)
                     isDeleting = false
                     if deleted { await store.signOut() } else { deleteFailed = true }
                 }
