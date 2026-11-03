@@ -82,10 +82,10 @@ Launch checklist lives in the Facelift project as `claude/FACELIFT launch checkl
 
 Done recently: Shop tab, Clinical to Natural skincare approach (catalog, picks, screens, consult), free-trial scan limit and paywall order, lapsed membership gate, real sign-in code, product catalog (60, verified prices), picks preview + My Skin card, placeholder data removed, accurate FAQ/membership copy, privacy manifest, paywall compliance (restore, terms, renewal wording), consent copy, skin type every scan, stricter low light.
 
-Waiting on Trevor (business):
-- EIN: IRS online gave reference 101 (name match). Call 1-800-829-4933 weekdays 7am MT.
-- D-U-N-S: rejected 2026-10-14 (address didn't match the Colorado record, which shows Northwest's 1500 N Grant St Ste N, Denver 80203; phone busy; website had no contact info). Reapply through Apple's D-U-N-S lookup with the state-record address, a phone that answers, contact info on the website, and the EIN. Then enroll Apple Developer as an organization (Ocean Park LLC). Fallback: individual account now, convert later.
-- Sign the Operating Agreement. Open a business bank account after the EIN.
+Business setup (updated 2026-11-03 from Linear):
+- Done: EIN (by fax), D-U-N-S 149446743 for Ocean Park LLC, Operating Agreement signed, fax app cancelled.
+- Apple Developer: the enrollment went through as an individual ("Trevor Okoren"). On 2026-11-03 Trevor asked Apple Developer Support to convert it to Ocean Park LLC (case 103017494422). Don't sign the Paid Apps agreement or publish under the individual account until it's converted (FAC-114).
+- Still to do: business bank account (FAC-116), affiliate applications now that the EIN exists (FAC-137), rename and verify the Meta business as Ocean Park (FAC-141). Launch target Nov 16; Meta app ads need the live App Store ID (FAC-186).
 
 Next to build (ask before starting):
 1. Server-side scan limits + subscriber check in `analyze-skin` (after RevenueCat is live).
