@@ -84,7 +84,7 @@ Done recently: Shop tab, Clinical to Natural skincare approach (catalog, picks, 
 
 Business setup (updated 2026-11-03 from Linear):
 - Done: EIN (by fax), D-U-N-S 149446743 for Ocean Park LLC, Operating Agreement signed, fax app cancelled.
-- Apple Developer: the first enrollment went through as an individual ("Trevor Okoren"). As of 2026-11-11 Trevor is asking Apple to convert it to Ocean Park LLC (D-U-N-S 149446743) and withdraw his earlier refund request; cases 103017494422 and 30000007311706, next step a call to 1-800-633-2152 (FAC-114). Don't sign the Paid Apps agreement or publish until it's under Ocean Park.
+- Apple Developer: the first enrollment went through as an individual ("Trevor Okoren"). 2026-11-14: Apple agreed to migrate it to Ocean Park LLC (D-U-N-S 149446743); Trevor submitted the membership update form and withdrew the refund request (case 103017494422). Apple needs oceanpark.la live and naming Ocean Park LLC; the Certificates/Identifiers portal is down during the migration (FAC-114). Don't sign the Paid Apps agreement or publish until it's under Ocean Park.
 - Still to do: business bank account (FAC-116), affiliate applications now that the EIN exists (FAC-137), rename and verify the Meta business as Ocean Park (FAC-141). Launch target Nov 16; Meta app ads need the live App Store ID (FAC-186).
 
 Next to build (ask before starting):
