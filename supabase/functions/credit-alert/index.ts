@@ -1,7 +1,7 @@
 // YouCam credit alerts for Trevor, sent by email through Resend.
 //
 // Runs once a day from pg_cron (see migration 20261012_credit_alerts.sql). Checks the YouCam
-// credit balance and emails trevor@faceliftai.app when it is running low, at most once every
+// credit balance and emails trevor@oceanpark.la when it is running low, at most once every
 // 12 hours. Send {"test": true} to get a test email with the current balance (at most one
 // test every 10 minutes). analyze-skin sends {"failure": true} when YouCam fails on a scan;
 // if credits are nearly gone that sends an "out of credits" email at once (at most hourly).
@@ -14,7 +14,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const CREDIT_URL = "https://yce-api-01.makeupar.com/s2s/v1.0/client/credit";
 const FROM = "FACELIFT Alerts <alerts@faceliftai.app>";
-const TO = "trevor@faceliftai.app";
+const TO = "trevor@oceanpark.la";
 /// A scan uses about 12 credits, so 240 is roughly 20 scans left.
 const LOW = 240;
 const CREDITS_PER_SCAN = 12;

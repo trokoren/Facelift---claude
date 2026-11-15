@@ -9,7 +9,7 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
 - Pricing (decided 2026-10-11): free 3-day trial that converts to Annual $49.99, Weekly $8.99, Annual $49.99 (shown as $4.16/month, rounded down, with "$49.99 billed yearly"). Paywall order: 3-Day Free Trial, Weekly, Annual; the trial is preselected. Apple attaches a trial to a product, so this needs two annual products: `facelift_annual_trial` (free 3-day introductory offer) and `facelift_annual` (no offer), plus `facelift_weekly`, all in one subscription group. A paid 3-day trial isn't possible on Apple (paid intros are 1 week or longer). Cost per scan measured 2026-10-11: 12 YouCam units ($0.66 at $0.055/unit) plus about $0.025 for Claude, about $0.68. Trevor will test many paywall setups in the first months, so plans, prices and trials come from the RevenueCat offering (Experiments), not from code. The built-in plans in `PaywallStepView` are only a fallback for when RevenueCat isn't live.
 
 - Owner: Trevor Okoren, solo founder. Publisher (pending): **Ocean Park LLC**, a Colorado LLC formed 10/08/2026 (Colorado ID 20268253892). The app will ship under the Ocean Park Apple Developer account, NOT Faver, Inc.
-- Domain faceliftai.app. Email trevor@faceliftai.app (trevor@oceanpark.la planned). Instagram @faceliftai.
+- Domain faceliftai.app. Email trevor@oceanpark.la (Google Workspace, from 2026-11-02; trevor@faceliftai.app was the old one). Instagram @faceliftai.
 - Bundle ID: `app.faceliftai.facelift` (register it only in the Ocean Park developer account).
 
 ## How Trevor wants to work
@@ -41,7 +41,7 @@ FACELIFT is an iOS skincare app for women. She scans her face, gets a Skin Score
   - `analyze-skin`: photo to Perfect Corp YouCam (7 measures + skin type) then Claude (`claude-sonnet-5`) writes the consult. Retries the consult once; if it still fails, returns scores only.
   - `progress-review`: numbers only, writes a short progress review on cadence (first, every 5 scans, meaningful change, monthly).
   - `delete-account`: deletes the signed-in user (App Store requirement).
-  - `credit-alert`: daily (pg_cron `youcam-credit-check`, 15:00 UTC) YouCam balance check; emails trevor@faceliftai.app from alerts@faceliftai.app through Resend when under 240 credits (about 20 scans), at most every 12 hours. `{"test": true}` sends a test (once per 10 minutes). YouCam's reply is a list of credit packs (`results[].amount`, `expiry`); the balance is the sum of unexpired packs. Sent alerts are logged in `public.ops_alerts`.
+  - `credit-alert`: daily (pg_cron `youcam-credit-check`, 15:00 UTC) YouCam balance check; emails trevor@oceanpark.la from alerts@faceliftai.app through Resend when under 240 credits (about 20 scans), at most every 12 hours. `{"test": true}` sends a test (once per 10 minutes). YouCam's reply is a list of credit packs (`results[].amount`, `expiry`); the balance is the sum of unexpired packs. Sent alerts are logged in `public.ops_alerts`.
   - Removed 2026-10-11: `deep-read` and `consult-preview` (both retired stubs returning 410, unused by the app). Do not redeploy them.
   - Secrets in Supabase: `ANTHROPIC_API_KEY`, `PERFECT_CORP_API_KEY` (YouCam), `RESEND_API_KEY`.
 - **Database:** `public.product_catalog` (60 products; columns concern, tier, rank, brand, name, price, url, image_name, pregnancy_safe, strength, skin_types, active). Public read of active rows only. Migrations in `supabase/migrations/`.
