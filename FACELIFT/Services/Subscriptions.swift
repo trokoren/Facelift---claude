@@ -105,6 +105,40 @@ final class Subscriptions {
         }
     }
 
+    /// Opens a membership bought on the website (RevenueCat Funnels / Web Billing).
+    /// After paying on the web she gets a Redemption Link by email and on the thank-you page;
+    /// tapping it on her phone opens the app with that link, and RevenueCat moves the
+    /// membership onto this app. Returns the message to show her, or nil when the link
+    /// isn't a redemption link (so other links are left alone).
+    func redeemWebPurchase(from url: URL) async -> String? {
+        guard Purchases.isConfigured, let redemption = url.asWebPurchaseRedemption else { return nil }
+        let result = await Purchases.shared.redeemWebPurchase(redemption)
+        let outcome: String
+        let message: String
+        switch result {
+        case .success(let info):
+            apply(info)
+            outcome = "success"
+            message = isPremium
+                ? "Your membership is active. Welcome to FACELIFT."
+                : "Your purchase was found, but we couldn't confirm your membership yet. Please open the link again in a moment."
+        case .invalidToken:
+            outcome = "invalid"
+            message = "This link isn't valid. Please use the link in your FACELIFT purchase email."
+        case .purchaseBelongsToOtherUser:
+            outcome = "other_user"
+            message = "This membership is already linked to another account. Sign in with that account, or tap Restore Purchases."
+        case .expired(let email):
+            outcome = "expired"
+            message = "This link has expired. We've sent a new one to \(email)."
+        case .error:
+            outcome = "error"
+            message = "We couldn't confirm your membership just now. Please open the link again in a moment."
+        }
+        Analytics.track(.webPurchaseRedeemed, ["result": outcome])
+        return message
+    }
+
     enum Outcome {
         case purchased
         case cancelled

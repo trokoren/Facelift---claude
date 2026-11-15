@@ -39,6 +39,7 @@ enum Analytics {
         case purchaseFailed = "purchase_failed"
         case tabViewed = "tab_viewed"
         case scanStarted = "scan_started"
+        case webPurchaseRedeemed = "web_purchase_redeemed"
     }
 
     static func start() {

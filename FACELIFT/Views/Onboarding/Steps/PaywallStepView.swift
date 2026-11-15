@@ -102,7 +102,10 @@ struct PaywallStepView: View {
         .task {
             await subscriptions.refresh()
             selectDefaultPlan()
+            skipIfAlreadyMember()
         }
+        // She paid on the website and opened her link while on this screen.
+        .onChange(of: subscriptions.isPremium) { _, _ in skipIfAlreadyMember() }
         .onAppear { Analytics.track(.paywallViewed, ["source": "onboarding"]) }
         .onChange(of: subscriptions.packages.count) { _, _ in selectDefaultPlan() }
         .alert("Membership", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
@@ -121,6 +124,13 @@ struct PaywallStepView: View {
             }
             .environment(store)
         }
+    }
+
+    /// She's already a member (bought on the website, or before a reinstall): no paywall,
+    /// straight to her first read.
+    private func skipIfAlreadyMember() {
+        guard Subscriptions.isAvailable, subscriptions.isPremium, !isPurchasing, !isReading else { return }
+        beginMembership()
     }
 
     /// Keeps a valid plan selected: the annual plan (listed first) when the live plans arrive.
