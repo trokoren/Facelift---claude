@@ -35,6 +35,10 @@ final class Subscriptions {
     /// True while her membership is in its free trial (RevenueCat's period type).
     private(set) var isTrialPeriod: Bool = false
 
+    /// Goes up each time she unlocks a membership bought on the website, so onboarding can
+    /// skip the questions she already answered there.
+    private(set) var webRedemptions: Int = 0
+
     /// When her free trial becomes a paid membership (nil when she isn't on a trial).
     /// Used for the "trial ends tomorrow" reminder.
     private(set) var trialEndDate: Date?
@@ -119,6 +123,7 @@ final class Subscriptions {
         case .success(let info):
             apply(info)
             outcome = "success"
+            if isPremium { webRedemptions += 1 }
             message = isPremium
                 ? "Your membership is active. Welcome to FACELIFT."
                 : "Your purchase was found, but we couldn't confirm your membership yet. Please open the link again in a moment."

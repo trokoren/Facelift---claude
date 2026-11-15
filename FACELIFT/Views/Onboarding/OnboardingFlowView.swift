@@ -19,6 +19,18 @@ struct OnboardingFlowView: View {
         .environment(flow)
         .preferredColorScheme(flow.step.isDark ? .dark : .light)
         .sensoryFeedback(.selection, trigger: flow.step)
+        // She paid on the website and opened her link: bring over her quiz answers and
+        // skip the questions. Without them she answers here as usual (no paywall either way).
+        .onChange(of: Subscriptions.shared.webRedemptions) { _, _ in
+            guard flow.step.rawValue < OnboardingStep.location.rawValue else { return }
+            Task {
+                var answers = flow.answers
+                if await WebQuizAnswers.load(into: &answers) {
+                    flow.answers = answers
+                    flow.jump(to: .location)
+                }
+            }
+        }
         .onAppear {
             // Later steps are tracked as she moves; the first screen is tracked here.
             Analytics.track(.onboardingStarted)

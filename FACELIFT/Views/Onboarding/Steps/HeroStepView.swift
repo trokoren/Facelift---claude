@@ -8,6 +8,7 @@ struct HeroStepView: View {
     @Environment(AppStore.self) private var store
     @State private var hasAppeared: Bool = false
     @State private var isSigningIn: Bool = false
+    @State private var showsWebHelp: Bool = false
 
     var body: some View {
         ZStack {
@@ -66,6 +67,19 @@ struct HeroStepView: View {
                 }
                 .buttonStyle(PressableStyle())
                 .padding(.top, 8)
+                .opacity(hasAppeared ? 1 : 0)
+
+                Button {
+                    showsWebHelp = true
+                } label: {
+                    Text("Signed up on our website?")
+                        .font(FLFont.sans(13.5))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .frame(height: 44)
+                        .padding(.horizontal, 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
                 .padding(.bottom, 30)
                 .opacity(hasAppeared ? 1 : 0)
             }
@@ -78,6 +92,11 @@ struct HeroStepView: View {
                 onUnlocked: { store.completeOnboarding(with: flow.answers, signIn: true) },
                 onContinue: { flow.next() }
             )
+        }
+        .alert("Signed up on our website?", isPresented: $showsWebHelp) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Open the email we sent after your purchase on this phone and tap the link inside. FACELIFT will open with your membership ready.")
         }
     }
 
