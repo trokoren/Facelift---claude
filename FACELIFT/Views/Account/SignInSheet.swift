@@ -163,6 +163,13 @@ struct SignInSheet: View {
             dismiss()
             return
         }
+        // She joined on the website and this sign-in just brought her membership over: she
+        // hasn't set up her skin profile in the app yet, so carry on into it.
+        if Account.shared.claimedWebCustomerID != nil {
+            dismiss()
+            onContinue()
+            return
+        }
         // Until RevenueCat is set up there's no membership to check, so she goes straight in.
         if Subscriptions.shared.isPremium || !Subscriptions.isAvailable {
             dismiss()

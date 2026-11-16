@@ -10,6 +10,8 @@ import SwiftUI
 struct ContentView: View {
     @State private var store = AppStore()
     @Environment(\.scenePhase) private var scenePhase
+    /// What happened when she opened a web purchase link (see `Subscriptions.redeemWebPurchase`).
+    @State private var redemptionNotice: String?
 
     var body: some View {
         ZStack {
@@ -32,6 +34,19 @@ struct ContentView: View {
                 .environment(store)
                 .presentationCornerRadius(32)
                 .presentationDragIndicator(.visible)
+        }
+        // A membership bought on the website: its Redemption Link opens the app here.
+        .onOpenURL { url in
+            Task {
+                if let message = await Subscriptions.shared.redeemWebPurchase(from: url) {
+                    redemptionNotice = message
+                }
+            }
+        }
+        .alert("Membership", isPresented: Binding(get: { redemptionNotice != nil }, set: { if !$0 { redemptionNotice = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(redemptionNotice ?? "")
         }
         // If her membership ends while a scan's results are open, step back to My Skin.
         .onChange(of: store.isLapsed) { _, lapsed in
@@ -79,6 +94,13 @@ struct ContentView: View {
         }
         // Her scans backed up to her account: restored at launch and right after she signs in.
         .task { await store.syncScans() }
+        // Signed in but no membership on this phone: check for one bought on the website
+        // with her account email (moves it onto her account if found).
+        .task {
+            if Account.shared.isSignedIn && !Subscriptions.shared.isPremium {
+                await Account.shared.claimWebPurchases()
+            }
+        }
         .onChange(of: Account.shared.user?.id) { _, id in
             if id != nil { Task { await store.syncScans() } }
         }

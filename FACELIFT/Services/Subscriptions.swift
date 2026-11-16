@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Observation
 import RevenueCat
 
@@ -34,6 +35,10 @@ final class Subscriptions {
 
     /// True while her membership is in its free trial (RevenueCat's period type).
     private(set) var isTrialPeriod: Bool = false
+
+    /// Goes up each time she unlocks a membership bought on the website, so onboarding can
+    /// skip the questions she already answered there.
+    private(set) var webRedemptions: Int = 0
 
     /// When her free trial becomes a paid membership (nil when she isn't on a trial).
     /// Used for the "trial ends tomorrow" reminder.
@@ -105,6 +110,41 @@ final class Subscriptions {
         }
     }
 
+    /// Opens a membership bought on the website (RevenueCat Funnels / Web Billing).
+    /// After paying on the web she gets a Redemption Link by email and on the thank-you page;
+    /// tapping it on her phone opens the app with that link, and RevenueCat moves the
+    /// membership onto this app. Returns the message to show her, or nil when the link
+    /// isn't a redemption link (so other links are left alone).
+    func redeemWebPurchase(from url: URL) async -> String? {
+        guard Purchases.isConfigured, let redemption = url.asWebPurchaseRedemption else { return nil }
+        let result = await Purchases.shared.redeemWebPurchase(redemption)
+        let outcome: String
+        let message: String
+        switch result {
+        case .success(let info):
+            apply(info)
+            outcome = "success"
+            if isPremium { webRedemptions += 1 }
+            message = isPremium
+                ? "Your membership is active. Welcome to FACELIFT."
+                : "Your purchase was found, but we couldn't confirm your membership yet. Please open the link again in a moment."
+        case .invalidToken:
+            outcome = "invalid"
+            message = "This link isn't valid. Please use the link in your FACELIFT purchase email."
+        case .purchaseBelongsToOtherUser:
+            outcome = "other_user"
+            message = "This membership is already linked to another account. Sign in with that account, or tap Restore Purchases."
+        case .expired(let email):
+            outcome = "expired"
+            message = "This link has expired. We've sent a new one to \(email)."
+        case .error:
+            outcome = "error"
+            message = "We couldn't confirm your membership just now. Please open the link again in a moment."
+        }
+        Analytics.track(.webPurchaseRedeemed, ["result": outcome])
+        return message
+    }
+
     enum Outcome {
         case purchased
         case cancelled
@@ -148,6 +188,49 @@ final class Subscriptions {
         guard Purchases.isConfigured,
               let result = try? await Purchases.shared.logIn(accountID) else { return }
         apply(result.customerInfo)
+    }
+
+    /// She just paid on the website and tapped "Get Facelift" on the thank-you page: on first
+    /// open, ask our server (`web-handoff`) to move that purchase onto this phone. It matches
+    /// her by connection and iOS version within 2 hours and only when it's certain; otherwise
+    /// nothing happens and she uses Sign in with Apple or the link in her purchase email.
+    /// Returns the website customer id when a membership was moved.
+    func claimWebHandoff() async -> String? {
+        guard Purchases.isConfigured, !isPremium, let url = Backend.functionURL("web-handoff") else { return nil }
+        // Make sure RevenueCat knows this phone's customer before anything is moved onto it.
+        _ = try? await Purchases.shared.customerInfo()
+        guard !isPremium else { return nil }
+        let parts = UIDevice.current.systemVersion.split(separator: ".")
+        let iosVersion = parts.prefix(2).joined(separator: ".") + (parts.count == 1 ? ".0" : "")
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(Backend.anonKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "app_user_id": Purchases.shared.appUserID, "ios_version": iosVersion,
+        ])
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              body["matched"] as? Bool == true,
+              let from = body["from"] as? String else { return nil }
+        // Before the reload: onboarding reads her web quiz answers from this customer.
+        Account.shared.claimedWebCustomerID = from
+        await reloadAfterWebClaim()
+        return from
+    }
+
+    /// After the server moved a website membership onto this phone or her account: fetch it fresh from
+    /// RevenueCat (the cached copy doesn't know yet) and let onboarding skip the web quiz
+    /// questions, the same as opening a redemption link.
+    func reloadAfterWebClaim() async {
+        guard Purchases.isConfigured else { return }
+        Purchases.shared.invalidateCustomerInfoCache()
+        guard let info = try? await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent) else { return }
+        let wasPremium = isPremium
+        apply(info)
+        if isPremium && !wasPremium { webRedemptions += 1 }
     }
 
     /// After sign out or account deletion: back to an anonymous buyer on this phone.
