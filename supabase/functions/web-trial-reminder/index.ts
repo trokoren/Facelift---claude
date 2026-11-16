@@ -88,7 +88,7 @@ function reminderText(ends: Date, amount: string): string {
     "",
     "Questions? Simply reply to this email.",
     "",
-    "Facelift",
+    "Trevor, Founder of Facelift",
   ].join("\n");
 }
 
