@@ -96,7 +96,7 @@ struct HeroStepView: View {
         .alert("Signed up on our website?", isPresented: $showsWebHelp) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Open the email we sent after your purchase on this phone and tap the link inside. FACELIFT will open with your membership ready.")
+            Text("Sign in with Apple using the email you gave at checkout, or open the email we sent after your purchase on this phone and tap the link inside. Your membership will be ready.")
         }
     }
 

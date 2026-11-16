@@ -6,6 +6,10 @@ import CryptoKit
 
 /// Her FACELIFT account: Sign in with Apple, backed by Supabase Auth.
 ///
+/// A membership bought on the website is tied to her account when she signs in: either it
+/// was already unlocked on this phone (RevenueCat carries it over at sign-in), or the email
+/// Apple shares matches her checkout email (`claimWebPurchases`).
+///
 /// What an account does: it gives her membership (RevenueCat) a stable owner and backs up her
 /// scans (`ScanSync`, scores and consultations only), so both follow her to a new iPhone.
 ///
@@ -66,6 +70,9 @@ final class Account {
     }
     /// The unhashed nonce for the Apple request in flight (Supabase checks it against the token).
     private var pendingNonce: String?
+    /// The website customer whose membership was last moved onto this phone or account, so
+    /// onboarding can read the web quiz answers saved there.
+    var claimedWebCustomerID: String?
 
     private init() {
         if let data = Keychain.load(Self.sessionKey),
@@ -128,6 +135,32 @@ final class Account {
         }
 
         await Subscriptions.shared.identify(newSession.user.id)
+        // A membership bought on the website with the same email moves onto her account.
+        await claimWebPurchases()
+    }
+
+    // MARK: - Website purchases
+
+    /// Moves memberships bought on the website with her account email (as Apple shares it)
+    /// onto her account. Safe to call any time she's signed in; does nothing when there's
+    /// nothing to move. Returns true when a membership was moved.
+    @discardableResult
+    func claimWebPurchases() async -> Bool {
+        guard let token = await accessToken(),
+              let url = Backend.functionURL("claim-web-purchase") else { return false }
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data("{}".utf8)
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let claimed = body["claimed"] as? Int, claimed > 0 else { return false }
+        claimedWebCustomerID = (body["from"] as? [String])?.first
+        await Subscriptions.shared.reloadAfterWebClaim()
+        return true
     }
 
     // MARK: - Sign out and delete

@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Observation
 import RevenueCat
 
@@ -187,6 +188,49 @@ final class Subscriptions {
         guard Purchases.isConfigured,
               let result = try? await Purchases.shared.logIn(accountID) else { return }
         apply(result.customerInfo)
+    }
+
+    /// She just paid on the website and tapped "Get Facelift" on the thank-you page: on first
+    /// open, ask our server (`web-handoff`) to move that purchase onto this phone. It matches
+    /// her by connection and iOS version within 2 hours and only when it's certain; otherwise
+    /// nothing happens and she uses Sign in with Apple or the link in her purchase email.
+    /// Returns the website customer id when a membership was moved.
+    func claimWebHandoff() async -> String? {
+        guard Purchases.isConfigured, !isPremium, let url = Backend.functionURL("web-handoff") else { return nil }
+        // Make sure RevenueCat knows this phone's customer before anything is moved onto it.
+        _ = try? await Purchases.shared.customerInfo()
+        guard !isPremium else { return nil }
+        let parts = UIDevice.current.systemVersion.split(separator: ".")
+        let iosVersion = parts.prefix(2).joined(separator: ".") + (parts.count == 1 ? ".0" : "")
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(Backend.anonKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "app_user_id": Purchases.shared.appUserID, "ios_version": iosVersion,
+        ])
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              body["matched"] as? Bool == true,
+              let from = body["from"] as? String else { return nil }
+        // Before the reload: onboarding reads her web quiz answers from this customer.
+        Account.shared.claimedWebCustomerID = from
+        await reloadAfterWebClaim()
+        return from
+    }
+
+    /// After the server moved a website membership onto this phone or her account: fetch it fresh from
+    /// RevenueCat (the cached copy doesn't know yet) and let onboarding skip the web quiz
+    /// questions, the same as opening a redemption link.
+    func reloadAfterWebClaim() async {
+        guard Purchases.isConfigured else { return }
+        Purchases.shared.invalidateCustomerInfoCache()
+        guard let info = try? await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent) else { return }
+        let wasPremium = isPremium
+        apply(info)
+        if isPremium && !wasPremium { webRedemptions += 1 }
     }
 
     /// After sign out or account deletion: back to an anonymous buyer on this phone.

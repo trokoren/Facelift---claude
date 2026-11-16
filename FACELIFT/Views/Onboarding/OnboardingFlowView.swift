@@ -31,6 +31,9 @@ struct OnboardingFlowView: View {
                 }
             }
         }
+        // Just paid on the website? Unlock automatically (see `Subscriptions.claimWebHandoff`).
+        // A match bumps webRedemptions, which skips the questions above.
+        .task { _ = await Subscriptions.shared.claimWebHandoff() }
         .onAppear {
             // Later steps are tracked as she moves; the first screen is tracked here.
             Analytics.track(.onboardingStarted)

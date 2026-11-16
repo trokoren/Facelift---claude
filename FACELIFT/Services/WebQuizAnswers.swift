@@ -2,7 +2,8 @@ import Foundation
 import RevenueCat
 
 /// The answers she gave in the web quiz (RevenueCat Funnel), read back after she opens her
-/// redemption link so onboarding can skip the questions she already answered.
+/// redemption link (or signs in with her checkout email) so onboarding can skip the
+/// questions she already answered.
 /// The funnel saves each answer on her RevenueCat profile; the `web-quiz-answers` function
 /// reads them with a server key that never lives in the app.
 enum WebQuizAnswers {
@@ -14,7 +15,7 @@ enum WebQuizAnswers {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(Backend.anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue(Backend.anonKey, forHTTPHeaderField: "apikey")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["app_user_id": Purchases.shared.appUserID])
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["app_user_id": Account.shared.claimedWebCustomerID ?? Purchases.shared.appUserID])
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

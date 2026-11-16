@@ -6,7 +6,8 @@
 // (Members who install the app also get the app's own reminder.)
 //
 // Two ways in:
-//  1. RevenueCat webhook (POST, Authorization header = REVENUECAT_WEBHOOK_AUTH). Saves each
+//  1. RevenueCat webhook (POST, Authorization header = REVENUECAT_WEBHOOK_AUTH). Saves every
+//     web purchase in public.web_purchases (for claim-web-purchase), and each
 //     web trial (store RC_BILLING, period_type TRIAL) in public.web_trials, and marks it
 //     canceled / converted / expired as later events arrive.
 //  2. Hourly pg_cron call with {"send": true} (see migration 20261115_web_trial_reminders.sql).
@@ -142,10 +143,21 @@ Deno.serve(async (req) => {
 
   switch (event.type) {
     case "INITIAL_PURCHASE": {
-      if (event.period_type !== "TRIAL" || !event.expiration_at_ms) return json({ ok: true, ignored: "not a trial" });
       let email = event.subscriber_attributes?.["$email"]?.value?.trim() || null;
       if (!email) email = await lookupEmail(event.app_user_id);
-      if (!email) console.warn("web trial without an email", id);
+      if (!email) console.warn("web purchase without an email", id);
+      // Every web purchase, so claim-web-purchase can move it onto her account when she
+      // signs in to the app with the same email.
+      const saved = await db.from("web_purchases").upsert({
+        app_user_id: id,
+        email: email?.toLowerCase() ?? null,
+        product_id: event.product_id ?? null,
+        period_type: event.period_type ?? null,
+        environment: event.environment ?? null,
+        updated_at: new Date().toISOString(),
+      });
+      if (saved.error) console.error("web_purchases", saved.error.message);
+      if (event.period_type !== "TRIAL" || !event.expiration_at_ms) return json({ ok: true, ignored: "not a trial" });
       const { error } = await db.from("web_trials").upsert({
         app_user_id: id,
         email,

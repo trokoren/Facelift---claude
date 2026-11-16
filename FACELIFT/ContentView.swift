@@ -94,6 +94,13 @@ struct ContentView: View {
         }
         // Her scans backed up to her account: restored at launch and right after she signs in.
         .task { await store.syncScans() }
+        // Signed in but no membership on this phone: check for one bought on the website
+        // with her account email (moves it onto her account if found).
+        .task {
+            if Account.shared.isSignedIn && !Subscriptions.shared.isPremium {
+                await Account.shared.claimWebPurchases()
+            }
+        }
         .onChange(of: Account.shared.user?.id) { _, id in
             if id != nil { Task { await store.syncScans() } }
         }
