@@ -7,7 +7,7 @@
 //
 // Two ways in:
 //  1. RevenueCat webhook (POST, Authorization header = REVENUECAT_WEBHOOK_AUTH). Saves every
-//     web purchase in public.web_purchases (for claim-web-purchase), and each
+//     web purchase in public.web_purchases (for web-handoff and claim-web-purchase), and each
 //     web trial (store RC_BILLING, period_type TRIAL) in public.web_trials, and marks it
 //     canceled / converted / expired as later events arrive.
 //  2. Hourly pg_cron call with {"send": true} (see migration 20261115_web_trial_reminders.sql).
@@ -146,8 +146,8 @@ Deno.serve(async (req) => {
       let email = event.subscriber_attributes?.["$email"]?.value?.trim() || null;
       if (!email) email = await lookupEmail(event.app_user_id);
       if (!email) console.warn("web purchase without an email", id);
-      // Every web purchase, so claim-web-purchase can move it onto her account when she
-      // signs in to the app with the same email.
+      // Every web purchase, so web-handoff (first app open) or claim-web-purchase (Sign in
+      // with Apple with the same email) can move it onto the app.
       const saved = await db.from("web_purchases").upsert({
         app_user_id: id,
         email: email?.toLowerCase() ?? null,
