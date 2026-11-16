@@ -28,7 +28,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const FROM = "FACELIFT <hello@faceliftai.app>";
+const FROM = "Facelift <hello@faceliftai.app>";
 const REPLY_TO = "trevor@faceliftai.app";
 const WINDOW_MS = 26 * 60 * 60 * 1000;
 
@@ -82,13 +82,13 @@ function reminderText(ends: Date, amount: string): string {
   return [
     "Hello,",
     "",
-    `Your free FACELIFT trial ends tomorrow, ${day}. Your membership will then continue at ${amount} for the year, billed to the card you added.`,
+    `Your free Facelift trial ends tomorrow, ${day}. Your membership will then continue at ${amount} for the year, billed to the card you added.`,
     "",
-    "If you would like to keep going, there is nothing to do. If not, you can cancel any time before then from the \"Manage subscription\" link in your FACELIFT purchase email. You will not be charged.",
+    "If you would like to keep going, there is nothing to do. If not, you can cancel any time before then from the \"Manage subscription\" link in your Facelift purchase email. You will not be charged.",
     "",
     "Questions? Simply reply to this email.",
     "",
-    "FACELIFT",
+    "Facelift",
   ].join("\n");
 }
 
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     let sent = 0;
     for (const row of due ?? []) {
       try {
-        await sendEmail(resendKey, row.email, "Your FACELIFT trial ends tomorrow",
+        await sendEmail(resendKey, row.email, "Your Facelift trial ends tomorrow",
           reminderText(new Date(row.trial_ends_at), price(row.price, row.currency)));
         await db.from("web_trials").update({ reminded_at: new Date().toISOString() }).eq("app_user_id", row.app_user_id);
         sent++;
