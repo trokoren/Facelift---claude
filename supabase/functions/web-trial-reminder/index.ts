@@ -86,8 +86,6 @@ function reminderText(ends: Date, amount: string): string {
     "",
     "If you would like to keep going, there is nothing to do. If not, you can cancel any time before then from the \"Manage subscription\" link in your Facelift purchase email. You will not be charged.",
     "",
-    "Questions? Simply reply to this email.",
-    "",
     "Trevor, Founder of Facelift",
   ].join("\n");
 }
